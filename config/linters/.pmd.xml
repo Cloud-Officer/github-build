@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+
+<ruleset name="PMD Rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+  <description>
+    PMD custom rules
+  </description>
+
+  <exclude-pattern>.*/node_modules/.*</exclude-pattern>
+  <exclude-pattern>.*/.*/node_modules/.*</exclude-pattern>
+
+  <rule ref="category/ecmascript/bestpractices.xml">
+    <exclude name="GlobalVariable"/>
+  </rule>
+  <rule ref="category/ecmascript/codestyle.xml">
+    <exclude name="NoElseReturn"/>
+  </rule>
+  <rule ref="category/ecmascript/errorprone.xml">
+  </rule>
+
+  <rule ref="category/java/bestpractices.xml">
+  </rule>
+  <rule ref="category/java/codestyle.xml">
+  </rule>
+  <rule ref="category/java/documentation.xml">
+  </rule>
+  <rule ref="category/java/errorprone.xml">
+  </rule>
+  <rule ref="category/java/multithreading.xml">
+  </rule>
+  <rule ref="category/java/performance.xml">
+  </rule>
+  <rule ref="category/java/security.xml">
+  </rule>
+
+  <rule ref="category/plsql/bestpractices.xml">
+  </rule>
+  <rule ref="category/plsql/codestyle.xml">
+  </rule>
+  <rule ref="category/plsql/design.xml">
+  </rule>
+  <rule ref="category/plsql/errorprone.xml">
+  </rule>
+
+</ruleset>

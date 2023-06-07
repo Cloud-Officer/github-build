@@ -1,0 +1,14 @@
+---
+options:
+- name: mongodb-version
+  value: latest
+- name: mongodb-replica-set
+  value:
+- name: mongodb-port
+  value:
+- name: mongodb-db
+  value:
+- name: mongodb-username
+  value:
+- name: mongodb-password
+  value:

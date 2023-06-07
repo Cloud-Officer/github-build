@@ -1,0 +1,16 @@
+---
+options:
+- name: mysql-version
+  value: 8.0
+- name: mysql-distribution
+  value:
+- name: mysql-auto-start
+  value:
+- name: mysql-my-cnf
+  value:
+- name: mysql-root-password
+  value:
+- name: mysql-user
+  value:
+- name: mysql-password
+  value:

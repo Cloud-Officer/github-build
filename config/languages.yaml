@@ -1,0 +1,176 @@
+---
+go:
+  short_name: go
+  long_name: Go
+  file_extension: go
+  setup_options:
+  - name: go-version
+    value: 1.20.2
+  - name: go-check-latest
+    value:
+  - name: go-token
+    value:
+  dependencies:
+  - dependency_file: go.mod
+    mongodb_dependency: mongodb
+    mysql_dependency: sql
+    redis_dependency: redis
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: Go Modules
+    package_manager_default: go mod vendor
+  unit_test_framework_name: Testing
+  unit_test_framework_default: go test
+php:
+  short_name: php
+  long_name: PHP
+  file_extension: php
+  setup_options:
+  - name: php-version
+    value: 8.2.4
+  - name: php-extensions
+    value:
+  - name: php-ini-file
+    value:
+  - name: php-ini-values
+    value:
+  - name: php-coverage
+    value:
+  - name: php-tools
+    value: composer
+  dependencies:
+  - dependency_file: composer.json
+    mongodb_dependency: mongodb
+    mysql_dependency: doctrine-bundle
+    redis_dependency: redis
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: Composer
+    package_manager_default: composer install
+  unit_test_framework_name: PHPUnit
+  unit_test_framework_default: vendor/bin/phpunit
+proto:
+  short_name: proto
+  long_name: Protocol Buffer
+  file_extension: proto
+  setup_options:
+  - name: go-version
+    value: 1.20.2
+  - name: go-check-latest
+    value:
+  - name: go-token
+    value:
+  - name: xcode-version
+    value: '14.2'
+  dependencies:
+  - dependency_file: go.mod
+    mongodb_dependency: mongodb
+    mysql_dependency: sql
+    redis_dependency: redis
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: Go Modules
+    package_manager_default: go mod vendor
+  unit_test_framework_name: Protoc
+  unit_test_framework_default: protoc
+  runs-on: macos-12
+python:
+  short_name: python
+  long_name: Python
+  file_extension: py
+  setup_options:
+  - name: python-version
+    value: 3.11.2
+  - name: python-cache
+    value: pip
+  - name: python-architecture
+    value:
+  - name: python-token
+    value:
+  - name: python-cache-dependency-path
+    value:
+  dependencies:
+  - dependency_file: requirements.txt
+    mongodb_dependency: mongo
+    mysql_dependency: mysql
+    redis_dependency: redis
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: Pip
+    package_manager_default: pip install -r requirements.txt
+  unit_test_framework_name: Coverage
+  unit_test_framework_default: coverage run -m unittest
+ruby:
+  short_name: ruby
+  long_name: Ruby
+  file_extension: rb
+  setup_options:
+  - name: ruby-version
+    value: 3.2.1
+  - name: ruby-rubygems
+    value:
+  - name: ruby-bundler
+    value:
+  - name: ruby-bundler-cache
+    value: true
+  - name: ruby-working-directory
+    value:
+  - name: ruby-cache-version
+    value:
+  dependencies:
+  - dependency_file: Gemfile
+    mongodb_dependency: mongo
+    mysql_dependency: mysql
+    redis_dependency: redis
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: Bundler
+    package_manager_default: bundle install
+  unit_test_framework_name: RSpec
+  unit_test_framework_default: bundle exec rspec
+swift:
+  short_name: swift
+  long_name: Swift
+  file_extension: swift
+  setup_options:
+  - name: ruby-version
+    value: 3.2.1
+  - name: ruby-rubygems
+    value:
+  - name: ruby-bundler
+    value:
+  - name: ruby-bundler-cache
+    value: true
+  - name: ruby-working-directory
+    value:
+  - name: ruby-cache-version
+    value:
+  - name: xcode-version
+    value: '14.2'
+  dependencies:
+  - dependency_file: Gemfile
+    mongodb_dependency: __mongo__
+    mysql_dependency: __mysql__
+    redis_dependency: __redis__
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: Bundler
+    package_manager_default: bundle install
+  - dependency_file: Cartfile
+    mongodb_dependency: __mongo__
+    mysql_dependency: __mysql__
+    redis_dependency: __redis__
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: Carthage
+    package_manager_default: bundle exec carthage bootstrap
+  - dependency_file: Podfile
+    mongodb_dependency: __mongo__
+    mysql_dependency: __mysql__
+    redis_dependency: __redis__
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: CocoaPods
+    package_manager_default: bundle exec pod install --repo-update
+  - dependency_file: Package.swift
+    mongodb_dependency: __mongo__
+    mysql_dependency: __mysql__
+    redis_dependency: __redis__
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: Swift Package Manager
+    package_manager_default: xcodebuild -resolvePackageDependencies
+  unit_test_framework_name: Fastlane
+  unit_test_framework_default: bundle exec fastlane build --verbose
+  runs-on: macos-12

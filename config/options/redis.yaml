@@ -1,0 +1,12 @@
+---
+options:
+- name: redis-version
+  value: latest
+- name: redis-port
+  value:
+- name: redis-tls-port
+  value:
+- name: redis-auto-start
+  value:
+- name: redis-conf
+  value:
