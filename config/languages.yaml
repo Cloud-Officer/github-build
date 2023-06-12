@@ -102,7 +102,7 @@ ruby:
   file_extension: rb
   setup_options:
   - name: ruby-version
-    value: 3.2.1
+    value: 3.2.2
   - name: ruby-rubygems
     value:
   - name: ruby-bundler
@@ -129,7 +129,7 @@ swift:
   file_extension: swift
   setup_options:
   - name: ruby-version
-    value: 3.2.1
+    value: 3.2.2
   - name: ruby-rubygems
     value:
   - name: ruby-bundler
