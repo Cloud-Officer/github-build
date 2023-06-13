@@ -602,6 +602,8 @@ module GHB
     end
 
     def check_repository_settings
+      return if @options.skip_repository_settings
+
       puts('Checking repository settings...')
       repository = Dir.pwd.split('/').last
 
@@ -664,6 +666,8 @@ module GHB
     end
 
     def update_gitignore
+      return if @options.skip_gitignore
+
       puts('Updating .gitignore...')
       git_ignore = File.read('.gitignore').strip
 

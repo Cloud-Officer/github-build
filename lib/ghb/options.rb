@@ -23,13 +23,15 @@ module GHB
       @organization = Dir.pwd.split('/')[-2]
       @parser = OptionParser.new
       @skip_dependabot = false
+      @skip_gitignore = false
       @skip_license_check = false
+      @skip_repository_settings = false
       @skip_slack = false
 
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :ignored_linters, :languages_config_file, :linters_config_file, :only_dependabot, :options_config_file_apt, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :skip_dependabot, :skip_license_check, :skip_slack
+    attr_reader :application_name, :build_file, :excluded_folders, :ignored_linters, :languages_config_file, :linters_config_file, :only_dependabot, :options_config_file_apt, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_slack
 
     def parse
       @parser.parse!(@argv)
@@ -98,8 +100,16 @@ module GHB
         @skip_dependabot = true
       end
 
+      @parser.on('', '--skip_gitignore', 'Skip update of gitignore file') do
+        @skip_gitignore = true
+      end
+
       @parser.on('', '--skip_license_check', 'Skip license check') do
         @skip_license_check = true
+      end
+
+      @parser.on('', '--skip_repository_settings', 'Skip check of repository settings') do
+        @skip_repository_settings = true
       end
 
       @parser.on('', '--skip_slack', 'Skip slack') do
