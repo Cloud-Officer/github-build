@@ -163,7 +163,12 @@ module GHB
       linters&.each do |short_name, linter|
         next if @options.ignored_linters[short_name]
 
-        _stdout_str, _stderr_str, status = Open3.capture3("find -E #{linter[:path]} -regex '#{linter[:pattern]}' #{excluded_folders} #{@submodules} | grep -v linters | grep -E '.*' &> /dev/null")
+        _stdout_str, _stderr_str, status = Open3.capture3("find -E #{linter[:path]} -regex '#{linter[:pattern]}' #{excluded_folders} #{@submodules} | grep -v linters | grep -E '.*' ")
+        pp _stdout_str
+        pp _stderr_str
+        pp status
+        pp linter[:directory]
+        pp Dir.exist?(linter[:directory])
 
         next unless status.success? or (linter[:directory] and Dir.exist?(linter[:directory])) # rubocop:disable Style/UnlessLogicalOperators
 
