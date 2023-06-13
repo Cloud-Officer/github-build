@@ -10,7 +10,8 @@
 .rubocop.yml             @ydesgagn
 .soup.json               @ydesgagn
 .yamllint.yml            @ydesgagn
-CODEOWNERS               @ydesgagn
+codeowners               @ydesgagn
+readme.md                @ydesgagn
 bin/*                    @ydesgagn
 docs/*                   @ydesgagn
 lib/*                    @ydesgagn
