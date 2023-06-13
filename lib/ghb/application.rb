@@ -166,7 +166,7 @@ module GHB
         find_command = "find #{linter[:path]}"
         find_command += " -not -path  #{excluded_folders}" unless excluded_folders.empty?
         find_command += " -not -path  #{@submodules}" unless @submodules.empty?
-        find_command += " | grep -v linters | grep -E '#{linter[:pattern]}' &> /dev/null"
+        find_command += " | grep -v linters | grep -E '#{linter[:pattern]}'"
         _stdout_str, _stderr_str, status = Open3.capture3(find_command)
 
         next unless status.success? or (linter[:directory] and Dir.exist?(linter[:directory])) # rubocop:disable Style/UnlessLogicalOperators
