@@ -1,0 +1,133 @@
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+  release:
+    types:
+    - created
+env:
+  RUBY-BUNDLER-CACHE: true
+  RUBY-VERSION: 3.2.1
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-22.04
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@master
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+  actionlint:
+    name: Github Actions Linter
+    runs-on: ubuntu-22.04
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')}}"
+    steps:
+    - name: Actionlint
+      uses: cloud-officer/ci-actions/linters/actionlint@master
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github_token: "${{secrets.GITHUB_TOKEN}}"
+  markdownlint:
+    name: Markdown Linter
+    runs-on: ubuntu-22.04
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')}}"
+    steps:
+    - name: Markdownlint
+      uses: cloud-officer/ci-actions/linters/markdownlint@master
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github_token: "${{secrets.GITHUB_TOKEN}}"
+  rubocop:
+    name: Ruby Linter
+    runs-on: ubuntu-22.04
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')}}"
+    steps:
+    - name: Rubocop
+      uses: cloud-officer/ci-actions/linters/rubocop@master
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github_token: "${{secrets.GITHUB_TOKEN}}"
+  yamllint:
+    name: YAML Linter
+    runs-on: ubuntu-22.04
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')}}"
+    steps:
+    - name: Yamllint
+      uses: cloud-officer/ci-actions/linters/yamllint@master
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github_token: "${{secrets.GITHUB_TOKEN}}"
+  licenses:
+    name: Licenses Check
+    runs-on: ubuntu-22.04
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
+    steps:
+    - name: Licenses
+      uses: cloud-officer/ci-actions/soup@master
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{secrets.GITHUB_TOKEN}}"
+        parameters: "--no_prompt --soup"
+  ruby_unit_tests:
+    name: Ruby Unit Tests
+    runs-on: ubuntu-22.04
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    strategy:
+      matrix:
+        os:
+        - macos-12
+        - ubuntu-22.04
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@master
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        aws-access-key-id: "${{secrets.AWS_ACCESS_KEY_ID}}"
+        aws-secret-access-key: "${{secrets.AWS_SECRET_ACCESS_KEY}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        ruby-version: "${{env.RUBY-VERSION}}"
+        ruby-bundler-cache: "${{env.RUBY-BUNDLER-CACHE}}"
+    - name: Bundler
+      shell: bash
+      run: bundle install
+    - name: RSpec
+      shell: bash
+      run: bundle exec ./bin/github-build.rb --skip_dependabot --skip_repository_settings --skip_slack

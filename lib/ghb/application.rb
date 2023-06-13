@@ -2,6 +2,7 @@
 
 require 'active_support/core_ext/hash/keys'
 require 'duplicate'
+require 'httparty'
 require 'open3'
 require 'psych'
 
@@ -18,23 +19,37 @@ module GHB
       @new_workflow = Workflow.new('Build')
       @old_workflow = Workflow.new('Build')
       @options = configure_options(argv)
+      @required_status_checks = []
       @submodules = ''
       @unit_tests_conditions = nil
     end
 
     def execute
       puts('Generating build file...')
-      read
-      set_defaults
-      prepare_variables
-      detect_linters
-      licenses_check
-      detect_languages
-      code_deploy
-      aws_commands
-      publish_status
-      dependabot
-      write
+      workflow_read
+      workflow_set_defaults
+      workflow_job_prepare_variables
+      workflow_job_detect_linters
+      workflow_job_licenses_check
+      workflow_job_detect_languages
+
+      @new_workflow.jobs.each_value do |job|
+        if job&.strategy&.[](:matrix)&.[](:os)
+          job.strategy[:matrix][:os].each do |os|
+            @required_status_checks << "#{job.name} (#{os})"
+          end
+        else
+          @required_status_checks << job.name
+        end
+      end
+
+      workflow_job_code_deploy
+      workflow_job_aws_commands
+      workflow_job_publish_status
+      workflow_job_dependabot
+      workflow_write
+      check_repository_settings
+      update_gitignore
       @exit_code
     end
 
@@ -47,14 +62,14 @@ module GHB
       exit(Status::ERROR_EXIT_CODE)
     end
 
-    def read
+    def workflow_read
       return unless File.exist?(@options.build_file)
 
       puts("Reading current build file #{@options.build_file}...")
       @old_workflow.read(@options.build_file)
     end
 
-    def set_defaults
+    def workflow_set_defaults
       @new_workflow.name =
         if @old_workflow.name.nil?
           'Build'
@@ -86,7 +101,7 @@ module GHB
       @new_workflow.concurrency = @old_workflow.concurrency || {}
     end
 
-    def prepare_variables
+    def workflow_job_prepare_variables
       return if @options.only_dependabot
 
       @new_workflow.do_job(:variables) do
@@ -123,7 +138,7 @@ module GHB
       end
     end
 
-    def detect_linters
+    def workflow_job_detect_linters
       return if @options.only_dependabot
 
       puts('    Detecting linters...')
@@ -148,7 +163,11 @@ module GHB
       linters&.each do |short_name, linter|
         next if @options.ignored_linters[short_name]
 
-        _stdout_str, _stderr_str, status = Open3.capture3("find -E #{linter[:path]} -regex '#{linter[:pattern]}' #{excluded_folders} #{@submodules} | grep -v linters | grep -E '.*' &> /dev/null")
+        find_command = "find #{linter[:path]}"
+        find_command += " -not -path  #{excluded_folders}" unless excluded_folders.empty?
+        find_command += " -not -path  #{@submodules}" unless @submodules.empty?
+        find_command += " | grep -v linters | grep -v vendor | grep -E '#{linter[:pattern]}'"
+        _stdout_str, _stderr_str, status = Open3.capture3(find_command)
 
         next unless status.success? or (linter[:directory] and Dir.exist?(linter[:directory])) # rubocop:disable Style/UnlessLogicalOperators
 
@@ -159,6 +178,7 @@ module GHB
           if File.exist?("#{script_path}/linters/#{linter[:config]}")
             FileUtils.ln_s("#{script_path}/linters/#{linter[:config]}", linter[:config], force: true)
           else
+            File.delete(linter[:config]) if File.symlink?(linter[:config])
             FileUtils.cp("#{__dir__}/../../config/linters/#{linter[:config]}", linter[:config])
           end
         end
@@ -193,15 +213,17 @@ module GHB
       end
     end
 
-    def licenses_check
+    def workflow_job_licenses_check
       return if @options.only_dependabot
 
       if File.exist?('Podfile.lock')
         @unit_tests_conditions = "needs.variables.outputs.SKIP_LICENSES != '1' || needs.variables.outputs.SKIP_TESTS != '1'"
       else
-        puts('    Adding soup...')
         @unit_tests_conditions = "needs.variables.outputs.SKIP_TESTS != '1'"
 
+        return if @options.skip_license_check
+
+        puts('    Adding soup...')
         old_workflow = @old_workflow
 
         @new_workflow.do_job(:licenses) do
@@ -229,15 +251,15 @@ module GHB
       end
     end
 
-    def detect_languages
+    def workflow_job_detect_languages
       return if @options.only_dependabot
 
       puts('    Detecting languages...')
       languages = Psych.safe_load(File.read("#{__dir__}/../../#{@options.languages_config_file}"))&.deep_symbolize_keys
-      options_apt = Psych.safe_load(File.read("#{__dir__}/../../#{@options.options_config_file[:apt]}"))&.deep_symbolize_keys&.[](:options)
-      options_mongodb = Psych.safe_load(File.read("#{__dir__}/../../#{@options.options_config_file[:mongodb]}"))&.deep_symbolize_keys&.[](:options)
-      options_mysql = Psych.safe_load(File.read("#{__dir__}/../../#{@options.options_config_file[:mysql]}"))&.deep_symbolize_keys&.[](:options)
-      options_redis = Psych.safe_load(File.read("#{__dir__}/../../#{@options.options_config_file[:redis]}"))&.deep_symbolize_keys&.[](:options)
+      options_apt = Psych.safe_load(File.read("#{__dir__}/../../#{@options.options_config_file_apt}"))&.deep_symbolize_keys&.[](:options)
+      options_mongodb = Psych.safe_load(File.read("#{__dir__}/../../#{@options.options_config_file_mongodb}"))&.deep_symbolize_keys&.[](:options)
+      options_mysql = Psych.safe_load(File.read("#{__dir__}/../../#{@options.options_config_file_mysql}"))&.deep_symbolize_keys&.[](:options)
+      options_redis = Psych.safe_load(File.read("#{__dir__}/../../#{@options.options_config_file_redis}"))&.deep_symbolize_keys&.[](:options)
 
       old_workflow = @old_workflow
       unit_tests_conditions = @unit_tests_conditions
@@ -308,7 +330,7 @@ module GHB
                   'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
                   'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
                   'aws-region': '${{secrets.AWS_DEFAULT_REGION}}'
-                }
+                }.merge(setup_options)
               )
             end
 
@@ -338,7 +360,7 @@ module GHB
             do_run(language[:unit_test_framework_default]) if run.nil?
           end
 
-          if File.exist?('Podfile.lock')
+          if File.exist?('Podfile.lock') and @options.skip_license_check == false
             do_step('Licenses') do
               copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
               do_uses('cloud-officer/ci-actions/soup@master')
@@ -371,12 +393,12 @@ module GHB
       end
     end
 
-    def code_deploy
+    def workflow_job_code_deploy
       return if @options.only_dependabot
 
       return unless File.exist?('appspec.yml')
 
-      puts('    Adding CodeDeploy...')
+      puts('    Adding codedeploy...')
       needs = @new_workflow.jobs.keys.map(&:to_s)
       if_statement = "(needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
       code_deploy_pre_steps = @code_deploy_pre_steps
@@ -470,12 +492,12 @@ module GHB
       end
     end
 
-    def aws_commands
+    def workflow_job_aws_commands
       return if @options.only_dependabot
 
       return unless File.exist?('.aws')
 
-      puts('    Adding AWS Commands...')
+      puts('    Adding aws commands...')
       needs = @new_workflow.jobs.keys.map(&:to_s)
       if_statement = "(needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
       old_workflow = @old_workflow
@@ -511,8 +533,8 @@ module GHB
       end
     end
 
-    def publish_status
-      return if @options.only_dependabot
+    def workflow_job_publish_status
+      return if @options.only_dependabot or @options.skip_slack
 
       puts('    Adding slack...')
       needs = @new_workflow.jobs.keys.map(&:to_s)
@@ -541,7 +563,9 @@ module GHB
       end
     end
 
-    def dependabot
+    def workflow_job_dependabot
+      return if @options.skip_dependabot
+
       puts('    Adding dependabot...')
       old_workflow = @old_workflow
 
@@ -552,7 +576,7 @@ module GHB
         do_if("${{(github.event_name == 'pull_request' || github.event_name == 'pull_request_target') && github.event.pull_request.user.login == 'dependabot[bot]'}}")
 
         do_step('Dependabot') do
-          copy_properties(find_step(old_workflow.jobs[:dependencies]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+          copy_properties(find_step(old_workflow.jobs[:dependabot]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
           do_uses('cloud-officer/ci-actions/jira@master')
 
           if with.empty?
@@ -570,8 +594,100 @@ module GHB
       end
     end
 
-    def write
+    def workflow_write
       @new_workflow.write(@options.build_file)
+    end
+
+    def check_repository_settings
+      return if @options.skip_repository_settings
+
+      puts('Checking repository settings...')
+      repository = Dir.pwd.split('/').last
+
+      headers =
+        {
+          headers:
+            {
+              Authorization: "token #{ENV.fetch('GITHUB_TOKEN', '')}",
+              Accept: 'application/vnd.github.v3+json'
+            }
+        }
+
+      response = HTTParty.get("https://api.github.com/repos/#{@options.organization}/#{repository}/branches/master/protection", headers)
+
+      raise(response.message) unless response.code == 200
+
+      branch = JSON.parse(response.body)
+
+      unless branch['required_status_checks']['contexts'].length == @required_status_checks.length and branch['required_status_checks']['checks'].length == @required_status_checks.length
+        @required_status_checks.each { |job| puts("Missing check #{job}!") unless branch['required_status_checks']['contexts'].include?(job) }
+
+        raise('Error: master branch missing checks!') unless branch['required_status_checks']['checks'].length == @required_status_checks.length
+      end
+
+      raise('Error: master branch invalid required status checks!') unless branch['required_status_checks']['strict'] == false
+
+      raise('Error: master branch invalid dismiss stale reviews!') unless branch['required_pull_request_reviews']['dismiss_stale_reviews']
+
+      raise('Error: master branch invalid require code owner reviews!') unless branch['required_pull_request_reviews']['require_code_owner_reviews']
+
+      raise('Error: master branch invalid require last push approval!') unless branch['required_pull_request_reviews']['require_last_push_approval']
+
+      raise('Error: master branch invalid required approving review count!') unless branch['required_pull_request_reviews']['required_approving_review_count'] == 1
+
+      raise('Error: master branch invalid dismissal restrictions!') if branch['required_pull_request_reviews']['dismissal_restrictions']['users'].empty?
+
+      raise('Error: master branch invalid bypass pull request allowances!') if branch['required_pull_request_reviews']['bypass_pull_request_allowances']['users'].empty?
+
+      raise('Error: master branch invalid required signatures!') unless branch['required_signatures']['enabled'] == false
+
+      raise('Error: master branch invalid enforce admins!') unless branch['enforce_admins']['enabled'] == false
+
+      raise('Error: master branch invalid required linear history!') unless branch['required_linear_history']['enabled'] == false
+
+      raise('Error: master branch invalid allow force pushes!') unless branch['allow_force_pushes']['enabled'] == false
+
+      raise('Error: master branch invalid allow deletions!') unless branch['allow_deletions']['enabled'] == false
+
+      raise('Error: master branch invalid block creations!') unless branch['block_creations']['enabled'] == false
+
+      raise('Error: master branch invalid required conversation resolution!') unless branch['required_conversation_resolution']['enabled']
+
+      response = HTTParty.get("https://api.github.com/repos/#{@options.organization}/#{repository}/vulnerability-alerts", headers)
+
+      raise('Error: vulnerability alerts disabled!') unless response.code == 204
+
+      response = HTTParty.put("https://api.github.com/repos/#{@options.organization}/#{repository}/automated-security-fixes", headers)
+
+      raise('Error: cannot enable automated security fixes!') unless response.code == 204
+    end
+
+    def update_gitignore
+      return if @options.skip_gitignore
+
+      puts('Updating .gitignore...')
+      git_ignore = File.read('.gitignore').strip
+
+      return unless git_ignore.lines.first.include?('# Created by ') or git_ignore.lines.first.include?('# Edit at ')
+
+      response = HTTParty.get(git_ignore.lines.first.split[3].gsub('?templates=', '/api/'))
+
+      raise(response.message) unless response.code == 200
+
+      new_git_ignore = response.body.split("\n", 2).last
+      found = false
+
+      git_ignore.each_line do |line|
+        if line.include?('# End of ')
+          found = true
+          next
+        end
+
+        new_git_ignore += line if found
+      end
+
+      new_git_ignore += "\n"
+      File.write('.gitignore', new_git_ignore.gsub(/\n{3,16}/, "\n").gsub('/bin/*', '#/bin/*').gsub('# Pods/', 'Pods/'))
     end
   end
 end
