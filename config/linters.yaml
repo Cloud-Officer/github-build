@@ -6,14 +6,14 @@ actionlint:
   uses: cloud-officer/ci-actions/linters/actionlint@master
   config:
   path: ".github/workflows"
-  pattern: ".*\\.(yml|yaml)"
+  pattern: ".*\\.(yml|yaml)$"
 bandit:
   short_name: Bandit
   long_name: Python Bandit Linter
   uses: cloud-officer/ci-actions/linters/bandit@master
   config: ".bandit"
   path: "."
-  pattern: ".*\\.(py)"
+  pattern: ".*\\.(py)$"
 eslint:
   short_name: ESLint
   long_name: JavaScript ES Linter
@@ -21,7 +21,7 @@ eslint:
   uses: cloud-officer/ci-actions/linters/eslint@master
   config: ".eslintrc.json"
   path: "."
-  pattern: ".*\\.(js)"
+  pattern: ".*\\.(js)$"
 flake8:
   short_name: Flake8
   long_name: Python Flake8 Linter
@@ -29,7 +29,7 @@ flake8:
   uses: cloud-officer/ci-actions/linters/flake8@master
   config: ".flake8"
   path: "."
-  pattern: ".*\\.(py)"
+  pattern: ".*\\.(py)$"
 golangci:
   short_name: Golangci-lint
   long_name: Go Linter
@@ -37,7 +37,7 @@ golangci:
   uses: cloud-officer/ci-actions/linters/golangci@master
   config: ".golangci.yml"
   path: "."
-  pattern: ".*\\.(go)"
+  pattern: ".*\\.(go)$"
 hadolint:
   short_name: Hadolint
   long_name: Docker Linter
@@ -53,7 +53,7 @@ ktlint:
   uses: cloud-officer/ci-actions/linters/ktlint@master
   config: ".editorconfig"
   path: "."
-  pattern: ".*\\.(kt|kts)"
+  pattern: ".*\\.(kt|kts)$"
 markdownlint:
   short_name: Markdownlint
   long_name: Markdown Linter
@@ -61,21 +61,21 @@ markdownlint:
   uses: cloud-officer/ci-actions/linters/markdownlint@master
   config: ".markdownlint.yml"
   path: "."
-  pattern: ".*\\.(md)"
+  pattern: ".*\\.(md)$"
 phpcs:
   short_name: PHPCS
   long_name: PHP CS Linter
   uses: cloud-officer/ci-actions/linters/phpcs@master
   config:
   path: "."
-  pattern: ".*\\.(php)"
+  pattern: ".*\\.(php)$"
 phpstan:
   short_name: PHPStan
   long_name: PHP Stan Linter
   uses: cloud-officer/ci-actions/linters/phpstan@master
   config:
   path: "."
-  pattern: ".*\\.(php)"
+  pattern: ".*\\.(php)$"
 pmd:
   short_name: PMD
   long_name: Java Linter
@@ -83,7 +83,7 @@ pmd:
   uses: cloud-officer/ci-actions/linters/pmd@master
   config: ".pmd.xml"
   path: "."
-  pattern: ".*\\.(java|js|sql)"
+  pattern: ".*\\.(java|js)$"
 protolint:
   short_name: Protolint
   long_name: Protocol Buffer Linter
@@ -91,7 +91,7 @@ protolint:
   uses: cloud-officer/ci-actions/linters/protolint@master
   config: ".protolint.yaml"
   path: "."
-  pattern: ".*\\.(proto)"
+  pattern: ".*\\.(proto)$"
 rubocop:
   short_name: Rubocop
   long_name: Ruby Linter
@@ -99,7 +99,7 @@ rubocop:
   uses: cloud-officer/ci-actions/linters/rubocop@master
   config: ".rubocop.yml"
   path: "."
-  pattern: ".*\\.(rb)"
+  pattern: ".*\\.(rb)$"
   directory: fastlane
 shellcheck:
   short_name: ShellCheck
@@ -108,14 +108,14 @@ shellcheck:
   uses: cloud-officer/ci-actions/linters/shellcheck@master
   config: ".shellcheckrc"
   path: "."
-  pattern: ".*\\.(sh)"
+  pattern: ".*\\.(sh)$"
 swiftlint:
   short_name: Swiftlint
   long_name: Swift Linter
   uses: cloud-officer/ci-actions/linters/swiftlint@master
   config: ".swiftlint.yml"
   path: "."
-  pattern: ".*\\.(swift)"
+  pattern: ".*\\.(swift)$"
 yamllint:
   short_name: Yamllint
   long_name: YAML Linter
@@ -123,4 +123,4 @@ yamllint:
   uses: cloud-officer/ci-actions/linters/yamllint@master
   config: ".yamllint.yml"
   path: "."
-  pattern: ".*\\.(yml|yaml)"
+  pattern: ".*\\.(yml|yaml)$"
