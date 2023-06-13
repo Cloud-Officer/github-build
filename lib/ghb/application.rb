@@ -171,9 +171,6 @@ module GHB
 
         next unless status.success? or (linter[:directory] and Dir.exist?(linter[:directory])) # rubocop:disable Style/UnlessLogicalOperators
 
-        pp find_command
-        pp _stdout_str
-        pp _stderr_str
         puts("        Enabling #{linter[:short_name]}...")
         old_workflow = @old_workflow
 

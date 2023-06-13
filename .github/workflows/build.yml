@@ -103,7 +103,7 @@ jobs:
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{secrets.GITHUB_TOKEN}}"
-        parameters: "--no_prompt"
+        parameters: "--no_prompt --soup"
   ruby_unit_tests:
     name: Ruby Unit Tests
     runs-on: ubuntu-22.04
