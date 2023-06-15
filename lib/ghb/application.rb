@@ -145,7 +145,7 @@ module GHB
       linters = Psych.safe_load(File.read("#{__dir__}/../../#{@options.linters_config_file}"))&.deep_symbolize_keys
       excluded_folders = ''
 
-      @options.excluded_folders&.split(',')&.each do |folder|
+      @options.excluded_folders.each do |folder|
         excluded_folders += "| grep -v #{folder} "
       end
 

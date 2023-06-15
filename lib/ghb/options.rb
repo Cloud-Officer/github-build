@@ -11,7 +11,7 @@ module GHB
       @application_name = Dir.pwd.split('/').last.split('-').last
       @argv = argv
       @build_file = DEFAULT_BUILD_FILE
-      @excluded_folders = ''
+      @excluded_folders = []
       @ignored_linters = {}
       @languages_config_file = DEFAULT_LANGUAGES_CONFIG_FILE
       @linters_config_file = DEFAULT_LINTERS_CONFIG_FILE
@@ -54,8 +54,8 @@ module GHB
         @build_file = file
       end
 
-      @parser.on('', '--excluded_folders excluded_folders', 'Path to linters config file') do |excluded_folders|
-        @excluded_folders = excluded_folders
+      @parser.on('', '--excluded_folders excluded_folders', 'Comma separated list of folders to ignore') do |excluded_folders|
+        @excluded_folders = excluded_folders.split(',')
       end
 
       @parser.on('', '--ignored_linters ignored_linters', 'Ignore linter keys in linter config file') do |ignored_linters|
