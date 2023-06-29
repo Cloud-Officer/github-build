@@ -154,7 +154,7 @@ module GHB
       if File.exist?('.gitmodules')
         File.read('.gitmodules').each_line do |line|
           if line.include?('path = ')
-            @submodules += " -not -path #{line.split('=').last&.strip} "
+            @submodules += " -not -path '*#{line.split('=').last&.strip}*'"
             script_path = line.split('=').last&.strip if line.include?('scripts')
           end
         end
@@ -169,7 +169,7 @@ module GHB
         find_command += " | grep -v linters | grep -v vendor | grep -E '#{linter[:pattern]}'"
         _stdout_str, _stderr_str, status = Open3.capture3(find_command)
 
-        next unless status.success? or (linter[:directory] and Dir.exist?(linter[:directory])) # rubocop:disable Style/UnlessLogicalOperators
+        next unless status.success?
 
         puts("        Enabling #{linter[:short_name]}...")
         old_workflow = @old_workflow
