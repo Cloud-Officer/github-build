@@ -154,7 +154,7 @@ module GHB
       if File.exist?('.gitmodules')
         File.read('.gitmodules').each_line do |line|
           if line.include?('path = ')
-            @submodules += "| grep -v #{line.split('=').last&.strip} "
+            @submodules += " -not -path #{line.split('=').last&.strip} "
             script_path = line.split('=').last&.strip if line.include?('scripts')
           end
         end
@@ -165,7 +165,7 @@ module GHB
 
         find_command = "find #{linter[:path]}"
         find_command += " -not -path  #{excluded_folders}" unless excluded_folders.empty?
-        find_command += " -not -path  #{@submodules}" unless @submodules.empty?
+        find_command += "#{@submodules}" unless @submodules.empty?
         find_command += " | grep -v linters | grep -v vendor | grep -E '#{linter[:pattern]}'"
         _stdout_str, _stderr_str, status = Open3.capture3(find_command)
 
