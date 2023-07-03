@@ -468,7 +468,7 @@ module GHB
           do_name("#{environment.capitalize} Deploy")
           do_runs_on(DEFAULT_UBUNTU_VERSION)
           do_needs(%w[variables codedeploy])
-          do_if("${{always() && needs.code_deploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_#{environment.upcase} == '1'}}")
+          do_if("${{always() && needs.codedeploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_#{environment.upcase} == '1'}}")
 
           do_step("#{environment.capitalize} Deploy") do
             copy_properties(find_step(old_workflow.jobs[:"#{environment}_deploy"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
