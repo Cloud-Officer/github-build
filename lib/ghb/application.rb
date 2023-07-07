@@ -229,7 +229,7 @@ module GHB
         @new_workflow.do_job(:licenses) do
           copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
           do_name('Licenses Check')
-          do_runs_on(DEFAULT_UBUNTU_VERSION)
+          do_runs_on(old_workflow.jobs[:licenses]&.runs_on || DEFAULT_UBUNTU_VERSION)
           do_needs(%w[variables])
           do_if("${{needs.variables.outputs.SKIP_LICENSES != '1'}}")
 
