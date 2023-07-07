@@ -99,7 +99,7 @@ rubocop:
   uses: cloud-officer/ci-actions/linters/rubocop@master
   config: ".rubocop.yml"
   path: "."
-  pattern: ".*\\.(rb)$"
+  pattern: "(.*\/Fastfile$)|(.*\\.(rb)$)"
   directory: fastlane
 shellcheck:
   short_name: ShellCheck
