@@ -400,7 +400,7 @@ module GHB
 
       puts('    Adding codedeploy...')
       needs = @new_workflow.jobs.keys.map(&:to_s)
-      if_statement = "(needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
+      if_statement = "always() && (needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
       code_deploy_pre_steps = @code_deploy_pre_steps
       old_workflow = @old_workflow
 
@@ -413,7 +413,7 @@ module GHB
         do_name('Code Deploy')
         do_runs_on(DEFAULT_UBUNTU_VERSION)
         do_needs(needs)
-        do_if(if_statement)
+        do_if("${{#{if_statement}}}")
 
         if code_deploy_pre_steps.empty?
           do_step('Checkout') do
@@ -425,6 +425,7 @@ module GHB
           code_deploy_pre_steps.each do |step|
             next unless step.name == 'Setup'
 
+            step.if = nil
             step.with.reject! { |key, _value| key.to_s.include?('apt') or key.to_s.include?('mongodb') or key.to_s.include?('mysql') or key.to_s.include?('redis') }
           end
 
