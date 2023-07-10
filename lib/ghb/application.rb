@@ -312,6 +312,8 @@ module GHB
             ''
           end
 
+        skip_license_check = @options.skip_license_check
+
         @new_workflow.do_job(:"#{language[:short_name]}_unit_tests") do
           copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
           do_name("#{language[:long_name]} Unit Tests")
@@ -360,7 +362,7 @@ module GHB
             do_run(language[:unit_test_framework_default]) if run.nil?
           end
 
-          if File.exist?('Podfile.lock') and @options.skip_license_check == false
+          if File.exist?('Podfile.lock') and skip_license_check == false
             do_step('Licenses') do
               copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
               do_uses('cloud-officer/ci-actions/soup@master')
