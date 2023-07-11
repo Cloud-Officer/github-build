@@ -502,7 +502,7 @@ module GHB
 
       puts('    Adding aws commands...')
       needs = @new_workflow.jobs.keys.map(&:to_s)
-      if_statement = "(needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
+      if_statement = "always() && (needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
       old_workflow = @old_workflow
 
       @new_workflow.jobs.each_key do |job_name|
@@ -511,14 +511,13 @@ module GHB
 
       @new_workflow.do_job(:aws) do
         copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
-        do_name('AWS Commands')
+        do_name('AWS')
         do_runs_on(DEFAULT_UBUNTU_VERSION)
         do_needs(needs)
-        do_if(if_statement)
+        do_if("${{#{if_statement}}}")
 
         do_step('AWS Commands') do
           copy_properties(find_step(old_workflow.jobs[:aws]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-          do_name("#{environment.capitalize} Deploy")
           do_uses('cloud-officer/ci-actions/aws@master')
 
           if with.empty?
