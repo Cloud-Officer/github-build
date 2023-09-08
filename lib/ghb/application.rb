@@ -15,6 +15,7 @@ module GHB
   class Application
     def initialize(argv)
       @code_deploy_pre_steps = []
+      @dependabot_package_managers = %w[github-actions]
       @exit_code = Status::SUCCESS_EXIT_CODE
       @new_workflow = Workflow.new('Build')
       @old_workflow = Workflow.new('Build')
@@ -48,6 +49,7 @@ module GHB
       workflow_job_publish_status
       workflow_job_dependabot
       workflow_write
+      save_dependabot_config
       check_repository_settings
       update_gitignore
       @exit_code
@@ -265,6 +267,7 @@ module GHB
       old_workflow = @old_workflow
       unit_tests_conditions = @unit_tests_conditions
       code_deploy_pre_steps = @code_deploy_pre_steps
+      dependabot_package_managers = @dependabot_package_managers
 
       languages&.each do |_, language|
         language_detected = false
@@ -346,6 +349,7 @@ module GHB
             next unless File.file?(dependency[:dependency_file])
 
             dependency_detected = true
+            dependabot_package_managers.push(dependency[:dependabot_ecosystem]) if dependency[:dependabot_ecosystem]
 
             do_step(dependency[:package_manager_name]) do
               copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
@@ -383,6 +387,7 @@ module GHB
       end
 
       @code_deploy_pre_steps = code_deploy_pre_steps
+      @dependabot_package_managers = dependabot_package_managers
     end
 
     def add_setup_options(setup_options, options)
@@ -569,7 +574,7 @@ module GHB
     def workflow_job_dependabot
       return if @options.skip_dependabot
 
-      puts('    Adding dependabot...')
+      puts('    Adding Jira...')
       old_workflow = @old_workflow
 
       @new_workflow.do_job(:dependabot) do
@@ -599,6 +604,26 @@ module GHB
 
     def workflow_write
       @new_workflow.write(@options.build_file)
+    end
+
+    def save_dependabot_config
+      puts('    Adding dependabot...')
+      package_managers = []
+
+      @dependabot_package_managers.uniq.each do |package_manager|
+        package_managers.push(
+          {
+            'package-ecosystem': package_manager,
+            directory: '/',
+            schedule:
+              {
+                interval: 'weekly'
+              }
+          }
+        )
+      end
+
+      File.write('.github/dependabot.yml', { version: 2, updates: package_managers }.deep_stringify_keys.to_yaml({ line_width: -1 }))
     end
 
     def check_repository_settings

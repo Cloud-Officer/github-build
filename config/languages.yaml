@@ -18,6 +18,7 @@ go:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Go Modules
     package_manager_default: go mod vendor
+    dependabot_ecosystem: gomod
   unit_test_framework_name: Testing
   unit_test_framework_default: go test
 php:
@@ -45,6 +46,15 @@ php:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Composer
     package_manager_default: composer install
+    dependabot_ecosystem: composer
+  - dependency_file: yarn.lock
+    mongodb_dependency: mongodb
+    mysql_dependency: mysql
+    redis_dependency: redis
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: Yarm
+    package_manager_default: yarn install
+    dependabot_ecosystem: npm
   unit_test_framework_name: PHPUnit
   unit_test_framework_default: vendor/bin/phpunit
 proto:
@@ -68,6 +78,7 @@ proto:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Go Modules
     package_manager_default: go mod vendor
+    dependabot_ecosystem: gomod
   unit_test_framework_name: Protoc
   unit_test_framework_default: protoc
   runs-on: macos-12
@@ -94,6 +105,7 @@ python:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Pip
     package_manager_default: pip install -r requirements.txt
+    dependabot_ecosystem: pip
   unit_test_framework_name: Coverage
   unit_test_framework_default: coverage run -m unittest
 ruby:
@@ -121,6 +133,7 @@ ruby:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Bundler
     package_manager_default: bundle install
+    dependabot_ecosystem: bundler
   unit_test_framework_name: RSpec
   unit_test_framework_default: bundle exec rspec
 swift:
@@ -150,6 +163,7 @@ swift:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Bundler
     package_manager_default: bundle install
+    dependabot_ecosystem: bundler
   - dependency_file: Cartfile
     mongodb_dependency: __mongo__
     mysql_dependency: __mysql__
@@ -157,6 +171,7 @@ swift:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Carthage
     package_manager_default: bundle exec carthage bootstrap
+    dependabot_ecosystem: swift
   - dependency_file: Podfile
     mongodb_dependency: __mongo__
     mysql_dependency: __mysql__
@@ -164,6 +179,7 @@ swift:
     elasticsearch_dependency: elasticsearch
     package_manager_name: CocoaPods
     package_manager_default: bundle exec pod install --repo-update
+    dependabot_ecosystem: swift
   - dependency_file: Package.swift
     mongodb_dependency: __mongo__
     mysql_dependency: __mysql__
@@ -171,6 +187,7 @@ swift:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Swift Package Manager
     package_manager_default: xcodebuild -resolvePackageDependencies
+    dependabot_ecosystem: swift
   unit_test_framework_name: Fastlane
   unit_test_framework_default: bundle exec fastlane build --verbose
   runs-on: macos-12
