@@ -11,7 +11,7 @@
     </content>
     <orderEntry type="jdk" jdkName="ruby-3.2.2-p53" jdkType="RUBY_SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" scope="PROVIDED" name="activesupport (v7.0.7.2, ruby-3.2.2-p53) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="activesupport (v7.0.8, ruby-3.2.2-p53) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="ast (v2.4.2, ruby-3.2.2-p53) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="bundler (v2.4.10, ruby-3.2.2-p53) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="concurrent-ruby (v1.2.2, ruby-3.2.2-p53) [gem]" level="application" />
@@ -33,7 +33,7 @@
     <orderEntry type="library" scope="PROVIDED" name="rainbow (v3.1.1, ruby-3.2.2-p53) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="regexp_parser (v2.8.1, ruby-3.2.2-p53) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rexml (v3.2.6, ruby-3.2.2-p53) [gem]" level="application" />
-    <orderEntry type="library" scope="PROVIDED" name="rubocop (v1.56.2, ruby-3.2.2-p53) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="rubocop (v1.56.3, ruby-3.2.2-p53) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rubocop-ast (v1.29.0, ruby-3.2.2-p53) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="ruby-progressbar (v1.13.0, ruby-3.2.2-p53) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="stringio (v3.0.8, ruby-3.2.2-p53) [gem]" level="application" />
