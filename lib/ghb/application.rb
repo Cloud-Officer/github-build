@@ -581,7 +581,7 @@ module GHB
         copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
         do_name('Dependabot')
         do_runs_on(DEFAULT_UBUNTU_VERSION)
-        do_if("${{(github.event_name == 'pull_request' || github.event_name == 'pull_request_target') && github.event.pull_request.user.login == 'dependabot[bot]'}}")
+        do_if("${{github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'}}")
 
         do_step('Dependabot') do
           copy_properties(find_step(old_workflow.jobs[:dependabot]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
