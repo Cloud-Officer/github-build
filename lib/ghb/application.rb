@@ -47,7 +47,6 @@ module GHB
       workflow_job_code_deploy
       workflow_job_aws_commands
       workflow_job_publish_status
-      workflow_job_dependabot
       workflow_write
       save_dependabot_config
       check_repository_settings
@@ -571,37 +570,6 @@ module GHB
       end
     end
 
-    def workflow_job_dependabot
-      return if @options.skip_dependabot
-
-      puts('    Adding Jira...')
-      old_workflow = @old_workflow
-
-      @new_workflow.do_job(:dependabot) do
-        copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
-        do_name('Dependabot')
-        do_runs_on(DEFAULT_UBUNTU_VERSION)
-        do_if("${{github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'}}")
-
-        do_step('Dependabot') do
-          copy_properties(find_step(old_workflow.jobs[:dependabot]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-          do_uses('cloud-officer/ci-actions/jira@master')
-
-          if with.empty?
-            do_with(
-              {
-                'base-url': '${{secrets.JIRA_BASE_URL}}',
-                'user-email': '${{secrets.JIRA_USER_EMAIL}}',
-                'api-token': '${{secrets.JIRA_API_TOKEN}}',
-                project: '${{secrets.JIRA_PROJECT}}',
-                'issue-type': '${{secrets.JIRA_ISSUE_TYPE}}'
-              }
-            )
-          end
-        end
-      end
-    end
-
     def workflow_write
       @new_workflow.write(@options.build_file)
     end
@@ -617,7 +585,7 @@ module GHB
             directory: '/',
             schedule:
               {
-                interval: 'weekly'
+                interval: 'monthly'
               }
           }
         )
