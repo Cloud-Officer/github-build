@@ -625,7 +625,7 @@ module GHB
       unless branch['required_status_checks']['contexts'].length == (@required_status_checks.length + addition_check) and branch['required_status_checks']['checks'].length == (@required_status_checks.length + addition_check)
         @required_status_checks.each { |job| puts("Missing check #{job}!") unless branch['required_status_checks']['contexts'].include?(job) }
 
-        raise('Error: master branch missing checks!') unless branch['required_status_checks']['checks'].length == (@required_status_checks.length + addition_check)
+        raise('Error: master branch missing checks!') unless branch['required_status_checks']['contexts'].length == (@required_status_checks.length + addition_check) and branch['required_status_checks']['checks'].length == (@required_status_checks.length + addition_check)
       end
 
       raise('Error: master branch invalid required status checks!') unless branch['required_status_checks']['strict'] == false
