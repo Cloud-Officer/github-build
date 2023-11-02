@@ -24,7 +24,7 @@
 | Ruby | parallel | 1.23.0 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | parser | 3.2.2.4 | MIT | A Ruby parser written in pure Ruby. | <https://github.com/whitequark/parser> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | psych | 5.1.1.1 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2023-06-12 | Low | Yaml parser | Most popular gem on rubygems |
-| Ruby | racc | 1.7.1 | Ruby | Racc is a LALR(1) parser generator. | <https://github.com/ruby/racc> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | racc | 1.7.2 | Ruby | Racc is a LALR(1) parser generator. | <https://github.com/ruby/racc> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rainbow | 3.1.1 | MIT | Colorize printed text on ANSI terminals | <https://github.com/sickill/rainbow> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | regexp_parser | 2.8.2 | MIT | A library for tokenizing, lexing, and parsing Ruby regular expressions. | <https://github.com/ammar/regexp_parser> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rexml | 3.2.6 | BSD-2-Clause | An XML toolkit for Ruby | <https://github.com/ruby/rexml> | 2023-06-12 | Low | Dependency | Dependency |
