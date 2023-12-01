@@ -268,7 +268,7 @@ module GHB
       code_deploy_pre_steps = @code_deploy_pre_steps
       dependabot_package_managers = @dependabot_package_managers
 
-      languages&.each do |_, language|
+      languages&.each_value do |language|
         language_detected = false
         mongodb = false
         mysql = false
@@ -320,7 +320,7 @@ module GHB
         @new_workflow.do_job(:"#{language[:short_name]}_unit_tests") do
           copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
           do_name("#{language[:long_name]} Unit Tests")
-          do_runs_on(old_workflow.jobs["#{language[:short_name]}_unit_tests".to_sym]&.runs_on || language[:'runs-on'] || DEFAULT_UBUNTU_VERSION)
+          do_runs_on(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.runs_on || language[:'runs-on'] || DEFAULT_UBUNTU_VERSION)
           do_needs(%w[variables])
           do_if("${{#{unit_tests_conditions}#{additional_checks}}}")
 
