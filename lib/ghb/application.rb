@@ -316,6 +316,7 @@ module GHB
           end
 
         skip_license_check = @options.skip_license_check
+        force_codedeploy_setup = @options.force_codedeploy_setup
 
         @new_workflow.do_job(:"#{language[:short_name]}_unit_tests") do
           copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
@@ -339,7 +340,7 @@ module GHB
               )
             end
 
-            code_deploy_pre_steps << duplicate(self) if language[:short_name] == 'go' or language[:short_name] == 'php'
+            code_deploy_pre_steps << duplicate(self) if language[:short_name] == 'go' or language[:short_name] == 'php' or force_codedeploy_setup
           end
 
           dependency_detected = false
@@ -354,7 +355,7 @@ module GHB
               copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
               do_shell('bash')
               do_run(dependency[:package_manager_default]) if run.nil?
-              code_deploy_pre_steps << duplicate(self) if language[:short_name] == 'go' or language[:short_name] == 'php'
+              code_deploy_pre_steps << duplicate(self) if language[:short_name] == 'go' or language[:short_name] == 'php' or force_codedeploy_setup
             end
           end
 
@@ -430,8 +431,6 @@ module GHB
           end
         else
           code_deploy_pre_steps.each do |step|
-            next unless step.name == 'Setup'
-
             step.if = nil
             step.with.reject! { |key, _value| key.to_s.include?('apt') or key.to_s.include?('mongodb') or key.to_s.include?('mysql') or key.to_s.include?('redis') }
           end

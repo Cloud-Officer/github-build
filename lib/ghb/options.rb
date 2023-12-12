@@ -12,6 +12,7 @@ module GHB
       @argv = argv
       @build_file = DEFAULT_BUILD_FILE
       @excluded_folders = []
+      @force_codedeploy_setup = false
       @ignored_linters = {}
       @languages_config_file = DEFAULT_LANGUAGES_CONFIG_FILE
       @linters_config_file = DEFAULT_LINTERS_CONFIG_FILE
@@ -31,7 +32,7 @@ module GHB
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :ignored_linters, :languages_config_file, :linters_config_file, :only_dependabot, :options_config_file_apt, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_slack
+    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :ignored_linters, :languages_config_file, :linters_config_file, :only_dependabot, :options_config_file_apt, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_slack
 
     def parse
       @parser.parse!(@argv)
@@ -56,6 +57,10 @@ module GHB
 
       @parser.on('', '--excluded_folders excluded_folders', 'Comma separated list of folders to ignore') do |excluded_folders|
         @excluded_folders = excluded_folders.split(',')
+      end
+
+      @parser.on('', '--force_codedeploy_setup', 'Force executing the setup step in CodeDeploy even if not technically required') do
+        @force_codedeploy_setup = true
       end
 
       @parser.on('', '--ignored_linters ignored_linters', 'Ignore linter keys in linter config file') do |ignored_linters|
