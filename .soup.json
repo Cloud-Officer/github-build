@@ -206,7 +206,7 @@
   "open3": {
     "language": "Ruby",
     "package": "open3",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "license": "Ruby",
     "description": "Popen, but with stderr, too",
     "website": "https://github.com/ruby/open3",
@@ -230,7 +230,7 @@
   "parallel": {
     "language": "Ruby",
     "package": "parallel",
-    "version": "1.23.0",
+    "version": "1.24.0",
     "license": "MIT",
     "description": "Run any kind of code in parallel processes",
     "website": "https://github.com/grosser/parallel",
