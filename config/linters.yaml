@@ -14,6 +14,118 @@ bandit:
   config: ".bandit"
   path: "."
   pattern: ".*\\.(py)$"
+codeql-c-cpp:
+  short_name: CodeQL C-Cpp
+  long_name: CodeQL C-Cpp Linter
+  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  uses: cloud-officer/ci-actions/linters/codeql@master
+  config:
+  path: "."
+  pattern: ".*\\.(cpp|c++|cxx|hpp|hh|h++|hxx|c|cc|h)$"
+  options:
+    languages: "c-cpp"
+  permissions:
+    actions: read
+    contents: read
+    security-events: write
+codeql-csharp:
+  short_name: CodeQL CSharp
+  long_name: CodeQL CSharp Linter
+  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  uses: cloud-officer/ci-actions/linters/codeql@master
+  config:
+  path: "."
+  pattern: ".*\\.(sln|csproj|cs|cshtml|xaml)$"
+  options:
+    languages: "csharp"
+  permissions:
+    actions: read
+    contents: read
+    security-events: write
+codeql-go:
+  short_name: CodeQL Go
+  long_name: CodeQL Go Linter
+  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  uses: cloud-officer/ci-actions/linters/codeql@master
+  config:
+  path: "."
+  pattern: ".*\\.(go)$"
+  options:
+    languages: "go"
+  permissions:
+    actions: read
+    contents: read
+    security-events: write
+codeql-java-kotlin:
+  short_name: CodeQL Java-Kotlin
+  long_name: CodeQL Java-Kotlin Linter
+  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  uses: cloud-officer/ci-actions/linters/codeql@master
+  config:
+  path: "."
+  pattern: ".*\\.(java|kt)$"
+  options:
+    languages: "java-kotlin"
+  permissions:
+    actions: read
+    contents: read
+    security-events: write
+codeql-javascript-typescript:
+  short_name: CodeQL Javascript-Typescript
+  long_name: CodeQL Javascript-Typescript Linter
+  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  uses: cloud-officer/ci-actions/linters/codeql@master
+  config:
+  path: "."
+  pattern: ".*\\.(js|jsx|mjs|es|es6|htm|html|xhtm|xhtml|vue|hbs|ejs|njk|json|yaml|yml|raml|xml|ts|tsx|mts|cts)$"
+  options:
+    languages: "javascript-typescript"
+  permissions:
+    actions: read
+    contents: read
+    security-events: write
+codeql-python:
+  short_name: CodeQL Python
+  long_name: CodeQL Python Linter
+  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  uses: cloud-officer/ci-actions/linters/codeql@master
+  config:
+  path: "."
+  pattern: ".*\\.(py)$"
+  options:
+    languages: "python"
+  permissions:
+    actions: read
+    contents: read
+    security-events: write
+codeql-ruby:
+  short_name: CodeQL Ruby
+  long_name: CodeQL Ruby Linter
+  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  uses: cloud-officer/ci-actions/linters/codeql@master
+  config:
+  path: "."
+  pattern: ".*\\.(rb|erb|gemspec)$"
+  options:
+    languages: "ruby"
+  permissions:
+    actions: read
+    contents: read
+    security-events: write
+codeql-swift:
+  short_name: CodeQL Swift
+  long_name: CodeQL Swift Linter
+  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  uses: cloud-officer/ci-actions/linters/codeql@master
+  config:
+  path: "."
+  pattern: ".*\\.(swift)$"
+  options:
+    languages: "swift"
+  permissions:
+    actions: read
+    contents: read
+    security-events: write
 eslint:
   short_name: ESLint
   long_name: JavaScript ES Linter

@@ -191,6 +191,10 @@ module GHB
           do_runs_on(DEFAULT_UBUNTU_VERSION)
           do_needs(%w[variables])
 
+          if permissions.empty? and linter[:permissions]
+            do_permissions(linter[:permissions])
+          end
+
           if linter[:condition]
             do_if("${{needs.variables.outputs.SKIP_LINTERS != '1' && #{linter[:condition]}}}")
           else
@@ -202,13 +206,16 @@ module GHB
             do_uses(linter[:uses])
 
             if with.empty?
-              do_with(
+              default_with =
                 {
                   linters: '${{needs.variables.outputs.LINTERS}}',
                   'ssh-key': '${{secrets.SSH_KEY}}',
                   github_token: '${{secrets.GITHUB_TOKEN}}'
                 }
-              )
+
+              default_with.merge!(linter[:options]) if linter[:options]
+
+              do_with(default_with)
             end
           end
         end
