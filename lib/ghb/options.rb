@@ -23,6 +23,7 @@ module GHB
       @options_config_file_redis = OPTIONS_REDIS_CONFIG_FILE
       @organization = Dir.pwd.split('/')[-2]
       @parser = OptionParser.new
+      @skip_codeql = false
       @skip_dependabot = false
       @skip_gitignore = false
       @skip_license_check = false
@@ -99,6 +100,10 @@ module GHB
 
       @parser.on('', '--organization organization', 'GitHub organization') do |organization|
         @organization = organization
+      end
+
+      @parser.on('', '--skip_codeql', 'Skip CodeQL') do
+        @skip_codeql = true
       end
 
       @parser.on('', '--skip_dependabot', 'Skip dependabot') do

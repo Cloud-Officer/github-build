@@ -165,6 +165,8 @@ module GHB
       linters&.each do |short_name, linter|
         next if @options.ignored_linters[short_name]
 
+        next if linter[:short_name].include?('CodeQL') and @options.skip_codeql
+
         find_command = "find #{linter[:path]}"
         find_command += " -not -path  #{excluded_folders}" unless excluded_folders.empty?
         find_command += @submodules unless @submodules.empty?
