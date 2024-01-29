@@ -190,10 +190,7 @@ module GHB
           do_name(linter[:long_name])
           do_runs_on(DEFAULT_UBUNTU_VERSION)
           do_needs(%w[variables])
-
-          if permissions.empty? and linter[:permissions]
-            do_permissions(linter[:permissions])
-          end
+          do_permissions(linter[:permissions]) if permissions.empty? and linter[:permissions]
 
           if linter[:condition]
             do_if("${{needs.variables.outputs.SKIP_LINTERS != '1' && #{linter[:condition]}}}")
