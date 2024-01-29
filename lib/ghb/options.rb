@@ -33,7 +33,7 @@ module GHB
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :ignored_linters, :languages_config_file, :linters_config_file, :only_dependabot, :options_config_file_apt, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_slack
+    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :ignored_linters, :languages_config_file, :linters_config_file, :only_dependabot, :options_config_file_apt, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :skip_codeql, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_slack
 
     def parse
       @parser.parse!(@argv)
