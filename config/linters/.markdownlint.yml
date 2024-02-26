@@ -1,5 +1,5 @@
 default: true,
-first-first-line-heading: false
+first-line-heading: false
 line_length: false
 no-duplicate-heading: false
 tables: false
