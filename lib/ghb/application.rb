@@ -148,7 +148,7 @@ module GHB
       excluded_folders = ''
 
       @options.excluded_folders.each do |folder|
-        excluded_folders += "| grep -v #{folder} "
+        excluded_folders += " -not -path '*#{folder}*'"
       end
 
       script_path = nil
@@ -168,7 +168,7 @@ module GHB
         next if linter[:short_name].include?('CodeQL') and @options.skip_codeql
 
         find_command = "find #{linter[:path]}"
-        find_command += " -not -path  #{excluded_folders}" unless excluded_folders.empty?
+        find_command += excluded_folders unless excluded_folders.empty?
         find_command += @submodules unless @submodules.empty?
         find_command += " | grep -v linters | grep -v vendor | grep -E '#{linter[:pattern]}'"
         _stdout_str, _stderr_str, status = Open3.capture3(find_command)
@@ -273,6 +273,11 @@ module GHB
       unit_tests_conditions = @unit_tests_conditions
       code_deploy_pre_steps = @code_deploy_pre_steps
       dependabot_package_managers = @dependabot_package_managers
+      excluded_folders = ''
+
+      @options.excluded_folders.each do |folder|
+        excluded_folders += " -not -path '*#{folder}*'"
+      end
 
       languages&.each_value do |language|
         language_detected = false
@@ -281,8 +286,7 @@ module GHB
         redis = false
         setup_options = {}
 
-        # grep -v linters | grep -v tests | grep -v sdk | grep -v Libraries |
-        _stdout_str, _stderr_str, status = Open3.capture3("find -E . -regex '.*\\.(#{language[:file_extension]})' #{@submodules} | grep -E '.*' &> /dev/null")
+        _stdout_str, _stderr_str, status = Open3.capture3("find -E . #{excluded_folders} -regex '.*\\.(#{language[:file_extension]})' #{@submodules} | grep -E '.*' &> /dev/null")
 
         if status.success?
           dependency_detected = false
