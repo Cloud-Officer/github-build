@@ -12,7 +12,7 @@
 | Ruby | duplicate | 1.1.1 | Apache License Version 2.0 | Originally extracted from rack-app project | <http://www.rack-app.com> | 2023-06-12 | Low | Handle deep clone | Most popular gem on rubygems |
 | Ruby | fileutils | 1.7.2 | Ruby | Several file utility methods for copying, moving, removing, etc. | <https://github.com/ruby/fileutils> | 2023-06-12 | Low | File utilities | Most popular gem on rubygems |
 | Ruby | httparty | 0.21.0 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2023-06-12 | Low | HTTP access library | Most popular gem on rubygems |
-| Ruby | i18n | 1.14.1 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | i18n | 1.14.4 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | json | 2.7.1 | Ruby | A JSON implementation as a JRuby extension. | <https://flori.github.io/json> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | language_server-protocol | 3.17.0.3 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2023-06-29 | Low | Dependency | Dependency |
 | Ruby | mini_mime | 1.1.5 | MIT | A minimal mime type library | <https://github.com/discourse/mini_mime> | 2023-06-12 | Low | Dependency | Dependency |
@@ -28,7 +28,7 @@
 | Ruby | rainbow | 3.1.1 | MIT | Colorize printed text on ANSI terminals | <https://github.com/sickill/rainbow> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | regexp_parser | 2.9.0 | MIT | A library for tokenizing, lexing, and parsing Ruby regular expressions. | <https://github.com/ammar/regexp_parser> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rexml | 3.2.6 | BSD-2-Clause | An XML toolkit for Ruby | <https://github.com/ruby/rexml> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | rubocop | 1.61.0 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2023-06-12 | Low | Ruby linter | Most popular gem on rubygems |
+| Ruby | rubocop | 1.62.0 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2023-06-12 | Low | Ruby linter | Most popular gem on rubygems |
 | Ruby | rubocop-ast | 1.31.1 | MIT |     RuboCop's Node and NodePattern classes. | <https://www.rubocop.org/> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | ruby-progressbar | 1.13.0 | MIT | Ruby/ProgressBar is an extremely flexible text progress bar library for Ruby | <https://github.com/jfelchner/ruby-progressbar> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | stringio | 3.1.0 | Ruby | Pseudo `IO` class from/to `String`. | <https://github.com/ruby/stringio> | 2023-06-12 | Low | Dependency | Dependency |
