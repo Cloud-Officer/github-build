@@ -190,7 +190,7 @@ module GHB
         @new_workflow.do_job(short_name) do
           copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
           do_name(linter[:long_name])
-          do_runs_on(DEFAULT_UBUNTU_VERSION)
+          do_runs_on(old_workflow.jobs[short_name]&.runs_on || DEFAULT_UBUNTU_VERSION)
           do_needs(%w[variables])
           do_permissions(linter[:permissions]) if permissions.empty? and linter[:permissions]
 
