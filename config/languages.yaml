@@ -81,7 +81,7 @@ proto:
     dependabot_ecosystem: gomod
   unit_test_framework_name: Protoc
   unit_test_framework_default: protoc
-  runs-on: macos-12
+  runs-on: macos-14
 python:
   short_name: python
   long_name: Python
@@ -136,58 +136,3 @@ ruby:
     dependabot_ecosystem: bundler
   unit_test_framework_name: RSpec
   unit_test_framework_default: bundle exec rspec
-swift:
-  short_name: swift
-  long_name: Swift
-  file_extension: swift
-  setup_options:
-  - name: ruby-version
-    value: 3.2.2
-  - name: ruby-rubygems
-    value:
-  - name: ruby-bundler
-    value:
-  - name: ruby-bundler-cache
-    value: true
-  - name: ruby-working-directory
-    value:
-  - name: ruby-cache-version
-    value:
-  - name: xcode-version
-    value: '14.2'
-  dependencies:
-  - dependency_file: Gemfile
-    mongodb_dependency: __mongo__
-    mysql_dependency: __mysql__
-    redis_dependency: __redis__
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: Bundler
-    package_manager_default: bundle install
-    dependabot_ecosystem: bundler
-  - dependency_file: Cartfile
-    mongodb_dependency: __mongo__
-    mysql_dependency: __mysql__
-    redis_dependency: __redis__
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: Carthage
-    package_manager_default: bundle exec carthage bootstrap
-    dependabot_ecosystem: swift
-  - dependency_file: Podfile
-    mongodb_dependency: __mongo__
-    mysql_dependency: __mysql__
-    redis_dependency: __redis__
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: CocoaPods
-    package_manager_default: bundle exec pod install --repo-update
-    dependabot_ecosystem: swift
-  - dependency_file: Package.swift
-    mongodb_dependency: __mongo__
-    mysql_dependency: __mysql__
-    redis_dependency: __redis__
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: Swift Package Manager
-    package_manager_default: xcodebuild -resolvePackageDependencies
-    dependabot_ecosystem: swift
-  unit_test_framework_name: Fastlane
-  unit_test_framework_default: bundle exec fastlane build --verbose
-  runs-on: macos-12
