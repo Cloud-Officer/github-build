@@ -2,6 +2,12 @@
 
 ## Table of Contents
 
+* [Introduction](#introduction)
+* [Installation](#installation)
+* [Usage](#usage)
+  * [Examples](#examples)
+* [Contributing](#contributing)
+
 ## Introduction
 
 This is a GitHub Action build file generator. It will detect and enable linters, enable license check, detect the
