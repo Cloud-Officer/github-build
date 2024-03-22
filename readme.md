@@ -1,5 +1,9 @@
 # github build [![Build](https://github.com/Cloud-Officer/github-build/actions/workflows/build.yml/badge.svg)](https://github.com/Cloud-Officer/github-build/actions/workflows/build.yml)
 
+## Table of Contents
+
+## Introduction
+
 This is a GitHub Action build file generator. It will detect and enable linters, enable license check, detect the
 languages including dependencies like mongodb, mysql and redis, enable the unit tests framework, enable CodeDeploy,
 detect custom AWS deployment, enable Slack notification and enable Dependabot Jira integration.
@@ -53,7 +57,7 @@ environment variable to enable the repository settings check.
 
 To force a custom AWS deployment, create an empty file `.aws` in the root of the project.
 
-## Examples
+### Examples
 
 On this repository.
 
@@ -73,3 +77,24 @@ Reading current build file .github/workflows/build.yml...
 Checking repository settings...
 Updating .gitignore...
 ```
+
+## Contributing
+
+We love your input! We want to make contributing to this project as easy and transparent as possible, whether it's:
+
+- Reporting a bug
+- Discussing the current state of the code
+- Submitting a fix
+- Proposing new features
+- Becoming a maintainer
+
+Pull requests are the best way to propose changes to the codebase. We actively welcome your pull requests:
+
+1. Fork the repo and create your branch from `master`.
+2. If you've added code that should be tested, add tests. Ensure the test suite passes.
+3. Update the documentation.
+4. Make sure your code lints.
+5. Issue that pull request!
+
+When you submit code changes, your submissions are understood to be under the same [License](license) that covers the
+project. Feel free to contact the maintainers if that's a concern.
