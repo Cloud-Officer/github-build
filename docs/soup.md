@@ -13,7 +13,7 @@
 | Ruby | fileutils | 1.7.2 | Ruby | Several file utility methods for copying, moving, removing, etc. | <https://github.com/ruby/fileutils> | 2023-06-12 | Low | File utilities | Most popular gem on rubygems |
 | Ruby | httparty | 0.21.0 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2023-06-12 | Low | HTTP access library | Most popular gem on rubygems |
 | Ruby | i18n | 1.14.4 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | json | 2.7.1 | Ruby | A JSON implementation as a JRuby extension. | <https://flori.github.io/json> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | json | 2.7.2 | Ruby | A JSON implementation as a JRuby extension. | <https://flori.github.io/json> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | language_server-protocol | 3.17.0.3 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2023-06-29 | Low | Dependency | Dependency |
 | Ruby | mini_mime | 1.1.5 | MIT | A minimal mime type library | <https://github.com/discourse/mini_mime> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | minitest | 5.22.3 | MIT | minitest provides a complete suite of testing facilities supporting | <https://github.com/minitest/minitest> | 2023-06-12 | Low | Dependency | Dependency |
