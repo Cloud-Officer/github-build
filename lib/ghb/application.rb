@@ -272,7 +272,6 @@ module GHB
       old_workflow = @old_workflow
       unit_tests_conditions = @unit_tests_conditions
       code_deploy_pre_steps = @code_deploy_pre_steps
-      dependabot_package_managers = @dependabot_package_managers
       excluded_folders = ''
 
       @options.excluded_folders.each do |folder|
@@ -280,6 +279,8 @@ module GHB
       end
 
       languages&.each_value do |language|
+        next if language[:file_extension].nil?
+
         language_detected = false
         mongodb = false
         mysql = false
@@ -359,7 +360,6 @@ module GHB
             next unless File.file?(dependency[:dependency_file])
 
             dependency_detected = true
-            dependabot_package_managers.push(dependency[:dependabot_ecosystem]) if dependency[:dependabot_ecosystem]
 
             do_step(dependency[:package_manager_name]) do
               copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
@@ -397,7 +397,6 @@ module GHB
       end
 
       @code_deploy_pre_steps = code_deploy_pre_steps
-      @dependabot_package_managers = dependabot_package_managers
     end
 
     def add_setup_options(setup_options, options)
@@ -586,6 +585,13 @@ module GHB
     def save_dependabot_config
       puts('    Adding dependabot...')
       package_managers = []
+      languages = Psych.safe_load(File.read("#{__dir__}/../../#{@options.languages_config_file}"))&.deep_symbolize_keys
+
+      languages&.each_value do |language|
+        language[:dependencies].each do |dependency|
+          @dependabot_package_managers.push(dependency[:dependabot_ecosystem]) if File.file?(dependency[:dependency_file]) and dependency[:dependabot_ecosystem]
+        end
+      end
 
       @dependabot_package_managers.uniq.each do |package_manager|
         package_managers.push(

@@ -108,6 +108,18 @@ python:
     dependabot_ecosystem: pip
   unit_test_framework_name: Coverage
   unit_test_framework_default: coverage run -m unittest
+swift:
+  short_name: swift
+  long_name: Swift
+  dependencies:
+  - dependency_file: Gemfile
+    dependabot_ecosystem: bundler
+  - dependency_file: Cartfile
+    dependabot_ecosystem: swift
+  - dependency_file: Podfile
+    dependabot_ecosystem: swift
+  - dependency_file: Package.swift
+    dependabot_ecosystem: swift
 ruby:
   short_name: ruby
   long_name: Ruby
