@@ -584,7 +584,6 @@ module GHB
 
     def save_dependabot_config
       puts('    Adding dependabot...')
-      package_managers = []
       languages = Psych.safe_load(File.read("#{__dir__}/../../#{@options.languages_config_file}"))&.deep_symbolize_keys
 
       languages&.each_value do |language|
@@ -593,8 +592,8 @@ module GHB
         end
       end
 
-      @dependabot_package_managers.uniq.each do |package_manager|
-        package_managers.push(
+      package_managers =
+        @dependabot_package_managers.uniq.map do |package_manager|
           {
             'package-ecosystem': package_manager,
             directory: '/',
@@ -603,8 +602,7 @@ module GHB
                 interval: 'monthly'
               }
           }
-        )
-      end
+        end
 
       File.write('.github/dependabot.yml', { version: 2, updates: package_managers }.deep_stringify_keys.to_yaml({ line_width: -1 }))
     end
@@ -686,9 +684,9 @@ module GHB
       puts('Updating .gitignore...')
       git_ignore = File.read('.gitignore').strip
 
-      return unless git_ignore.lines.first.include?('# Created by ') or git_ignore.lines.first.include?('# Edit at ')
+      return unless git_ignore.lines.first&.include?('# Created by ') or git_ignore.lines.first&.include?('# Edit at ')
 
-      response = HTTParty.get(git_ignore.lines.first.split[3].gsub('?templates=', '/api/'))
+      response = HTTParty.get(git_ignore.lines.first&.split&.[](3)&.gsub('?templates=', '/api/'))
 
       raise(response.message) unless response.code == 200
 
