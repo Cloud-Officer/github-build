@@ -52,7 +52,7 @@ php:
     mysql_dependency: mysql
     redis_dependency: redis
     elasticsearch_dependency: elasticsearch
-    package_manager_name: Yarm
+    package_manager_name: Yarn
     package_manager_default: yarn install
     dependabot_ecosystem: npm
   unit_test_framework_name: PHPUnit
