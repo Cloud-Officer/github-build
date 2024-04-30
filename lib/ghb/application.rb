@@ -79,21 +79,20 @@ module GHB
         end
 
       @new_workflow.on =
-        if @old_workflow.on.empty?
-          {
-            pull_request:
-              {
-                types: %w[opened edited reopened synchronize]
-              },
-            push: nil,
-            release:
-              {
-                types: %w[created]
-              }
-          }
-        else
-          @old_workflow.on
-        end
+        {
+          pull_request:
+            {
+              types: %w[opened edited reopened synchronize]
+            },
+          push:
+            {
+              branches: %w[master [0-9]*]
+            },
+          release:
+            {
+              types: %w[created]
+            }
+        }
 
       @new_workflow.run_name = @old_workflow.run_name unless @old_workflow.run_name.nil?
       @new_workflow.permissions = @old_workflow.permissions || {}
