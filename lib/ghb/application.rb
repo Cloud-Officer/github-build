@@ -3,6 +3,7 @@
 require 'active_support/core_ext/hash/keys'
 require 'duplicate'
 require 'httparty'
+require 'json'
 require 'open3'
 require 'psych'
 
