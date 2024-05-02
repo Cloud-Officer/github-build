@@ -30,7 +30,7 @@ GEM
     language_server-protocol (3.17.0.3)
     mini_mime (1.1.5)
     minitest (5.22.3)
-    multi_xml (0.7.0)
+    multi_xml (0.7.1)
       bigdecimal (~> 3.1)
     mutex_m (0.2.0)
     open3 (0.2.1)
