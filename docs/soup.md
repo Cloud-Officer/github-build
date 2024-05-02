@@ -18,7 +18,7 @@
 | Ruby | language_server-protocol | 3.17.0.3 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2023-06-29 | Low | Dependency | Dependency |
 | Ruby | mini_mime | 1.1.5 | MIT | A minimal mime type library | <https://github.com/discourse/mini_mime> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | minitest | 5.22.3 | MIT | minitest provides a complete suite of testing facilities supporting | <https://github.com/minitest/minitest> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | multi_xml | 0.7.0 | MIT | Provides swappable XML backends utilizing LibXML, Nokogiri, Ox, or REXML. | <https://github.com/sferik/multi_xml> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | multi_xml | 0.7.1 | MIT | Provides swappable XML backends utilizing LibXML, Nokogiri, Ox, or REXML. | <https://github.com/sferik/multi_xml> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | mutex_m | 0.2.0 | Ruby | Mixin to extend objects to be handled like a Mutex. | <https://github.com/ruby/mutex_m> | 2023-10-16 | Low | Dependency | Dependency |
 | Ruby | open3 | 0.2.1 | Ruby | Popen, but with stderr, too | <https://github.com/ruby/open3> | 2023-06-12 | Low | System calls | Most popular gem on rubygems |
 | Ruby | optparse | 0.5.0 | Ruby | OptionParser is a class for command-line option analysis. | <https://github.com/ruby/optparse> | 2023-06-12 | Low | Command line argument parser | Most popular gem on rubygems |
