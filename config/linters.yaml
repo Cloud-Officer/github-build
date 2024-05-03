@@ -195,7 +195,7 @@ pmd:
   uses: cloud-officer/ci-actions/linters/pmd@master
   config: ".pmd.xml"
   path: "."
-  pattern: ".*\\.(java|js)$"
+  pattern: ".*\\.(java)$"
 protolint:
   short_name: Protolint
   long_name: Protocol Buffer Linter
