@@ -3,12 +3,15 @@ excluded:
   - Carthage
   - Derived
   - Frameworks
+  - Package.swift
   - Pods
   - Project.swift
   - SourcePackages
+  - Tests
+  - Tuist/.build
+  - Tuist/Cache
   - Tuist/Dependencies
   - fastlane
-  - Tests
 disabled_rules:
   - comment_spacing
   - empty_enum_arguments
