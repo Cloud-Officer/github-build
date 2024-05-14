@@ -340,7 +340,7 @@
     "package": "rubocop-ast",
     "version": "1.31.3",
     "license": "MIT",
-    "description": "    RuboCop's Node and NodePattern classes.",
+    "description": "  RuboCop's Node and NodePattern classes.",
     "website": "https://www.rubocop.org/",
     "last_verified_at": "2023-06-12",
     "risk_level": "Low",
