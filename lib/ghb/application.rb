@@ -87,11 +87,8 @@ module GHB
             },
           push:
             {
-              branches: %w[master [0-9]*]
-            },
-          release:
-            {
-              types: %w[created]
+              branches: %w[master [0-9]*],
+              tags: %w['**']
             }
         }
 
