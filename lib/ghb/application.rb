@@ -88,7 +88,7 @@ module GHB
           push:
             {
               branches: %w[master [0-9]*],
-              tags: %w['**']
+              tags: %w[**]
             }
         }
 
