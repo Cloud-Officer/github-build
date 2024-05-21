@@ -12,7 +12,7 @@ name: Build
     - master
     - "[0-9]*"
     tags:
-    - "**"
+    - "'**'"
 env:
   RUBY-BUNDLER-CACHE: true
   RUBY-VERSION: 3.2.1
