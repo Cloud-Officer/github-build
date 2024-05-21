@@ -2,7 +2,7 @@
   "activesupport": {
     "language": "Ruby",
     "package": "activesupport",
-    "version": "7.1.3.2",
+    "version": "7.1.3.3",
     "license": "MIT",
     "description": "A toolkit of support libraries and Ruby core extensions extracted from the Rails framework",
     "website": "https://rubyonrails.org",
@@ -278,7 +278,7 @@
   "racc": {
     "language": "Ruby",
     "package": "racc",
-    "version": "1.7.3",
+    "version": "1.8.0",
     "license": "Ruby",
     "description": "Racc is a LALR(1) parser generator.",
     "website": "https://github.com/ruby/racc",
@@ -314,7 +314,7 @@
   "rexml": {
     "language": "Ruby",
     "package": "rexml",
-    "version": "3.2.6",
+    "version": "3.2.8",
     "license": "BSD-2-Clause",
     "description": "An XML toolkit for Ruby",
     "website": "https://github.com/ruby/rexml",
@@ -367,6 +367,18 @@
     "description": "Pseudo `IO` class from/to `String`.",
     "website": "https://github.com/ruby/stringio",
     "last_verified_at": "2023-06-12",
+    "risk_level": "Low",
+    "requirements": "Dependency",
+    "verification_reasoning": "Dependency"
+  },
+  "strscan": {
+    "language": "Ruby",
+    "package": "strscan",
+    "version": "3.1.0",
+    "license": "Ruby",
+    "description": "Provides lexical scanning operations on a String.",
+    "website": "https://github.com/ruby/strscan",
+    "last_verified_at": "2024-05-21",
     "risk_level": "Low",
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
