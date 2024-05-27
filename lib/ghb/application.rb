@@ -18,6 +18,7 @@ module GHB
       @code_deploy_pre_steps = []
       @dependabot_package_managers = %w[github-actions]
       @exit_code = Status::SUCCESS_EXIT_CODE
+      @dependencies_workflow = Workflow.new('Dependencies')
       @new_workflow = Workflow.new('Build')
       @old_workflow = Workflow.new('Build')
       @options = configure_options(argv)
@@ -602,6 +603,115 @@ module GHB
         end
 
       File.write('.github/dependabot.yml', { version: 2, updates: package_managers }.deep_stringify_keys.to_yaml({ line_width: -1 }))
+
+      @dependencies_workflow.on =
+        {
+          schedule:
+            [
+              {
+                cron: '0 0 * * *'
+              }
+            ]
+        }
+      @dependencies_workflow.env = @new_workflow.env.reject { |key, _value| !key.to_s.include?('PHP') and !key.to_s.include?('PYTHON') and !key.to_s.include?('RUBY') }
+
+      setup_with = {}
+
+      @new_workflow.jobs.each_value do |job|
+        job.steps.each do |step|
+          setup_with.merge!(step.with) if step.uses == 'cloud-officer/ci-actions/setup@master'
+        end
+      end
+
+      setup_with.reject! { |key, _value| key.to_s.include?('apt') or key.to_s.include?('mongodb') or key.to_s.include?('mysql') or key.to_s.include?('redis') }
+      setup_with.merge!({ 'fetch-depth': 0 })
+
+      new_workflow = @new_workflow
+
+      @dependencies_workflow.do_job(:update_dependencies) do
+        do_name('Update Dependencies')
+        do_runs_on(DEFAULT_MACOS_VERSION)
+
+        do_step('Setup') do
+          do_uses('cloud-officer/ci-actions/setup@master')
+          do_with(setup_with)
+        end
+
+        do_step('Update dependencies') do
+          do_shell('bash')
+          do_run(
+            <<~SHELL
+              if [ -f composer.json ]; then
+                composer update
+              fi
+
+              if [ -f Gemfile ]; then
+                bundle update
+              fi
+
+              if [ -f requirements.in ]; then
+                pip-compile --resolver=backtracking --upgrade --unsafe-package=certifi
+              fi
+            SHELL
+          )
+        end
+
+        do_step('Licenses') do
+          copy_properties(new_workflow.jobs[:licenses]&.steps&.first, %i[id if uses run shell with env continue_on_error timeout_minutes])
+          do_uses('cloud-officer/ci-actions/soup@master')
+
+          if with.empty?
+            do_with(
+              {
+                'ssh-key': '${{secrets.SSH_KEY}}',
+                'github-token': '${{secrets.GITHUB_TOKEN}}',
+                parameters: '--no_prompt'
+              }
+            )
+          end
+        end
+
+        do_step('Create Pull Request') do
+          do_shell('bash')
+          do_run(
+            # rubocop:disable Style/RedundantStringEscape
+            <<~SHELL
+              if [ -n "$(git status --porcelain)" ]; then
+                commit_message="Updated dependencies"
+
+                if [ -n "${JIRA_TICKET}" ]; then
+                  branch_name='${{secrets.JIRA_TICKET_DEPENDENCIES}}'
+                else
+                  branch_name="dependencies"
+                fi
+
+                if [ '${{github.repository_owner}}' = "Cloud-Officer" ]; then
+                  pr_title="${commit_message}"
+                else
+                  pr_title="${branch_name} ${{secrets.JIRA_TICKET_DEPENDENCIES}}"
+                fi
+
+                git config --global user.email "action@github.com"
+                git config --global user.name "GitHub Action"
+                git add .
+                git checkout -b "${branch_name}-${{ github.run_id }}"
+                git commit -m "${commit_message}"
+                git push -u origin "${branch_name}-${{ github.run_id }}"
+                body_file="$(mktemp)"
+                cp -f .github/pull_request_template.md "${body_file}"
+                sed -i '' "s/^Describe the summary.*\.$/${commit_message}./g" "${body_file}"
+                sed -i '' "s/$.*-XXXX/${branch_name}/g" "${body_file}"
+                sed -i '' "s/\[ \] Build or security update/\[X\] Build or security update/g" "${body_file}"
+                gh pr create --title "${pr_title}" --base master --head "${branch_name}-${{ github.run_id }}" --body-file "${body_file}"
+                rm -f "${body_file}"
+              fi
+            SHELL
+            # rubocop:enable Style/RedundantStringEscape
+          )
+        end
+      end
+
+      @dependencies_workflow.write('.github/dependencies.yml')
     end
 
     def check_repository_settings
