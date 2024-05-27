@@ -2,6 +2,7 @@
 
 require 'active_support/core_ext/hash/keys'
 require 'duplicate'
+require 'find'
 require 'httparty'
 require 'json'
 require 'open3'
@@ -586,7 +587,9 @@ module GHB
 
       languages&.each_value do |language|
         language[:dependencies].each do |dependency|
-          @dependabot_package_managers.push(dependency[:dependabot_ecosystem]) if File.file?(dependency[:dependency_file]) and dependency[:dependabot_ecosystem]
+          Find.find('.') do |path|
+            @dependabot_package_managers.push(dependency[:dependabot_ecosystem]) if path.end_with?(dependency[:dependency_file]) and dependency[:dependabot_ecosystem]
+          end
         end
       end
 
