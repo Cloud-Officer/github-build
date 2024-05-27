@@ -711,7 +711,7 @@ module GHB
         end
       end
 
-      @dependencies_workflow.write('.github/dependencies.yml')
+      @dependencies_workflow.write('.github/workflows/dependencies.yml')
     end
 
     def check_repository_settings
