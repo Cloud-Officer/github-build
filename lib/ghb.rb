@@ -8,7 +8,7 @@ module GHB
   OPTIONS_MONGODB_CONFIG_FILE = 'config/options/mongodb.yaml'
   OPTIONS_MYSQL_CONFIG_FILE = 'config/options/mysql.yaml'
   OPTIONS_REDIS_CONFIG_FILE = 'config/options/redis.yaml'
-  DEFAULT_UBUNTU_VERSION = 'ubuntu-22.04'
+  DEFAULT_UBUNTU_VERSION = 'ubuntu-latest'
   DEFAULT_MACOS_VERSION = 'macos-latest'
 
   private_constant :DEFAULT_BUILD_FILE

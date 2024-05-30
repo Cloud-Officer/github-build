@@ -15,7 +15,7 @@ name: Build
     - "**"
 env:
   RUBY-BUNDLER-CACHE: true
-  RUBY-VERSION: 3.2.1
+  RUBY-VERSION: 3.3.2
 jobs:
   variables:
     name: Prepare Variables
@@ -44,7 +44,7 @@ jobs:
         ssh-key: "${{secrets.SSH_KEY}}"
   actionlint:
     name: Github Actions Linter
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs:
     - variables
     if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')}}"
@@ -61,7 +61,7 @@ jobs:
       actions: read
       contents: read
       security-events: write
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs:
     - variables
     if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')}}"
@@ -79,7 +79,7 @@ jobs:
       actions: read
       contents: read
       security-events: write
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs:
     - variables
     if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')}}"
@@ -93,7 +93,7 @@ jobs:
         languages: ruby
   markdownlint:
     name: Markdown Linter
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs:
     - variables
     if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')}}"
@@ -106,7 +106,7 @@ jobs:
         github_token: "${{secrets.GITHUB_TOKEN}}"
   rubocop:
     name: Ruby Linter
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs:
     - variables
     if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')}}"
@@ -119,7 +119,7 @@ jobs:
         github_token: "${{secrets.GITHUB_TOKEN}}"
   yamllint:
     name: YAML Linter
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs:
     - variables
     if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')}}"
@@ -132,7 +132,7 @@ jobs:
         github_token: "${{secrets.GITHUB_TOKEN}}"
   licenses:
     name: Licenses Check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs:
     - variables
     if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
@@ -145,15 +145,15 @@ jobs:
         parameters: "--no_prompt --soup"
   ruby_unit_tests:
     name: Ruby Unit Tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs:
     - variables
     if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
     strategy:
       matrix:
         os:
-        - macos-13
-        - ubuntu-22.04
+        - macos-latest
+        - ubuntu-latest
     steps:
     - name: Setup
       uses: cloud-officer/ci-actions/setup@master

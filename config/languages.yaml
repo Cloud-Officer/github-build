@@ -5,7 +5,7 @@ go:
   file_extension: go
   setup_options:
   - name: go-version
-    value: 1.20.2
+    value: 1.22.3
   - name: go-check-latest
     value:
   - name: go-token
@@ -27,7 +27,7 @@ php:
   file_extension: php
   setup_options:
   - name: php-version
-    value: 8.2.4
+    value: 8.3.7
   - name: php-extensions
     value:
   - name: php-ini-file
@@ -69,7 +69,7 @@ proto:
   - name: go-token
     value:
   - name: xcode-version
-    value: '14.2'
+    value: '15.4'
   dependencies:
   - dependency_file: go.mod
     mongodb_dependency: mongodb
@@ -81,14 +81,14 @@ proto:
     dependabot_ecosystem: gomod
   unit_test_framework_name: Protoc
   unit_test_framework_default: protoc
-  runs-on: macos-13
+  runs-on: macos-latest
 python:
   short_name: python
   long_name: Python
   file_extension: py
   setup_options:
   - name: python-version
-    value: 3.11.2
+    value: 3.12.3
   - name: python-cache
     value: pip
   - name: python-architecture
@@ -126,7 +126,7 @@ ruby:
   file_extension: rb
   setup_options:
   - name: ruby-version
-    value: 3.2.2
+    value: 3.3.2
   - name: ruby-rubygems
     value:
   - name: ruby-bundler
