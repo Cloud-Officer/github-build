@@ -181,7 +181,7 @@ module GHB
           if File.exist?("#{script_path}/linters/#{linter[:config]}")
             FileUtils.ln_s("#{script_path}/linters/#{linter[:config]}", linter[:config], force: true)
           else
-            File.delete(linter[:config]) if File.symlink?(linter[:config])
+            File.delete(linter[:config]) if File.symlink?(linter[:config]) or File.exist?(linter[:config])
             FileUtils.cp("#{__dir__}/../../config/linters/#{linter[:config]}", linter[:config])
           end
         end
