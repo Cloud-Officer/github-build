@@ -347,6 +347,66 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
+  "rubocop-capybara": {
+    "language": "Ruby",
+    "package": "rubocop-capybara",
+    "version": "2.20.0",
+    "license": "MIT",
+    "description": "  Code style checking for Capybara test files (RSpec, Cucumber, Minitest).",
+    "website": "https://github.com/rubocop/rubocop-capybara",
+    "last_verified_at": "2024-05-30",
+    "risk_level": "Low",
+    "requirements": "Dependency",
+    "verification_reasoning": "Dependency"
+  },
+  "rubocop-factory_bot": {
+    "language": "Ruby",
+    "package": "rubocop-factory_bot",
+    "version": "2.25.1",
+    "license": "MIT",
+    "description": "Code style checking for factory_bot files.",
+    "website": "https://github.com/rubocop/rubocop-factory_bot",
+    "last_verified_at": "2024-05-30",
+    "risk_level": "Low",
+    "requirements": "Dependency",
+    "verification_reasoning": "Dependency"
+  },
+  "rubocop-performance": {
+    "language": "Ruby",
+    "package": "rubocop-performance",
+    "version": "1.21.0",
+    "license": "MIT",
+    "description": "A collection of RuboCop cops to check for performance optimizations",
+    "website": "https://docs.rubocop.org/rubocop-performance/",
+    "last_verified_at": "2024-05-30",
+    "risk_level": "Low",
+    "requirements": "A collection of RuboCop cops to check for performance optimizations in Ruby code",
+    "verification_reasoning": "Most popular gem"
+  },
+  "rubocop-rspec": {
+    "language": "Ruby",
+    "package": "rubocop-rspec",
+    "version": "2.29.2",
+    "license": "MIT",
+    "description": "Code style checking for RSpec files.",
+    "website": "https://github.com/rubocop/rubocop-rspec",
+    "last_verified_at": "2024-05-30",
+    "risk_level": "Low",
+    "requirements": "Code style checking for RSpec files. A plugin for the RuboCop code style enforcing & linting tool",
+    "verification_reasoning": "Most popular gem"
+  },
+  "rubocop-rspec_rails": {
+    "language": "Ruby",
+    "package": "rubocop-rspec_rails",
+    "version": "2.28.3",
+    "license": "MIT",
+    "description": "Code style checking for RSpec Rails files.",
+    "website": null,
+    "last_verified_at": "2024-05-30",
+    "risk_level": "Low",
+    "requirements": "Dependency",
+    "verification_reasoning": "Dependency"
+  },
   "ruby-progressbar": {
     "language": "Ruby",
     "package": "ruby-progressbar",
