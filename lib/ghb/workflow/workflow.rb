@@ -52,7 +52,7 @@ module GHB
 
     def do_job(id, &block)
       job = Job.new(id)
-      job.instance_eval(&block) if block_given?
+      job.instance_eval(&block) if block
       @jobs[id] = job
     end
 

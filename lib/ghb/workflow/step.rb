@@ -24,7 +24,7 @@ module GHB
       properties.each do |property|
         raise("Error: #{object.class} does not have a #{property} property!") unless object.respond_to?(property)
 
-        public_send("#{property}=", object.public_send(property))
+        public_send(:"#{property}=", object.public_send(property))
       end
     end
 

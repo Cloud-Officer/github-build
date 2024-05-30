@@ -36,7 +36,7 @@ module GHB
       properties.each do |property|
         raise("Error: #{object.class} does not have a #{property} property!") unless object.respond_to?(property)
 
-        public_send("#{property}=", object.public_send(property))
+        public_send(:"#{property}=", object.public_send(property))
       end
     end
 
@@ -88,7 +88,7 @@ module GHB
 
     def do_step(name, options = {}, &block)
       step = Step.new(name, options)
-      step.instance_eval(&block) if block_given?
+      step.instance_eval(&block) if block
       @steps << step
     end
 

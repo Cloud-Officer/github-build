@@ -593,8 +593,9 @@ module GHB
         end
       end
 
+      @dependabot_package_managers.uniq!
       package_managers =
-        @dependabot_package_managers.uniq.map do |package_manager|
+        @dependabot_package_managers.map do |package_manager|
           {
             'package-ecosystem': package_manager,
             directory: '/',
