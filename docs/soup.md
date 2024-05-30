@@ -11,7 +11,7 @@
 | Ruby | csv | 3.3.0 | Ruby | The CSV library provides a complete interface to CSV files and data | <https://github.com/ruby/csv> | 2024-04-29 | Low | Dependency | Dependency |
 | Ruby | drb | 2.2.1 | Ruby | Distributed object system for Ruby | <https://github.com/ruby/drb> | 2023-10-16 | Low | Dependency | Dependency |
 | Ruby | duplicate | 1.1.1 | Apache License Version 2.0 | Originally extracted from rack-app project | <http://www.rack-app.com> | 2023-06-12 | Low | Handle deep clone | Most popular gem on rubygems |
-| Ruby | fileutils | 1.7.2 | Ruby | Several file utility methods for copying, moving, removing, etc. | <https://github.com/ruby/fileutils> | 2023-06-12 | Low | File utilities | Most popular gem on rubygems |
+| Ruby | fileutils | 1.7.2 | Ruby | Several file utility methods for copying, moving, removing, etc. | <https://github.com/ruby/fileutils> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | httparty | 0.22.0 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2023-06-12 | Low | HTTP access library | Most popular gem on rubygems |
 | Ruby | i18n | 1.14.5 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | json | 2.7.2 | Ruby | A JSON implementation as a JRuby extension. | <https://flori.github.io/json> | 2023-06-12 | Low | Dependency | Dependency |

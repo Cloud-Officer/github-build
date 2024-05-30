@@ -19,7 +19,6 @@ GEM
     csv (3.3.0)
     drb (2.2.1)
     duplicate (1.1.1)
-    fileutils (1.7.2)
     httparty (0.22.0)
       csv
       mini_mime (>= 1.0.0)
@@ -90,7 +89,6 @@ PLATFORMS
 DEPENDENCIES
   activesupport (>= 7.0.0)
   duplicate (>= 1.1.1)
-  fileutils (>= 1.7.1)
   httparty (>= 0.21.0)
   open3 (>= 0.1.2)
   optparse (>= 0.3.1)
