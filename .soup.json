@@ -116,8 +116,8 @@
     "website": "https://github.com/ruby/fileutils",
     "last_verified_at": "2023-06-12",
     "risk_level": "Low",
-    "requirements": "File utilities",
-    "verification_reasoning": "Most popular gem on rubygems"
+    "requirements": "Dependency",
+    "verification_reasoning": "Dependency"
   },
   "httparty": {
     "language": "Ruby",
