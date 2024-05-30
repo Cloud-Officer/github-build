@@ -177,10 +177,11 @@ module GHB
         puts("        Enabling #{linter[:short_name]}...")
         old_workflow = @old_workflow
 
-        if linter[:config] and !File.exist?(linter[:config])
+        if linter[:config]
           if File.exist?("#{script_path}/linters/#{linter[:config]}")
             FileUtils.ln_s("#{script_path}/linters/#{linter[:config]}", linter[:config], force: true)
           else
+            pp linter[:config]
             File.delete(linter[:config]) if File.symlink?(linter[:config]) or File.exist?(linter[:config])
             FileUtils.cp("#{__dir__}/../../config/linters/#{linter[:config]}", linter[:config])
           end
