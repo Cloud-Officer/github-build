@@ -19,7 +19,7 @@ env:
 jobs:
   variables:
     name: Prepare Variables
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     outputs:
       BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
       BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
