@@ -107,18 +107,6 @@
     "requirements": "Handle deep clone",
     "verification_reasoning": "Most popular gem on rubygems"
   },
-  "fileutils": {
-    "language": "Ruby",
-    "package": "fileutils",
-    "version": "1.7.2",
-    "license": "Ruby",
-    "description": "Several file utility methods for copying, moving, removing, etc.",
-    "website": "https://github.com/ruby/fileutils",
-    "last_verified_at": "2023-06-12",
-    "risk_level": "Low",
-    "requirements": "Dependency",
-    "verification_reasoning": "Dependency"
-  },
   "httparty": {
     "language": "Ruby",
     "package": "httparty",
