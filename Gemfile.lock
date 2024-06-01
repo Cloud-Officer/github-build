@@ -93,7 +93,7 @@ DEPENDENCIES
   open3 (>= 0.1.2)
   optparse (>= 0.3.1)
   psych (>= 5.1.0)
-  rubocop (>= 1.51.0)
+  rubocop (>= 1.64.0)
   rubocop-performance (>= 1.21.0)
   rubocop-rspec (>= 2.29.2)
 
