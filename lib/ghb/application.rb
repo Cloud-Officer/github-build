@@ -89,7 +89,7 @@ module GHB
             },
           push:
             {
-              branches: %w[master [0-9]*],
+              branches: %w[master [0-9]* dependabot/**],
               tags: %w[**]
             }
         }

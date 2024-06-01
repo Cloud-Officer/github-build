@@ -28,7 +28,7 @@
 | Ruby | rainbow | 3.1.1 | MIT | Colorize printed text on ANSI terminals | <https://github.com/sickill/rainbow> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | regexp_parser | 2.9.2 | MIT | A library for tokenizing, lexing, and parsing Ruby regular expressions. | <https://github.com/ammar/regexp_parser> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rexml | 3.2.8 | BSD-2-Clause | An XML toolkit for Ruby | <https://github.com/ruby/rexml> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | rubocop | 1.64.0 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2023-06-12 | Low | Ruby linter | Most popular gem on rubygems |
+| Ruby | rubocop | 1.64.1 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2023-06-12 | Low | Ruby linter | Most popular gem on rubygems |
 | Ruby | rubocop-ast | 1.31.3 | MIT |   RuboCop's Node and NodePattern classes. | <https://www.rubocop.org/> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rubocop-capybara | 2.20.0 | MIT |   Code style checking for Capybara test files (RSpec, Cucumber, Minitest). | <https://github.com/rubocop/rubocop-capybara> | 2024-05-30 | Low | Dependency | Dependency |
 | Ruby | rubocop-factory_bot | 2.25.1 | MIT | Code style checking for factory_bot files. | <https://github.com/rubocop/rubocop-factory_bot> | 2024-05-30 | Low | Dependency | Dependency |

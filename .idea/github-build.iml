@@ -36,7 +36,7 @@
     <orderEntry type="library" scope="PROVIDED" name="rainbow (v3.1.1, ruby-3.3.1-p55) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="regexp_parser (v2.9.2, ruby-3.3.1-p55) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rexml (v3.2.8, ruby-3.3.1-p55) [gem]" level="application" />
-    <orderEntry type="library" scope="PROVIDED" name="rubocop (v1.64.0, ruby-3.3.1-p55) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="rubocop (v1.64.1, ruby-3.3.1-p55) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rubocop-ast (v1.31.3, ruby-3.3.1-p55) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rubocop-capybara (v2.20.0, ruby-3.3.1-p55) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rubocop-factory_bot (v2.25.1, ruby-3.3.1-p55) [gem]" level="application" />

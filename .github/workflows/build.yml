@@ -11,6 +11,7 @@ name: Build
     branches:
     - master
     - "[0-9]*"
+    - dependabot/**
     tags:
     - "**"
 env:
