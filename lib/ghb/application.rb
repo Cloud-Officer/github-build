@@ -652,6 +652,17 @@ module GHB
           with['github-token'] = '${{secrets.SOUP_DEPENDENCIES_UPDATE}}'
         end
 
+        do_step('Set GitHub to use https with credentials') do
+          do_shell('bash')
+          do_run(
+            <<~BASH
+              git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
+              git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf https://github.com/
+              git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf git@github.com:
+            BASH
+          )
+        end
+
         do_step('Auto Commit Changes') do
           do_uses('stefanzweifel/git-auto-commit-action@v5')
           do_with(
