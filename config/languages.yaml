@@ -21,6 +21,36 @@ go:
     dependabot_ecosystem: gomod
   unit_test_framework_name: Testing
   unit_test_framework_default: go test
+kotlin:
+  short_name: kotlin
+  long_name: Kotlin
+  file_extension: kt
+  setup_options:
+  - name: java-version
+    value: 21
+  - name: java-distribution
+    value: temurin
+  - name: android-sdk-version
+    value: 34
+  dependencies:
+  - dependency_file: build.gradle
+    mongodb_dependency: mongo
+    mysql_dependency: mysql
+    redis_dependency: redis
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: Gradle
+    package_manager_default: gradle build
+    dependabot_ecosystem: gradle
+  - dependency_file: pom.xml
+    mongodb_dependency: mongo
+    mysql_dependency: mysql
+    redis_dependency: redis
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: Maven
+    package_manager_default: mvn install
+    dependabot_ecosystem: maven
+  unit_test_framework_name: JUnit
+  unit_test_framework_default: gradle test
 php:
   short_name: php
   long_name: PHP
