@@ -643,11 +643,13 @@ module GHB
             do_with(
               {
                 'ssh-key': '${{secrets.SSH_KEY}}',
-                'github-token': '${{secrets.GITHUB_TOKEN}}',
+                'github-token': '${{secrets.SOUP_DEPENDENCIES_UPDATE}}',
                 parameters: '--no_prompt'
               }
             )
           end
+
+          with['github-token'] = '${{secrets.SOUP_DEPENDENCIES_UPDATE}}'
         end
 
         do_step('Auto Commit Changes') do
@@ -732,6 +734,42 @@ module GHB
       response = HTTParty.put("https://api.github.com/repos/#{@options.organization}/#{repository}/automated-security-fixes", headers)
 
       raise('Error: cannot enable automated security fixes!') unless response.code == 204
+
+      response = HTTParty.get("https://api.github.com/repos/#{@options.organization}/#{repository}", headers)
+
+      raise(response.message) unless response.code == 200
+
+      repository_settings = JSON.parse(response.body)
+
+      if repository_settings['private']
+        response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { has_issues: false }.to_json))
+
+        raise('Error: cannot disable issues!') unless response.code == 200
+      end
+
+      response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { has_wiki: false }.to_json))
+
+      raise('Error: cannot disable wiki!') unless response.code == 200
+
+      response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { has_projects: false }.to_json))
+
+      raise('Error: cannot disable projects!') unless response.code == 200
+
+      response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { allow_merge_commit: false }.to_json))
+
+      raise('Error: cannot disable merge commit!') unless response.code == 200
+
+      response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { allow_squash_merge: true }.to_json))
+
+      raise('Error: cannot enable squash merge!') unless response.code == 200
+
+      response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { allow_rebase_merge: true }.to_json))
+
+      raise('Error: cannot enable rebase merge!') unless response.code == 200
+
+      response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { delete_branch_on_merge: true }.to_json))
+
+      raise('Error: cannot enable delete branch after merge!') unless response.code == 200
     end
 
     def update_gitignore
