@@ -601,7 +601,7 @@ module GHB
             directory: '/',
             schedule:
               {
-                interval: 'daily'
+                interval: 'weekly'
               }
           }
         end
