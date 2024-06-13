@@ -156,7 +156,7 @@ ruby:
   file_extension: rb
   setup_options:
   - name: ruby-version
-    value: 3.3.2
+    value: 3.3.3
   - name: ruby-rubygems
     value:
   - name: ruby-bundler
