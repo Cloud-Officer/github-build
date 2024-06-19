@@ -20,6 +20,7 @@ module GHB
       @dependabot_package_managers = %w[github-actions]
       @exit_code = Status::SUCCESS_EXIT_CODE
       @dependencies_workflow = Workflow.new('Dependencies')
+      @dockerhub_workflow = Workflow.new('Publish Docker image')
       @new_workflow = Workflow.new('Build')
       @old_workflow = Workflow.new('Build')
       @options = configure_options(argv)
@@ -52,6 +53,7 @@ module GHB
       workflow_job_publish_status
       workflow_write
       save_dependabot_config
+      save_dockerhub_config
       check_repository_settings
       update_gitignore
       @exit_code
@@ -674,6 +676,45 @@ module GHB
       end
 
       @dependencies_workflow.write('.github/workflows/soup.yml')
+    end
+
+    def save_dockerhub_config
+      return unless File.exist?('.dockerhub')
+
+      puts('    Adding dockerhub...')
+      @dockerhub_workflow.on =
+        {
+          push:
+            {
+              tags:
+                %w[**]
+            }
+        }
+
+      @dockerhub_workflow.do_job(:push_to_registry) do
+        do_name('Push Docker Image to Docker Hub')
+        do_runs_on(DEFAULT_UBUNTU_VERSION)
+        do_permissions(
+          {
+            packages: 'write',
+            contents: 'read',
+            attestations: 'write',
+            'id-token': 'write'
+          }
+        )
+
+        do_step('Publish Docker image') do
+          do_uses('cloud-officer/ci-actions/docker@master')
+          do_with(
+            {
+              username: '${{secrets.DOCKER_USERNAME}}',
+              password: '${{secrets.DOCKER_PASSWORD}}'
+            }
+          )
+        end
+      end
+
+      @dockerhub_workflow.write('.github/workflows/docker.yml')
     end
 
     def check_repository_settings
