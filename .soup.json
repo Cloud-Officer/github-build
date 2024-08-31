@@ -299,22 +299,10 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "rexml": {
-    "language": "Ruby",
-    "package": "rexml",
-    "version": "3.3.6",
-    "license": "BSD-2-Clause",
-    "description": "An XML toolkit for Ruby",
-    "website": "https://github.com/ruby/rexml",
-    "last_verified_at": "2023-06-12",
-    "risk_level": "Low",
-    "requirements": "Dependency",
-    "verification_reasoning": "Dependency"
-  },
   "rubocop": {
     "language": "Ruby",
     "package": "rubocop",
-    "version": "1.65.1",
+    "version": "1.66.0",
     "license": "MIT",
     "description": "RuboCop is a Ruby code style checking and code formatting tool.",
     "website": "https://rubocop.org/",
@@ -391,18 +379,6 @@
     "description": "Pseudo `IO` class from/to `String`.",
     "website": "https://github.com/ruby/stringio",
     "last_verified_at": "2023-06-12",
-    "risk_level": "Low",
-    "requirements": "Dependency",
-    "verification_reasoning": "Dependency"
-  },
-  "strscan": {
-    "language": "Ruby",
-    "package": "strscan",
-    "version": "3.1.0",
-    "license": "Ruby",
-    "description": "Provides lexical scanning operations on a String.",
-    "website": "https://github.com/ruby/strscan",
-    "last_verified_at": "2024-05-21",
     "risk_level": "Low",
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"

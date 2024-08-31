@@ -27,14 +27,12 @@
 | Ruby | racc | 1.8.1 | Ruby | Racc is an LALR(1) parser generator. | <https://github.com/ruby/racc> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rainbow | 3.1.1 | MIT | Colorize printed text on ANSI terminals | <https://github.com/sickill/rainbow> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | regexp_parser | 2.9.2 | MIT | A library for tokenizing, lexing, and parsing Ruby regular expressions. | <https://github.com/ammar/regexp_parser> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | rexml | 3.3.6 | BSD-2-Clause | An XML toolkit for Ruby | <https://github.com/ruby/rexml> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | rubocop | 1.65.1 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2023-06-12 | Low | Ruby linter | Most popular gem on rubygems |
+| Ruby | rubocop | 1.66.0 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2023-06-12 | Low | Ruby linter | Most popular gem on rubygems |
 | Ruby | rubocop-ast | 1.32.1 | MIT |   RuboCop's Node and NodePattern classes. | <https://www.rubocop.org/> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rubocop-performance | 1.21.1 | MIT | A collection of RuboCop cops to check for performance optimizations | <https://docs.rubocop.org/rubocop-performance/> | 2024-05-30 | Low | A collection of RuboCop cops to check for performance optimizations in Ruby code | Most popular gem |
 | Ruby | rubocop-rspec | 3.0.4 | MIT | Code style checking for RSpec files. | <https://github.com/rubocop/rubocop-rspec> | 2024-05-30 | Low | Code style checking for RSpec files. A plugin for the RuboCop code style enforcing & linting tool | Most popular gem |
 | Ruby | ruby-progressbar | 1.13.0 | MIT | Ruby/ProgressBar is an extremely flexible text progress bar library for Ruby | <https://github.com/jfelchner/ruby-progressbar> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | securerandom | 0.3.1 | Ruby | Interface for secure random number generator. | <https://github.com/ruby/securerandom> | 2024-08-12 | Low | Dependency | Dependency |
 | Ruby | stringio | 3.1.1 | Ruby | Pseudo `IO` class from/to `String`. | <https://github.com/ruby/stringio> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | strscan | 3.1.0 | Ruby | Provides lexical scanning operations on a String. | <https://github.com/ruby/strscan> | 2024-05-21 | Low | Dependency | Dependency |
 | Ruby | tzinfo | 2.0.6 | MIT | TZInfo provides access to time zone data and allows times to be converted using time zone rules. | <https://tzinfo.github.io> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | unicode-display_width | 2.5.0 | MIT | [Unicode 15.1.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, and other data. | <https://github.com/janlelis/unicode-display_width> | 2023-06-12 | Low | Dependency | Dependency |
