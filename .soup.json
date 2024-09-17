@@ -122,7 +122,7 @@
   "i18n": {
     "language": "Ruby",
     "package": "i18n",
-    "version": "1.14.5",
+    "version": "1.14.6",
     "license": "MIT",
     "description": "New wave Internationalization support for Ruby.",
     "website": "https://github.com/ruby-i18n/i18n",
@@ -326,7 +326,7 @@
   "rubocop-performance": {
     "language": "Ruby",
     "package": "rubocop-performance",
-    "version": "1.21.1",
+    "version": "1.22.0",
     "license": "MIT",
     "description": "A collection of RuboCop cops to check for performance optimizations",
     "website": "https://docs.rubocop.org/rubocop-performance/",
@@ -398,9 +398,9 @@
   "unicode-display_width": {
     "language": "Ruby",
     "package": "unicode-display_width",
-    "version": "2.5.0",
+    "version": "2.6.0",
     "license": "MIT",
-    "description": "[Unicode 15.1.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, and other data.",
+    "description": "[Unicode 16.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, and other data.",
     "website": "https://github.com/janlelis/unicode-display_width",
     "last_verified_at": "2023-06-12",
     "risk_level": "Low",

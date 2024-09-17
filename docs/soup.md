@@ -12,7 +12,7 @@
 | Ruby | drb | 2.2.1 | Ruby | Distributed object system for Ruby | <https://github.com/ruby/drb> | 2023-10-16 | Low | Dependency | Dependency |
 | Ruby | duplicate | 1.1.1 | Apache License Version 2.0 | Originally extracted from rack-app project | <http://www.rack-app.com> | 2023-06-12 | Low | Handle deep clone | Most popular gem on rubygems |
 | Ruby | httparty | 0.22.0 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2023-06-12 | Low | HTTP access library | Most popular gem on rubygems |
-| Ruby | i18n | 1.14.5 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | i18n | 1.14.6 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | json | 2.7.2 | Ruby | A JSON implementation as a JRuby extension. | <https://flori.github.io/json> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | language_server-protocol | 3.17.0.3 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2023-06-29 | Low | Dependency | Dependency |
 | Ruby | logger | 1.6.1 | Ruby | Provides a simple logging utility for outputting messages. | <https://github.com/ruby/logger> | 2024-08-12 | Low | Dependency | Dependency |
@@ -29,10 +29,10 @@
 | Ruby | regexp_parser | 2.9.2 | MIT | A library for tokenizing, lexing, and parsing Ruby regular expressions. | <https://github.com/ammar/regexp_parser> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rubocop | 1.66.1 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2023-06-12 | Low | Ruby linter | Most popular gem on rubygems |
 | Ruby | rubocop-ast | 1.32.3 | MIT |   RuboCop's Node and NodePattern classes. | <https://www.rubocop.org/> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | rubocop-performance | 1.21.1 | MIT | A collection of RuboCop cops to check for performance optimizations | <https://docs.rubocop.org/rubocop-performance/> | 2024-05-30 | Low | A collection of RuboCop cops to check for performance optimizations in Ruby code | Most popular gem |
+| Ruby | rubocop-performance | 1.22.0 | MIT | A collection of RuboCop cops to check for performance optimizations | <https://docs.rubocop.org/rubocop-performance/> | 2024-05-30 | Low | A collection of RuboCop cops to check for performance optimizations in Ruby code | Most popular gem |
 | Ruby | rubocop-rspec | 3.0.5 | MIT | Code style checking for RSpec files. | <https://github.com/rubocop/rubocop-rspec> | 2024-05-30 | Low | Code style checking for RSpec files. A plugin for the RuboCop code style enforcing & linting tool | Most popular gem |
 | Ruby | ruby-progressbar | 1.13.0 | MIT | Ruby/ProgressBar is an extremely flexible text progress bar library for Ruby | <https://github.com/jfelchner/ruby-progressbar> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | securerandom | 0.3.1 | Ruby | Interface for secure random number generator. | <https://github.com/ruby/securerandom> | 2024-08-12 | Low | Dependency | Dependency |
 | Ruby | stringio | 3.1.1 | Ruby | Pseudo `IO` class from/to `String`. | <https://github.com/ruby/stringio> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | tzinfo | 2.0.6 | MIT | TZInfo provides access to time zone data and allows times to be converted using time zone rules. | <https://tzinfo.github.io> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | unicode-display_width | 2.5.0 | MIT | [Unicode 15.1.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, and other data. | <https://github.com/janlelis/unicode-display_width> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | unicode-display_width | 2.6.0 | MIT | [Unicode 16.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, and other data. | <https://github.com/janlelis/unicode-display_width> | 2023-06-12 | Low | Dependency | Dependency |
