@@ -185,8 +185,7 @@ module GHB
           else
             File.delete(linter[:config]) if File.symlink?(linter[:config]) or File.exist?(linter[:config])
             FileUtils.cp("#{__dir__}/../../config/linters/#{linter[:config]}", linter[:config])
-
-            File.write(linter[:config], File.read(linter[:config]).gsub(/^# - /, '- ')) if linter[:config] == '.rubocop.yml' and File.exist?('Gemfile') and File.read('Gemfile').include?('rails')
+            File.write(linter[:config], File.read(linter[:config]).gsub('# - ', '- ')) if linter[:config] == '.rubocop.yml' and File.exist?('Gemfile') and File.read('Gemfile').include?('rails')
           end
         end
 
