@@ -748,6 +748,8 @@ module GHB
           0
         end
 
+      @required_status_checks << 'Vercel' if File.exist?('package.json') and File.read('package.json').include?('"next"')
+
       unless branch['required_status_checks']['contexts'].length == (@required_status_checks.length + addition_check) and branch['required_status_checks']['checks'].length == (@required_status_checks.length + addition_check)
         @required_status_checks.each { |job| puts("Missing check #{job}!") unless branch['required_status_checks']['contexts'].include?(job) }
 
