@@ -39,9 +39,11 @@ module GHB
       workflow_job_detect_languages
 
       @new_workflow.jobs.each_value do |job|
-        if job&.strategy&.[](:matrix)&.[](:os)
-          job.strategy[:matrix][:os].each do |os|
-            @required_status_checks << "#{job.name} (#{os})"
+        if job&.strategy&.[](:matrix)
+          job.strategy[:matrix].each do |key, values|
+            values.each do |value|
+              @required_status_checks << "#{job.name} (#{key}: #{value})"
+            end
           end
         else
           @required_status_checks << job.name
@@ -748,6 +750,13 @@ module GHB
 
       unless branch['required_status_checks']['contexts'].length == (@required_status_checks.length + addition_check) and branch['required_status_checks']['checks'].length == (@required_status_checks.length + addition_check)
         @required_status_checks.each { |job| puts("Missing check #{job}!") unless branch['required_status_checks']['contexts'].include?(job) }
+
+        puts("@required_status_checks.length : #{@required_status_checks.length}")
+        puts("addition_check : #{addition_check}")
+        puts("branch['required_status_checks']['checks'].length : #{branch['required_status_checks']['checks'].length}")
+        puts("branch['required_status_checks']['contexts'].length : #{branch['required_status_checks']['contexts'].length}")
+        puts("branch['required_status_checks']['checks'] : #{branch['required_status_checks']['checks']}")
+        puts("branch['required_status_checks']['contexts'] : #{branch['required_status_checks']['contexts']}")
 
         raise('Error: master branch missing checks!') unless branch['required_status_checks']['contexts'].length == (@required_status_checks.length + addition_check) and branch['required_status_checks']['checks'].length == (@required_status_checks.length + addition_check)
       end
