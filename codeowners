@@ -8,10 +8,7 @@
 .gitignore               @ydesgagn
 .markdownlint.yml        @ydesgagn
 .rubocop.yml             @ydesgagn
-.soup.json               @ydesgagn
 .yamllint.yml            @ydesgagn
 codeowners               @ydesgagn
-readme.md                @ydesgagn
 bin/                     @ydesgagn
-docs/                    @ydesgagn
 lib/                     @ydesgagn
