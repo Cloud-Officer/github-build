@@ -134,10 +134,10 @@
   "json": {
     "language": "Ruby",
     "package": "json",
-    "version": "2.7.2",
+    "version": "2.7.4",
     "license": "Ruby",
     "description": "A JSON implementation as a JRuby extension.",
-    "website": "https://flori.github.io/json",
+    "website": "https://ruby.github.io/json",
     "last_verified_at": "2023-06-12",
     "risk_level": "Low",
     "requirements": "Dependency",
@@ -374,7 +374,7 @@
   "rubocop-rspec": {
     "language": "Ruby",
     "package": "rubocop-rspec",
-    "version": "3.1.0",
+    "version": "3.2.0",
     "license": "MIT",
     "description": "Code style checking for RSpec files.",
     "website": "https://github.com/rubocop/rubocop-rspec",
