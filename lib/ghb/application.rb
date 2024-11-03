@@ -844,7 +844,10 @@ module GHB
 
       return unless git_ignore.lines.first&.include?('# Created by ') or git_ignore.lines.first&.include?('# Edit at ')
 
-      response = HTTParty.get(git_ignore.lines.first&.split&.[](3)&.gsub('?templates=', '/api/'))
+      first_line = git_ignore.lines.first
+      split_line = first_line&.split&.[](3)
+      api_url = split_line&.gsub('?templates=', '/api/')
+      response = HTTParty.get(api_url)
 
       raise(response.message) unless response.code == 200
 
