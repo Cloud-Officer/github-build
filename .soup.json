@@ -2,7 +2,7 @@
   "activesupport": {
     "language": "Ruby",
     "package": "activesupport",
-    "version": "7.2.2",
+    "version": "8.0.0",
     "license": "MIT",
     "description": "A toolkit of support libraries and Ruby core extensions extracted from the Rails framework",
     "website": "https://rubyonrails.org",
@@ -38,7 +38,7 @@
   "benchmark": {
     "language": "Ruby",
     "package": "benchmark",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "license": "Ruby",
     "description": "a performance benchmarking library",
     "website": "https://github.com/ruby/benchmark",
@@ -146,9 +146,9 @@
   "json": {
     "language": "Ruby",
     "package": "json",
-    "version": "2.7.6",
+    "version": "2.8.1",
     "license": "Ruby",
-    "description": "A JSON implementation as a JRuby extension.",
+    "description": "This is a JSON implementation as a Ruby extension in C.",
     "website": "https://ruby.github.io/json",
     "last_verified_at": "2023-06-12",
     "risk_level": "Low",
@@ -230,7 +230,7 @@
   "optparse": {
     "language": "Ruby",
     "package": "optparse",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "license": "Ruby",
     "description": "OptionParser is a class for command-line option analysis.",
     "website": "https://github.com/ruby/optparse",
@@ -254,7 +254,7 @@
   "parser": {
     "language": "Ruby",
     "package": "parser",
-    "version": "3.3.5.1",
+    "version": "3.3.6.0",
     "license": "MIT",
     "description": "A Ruby parser written in pure Ruby.",
     "website": "https://github.com/whitequark/parser",
@@ -266,7 +266,7 @@
   "psych": {
     "language": "Ruby",
     "package": "psych",
-    "version": "5.1.2",
+    "version": "5.2.0",
     "license": "MIT",
     "description": "Psych is a YAML parser and emitter",
     "website": "https://github.com/ruby/psych",
@@ -326,7 +326,7 @@
   "rubocop-ast": {
     "language": "Ruby",
     "package": "rubocop-ast",
-    "version": "1.33.1",
+    "version": "1.34.1",
     "license": "MIT",
     "description": "  RuboCop's Node and NodePattern classes.",
     "website": "https://www.rubocop.org/",
@@ -398,7 +398,7 @@
   "rubocop-thread_safety": {
     "language": "Ruby",
     "package": "rubocop-thread_safety",
-    "version": "0.5.1",
+    "version": "0.6.0",
     "license": "MIT",
     "description": "  Thread-safety checks via static analysis.",
     "website": "https://github.com/rubocop/rubocop-thread_safety",
@@ -422,7 +422,7 @@
   "securerandom": {
     "language": "Ruby",
     "package": "securerandom",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "license": "Ruby",
     "description": "Interface for secure random number generator.",
     "website": "https://github.com/ruby/securerandom",
@@ -434,7 +434,7 @@
   "stringio": {
     "language": "Ruby",
     "package": "stringio",
-    "version": "3.1.1",
+    "version": "3.1.2",
     "license": "Ruby",
     "description": "Pseudo `IO` class from/to `String`.",
     "website": "https://github.com/ruby/stringio",
@@ -463,6 +463,18 @@
     "description": "[Unicode 16.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, and other data.",
     "website": "https://github.com/janlelis/unicode-display_width",
     "last_verified_at": "2023-06-12",
+    "risk_level": "Low",
+    "requirements": "Dependency",
+    "verification_reasoning": "Dependency"
+  },
+  "uri": {
+    "language": "Ruby",
+    "package": "uri",
+    "version": "1.0.1",
+    "license": "Ruby",
+    "description": "URI is a module providing classes to handle Uniform Resource Identifiers",
+    "website": "https://github.com/ruby/uri",
+    "last_verified_at": "2024-11-11",
     "risk_level": "Low",
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
