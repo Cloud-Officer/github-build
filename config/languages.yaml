@@ -5,7 +5,7 @@ go:
   file_extension: go
   setup_options:
   - name: go-version
-    value: 1.22.3
+    value: 1.23.3
   - name: go-check-latest
     value:
   - name: go-token
@@ -27,7 +27,7 @@ kotlin:
   file_extension: kt
   setup_options:
   - name: java-version
-    value: 21
+    value: 24
   - name: java-distribution
     value: temurin
   - name: android-sdk-version
@@ -57,7 +57,7 @@ php:
   file_extension: php
   setup_options:
   - name: php-version
-    value: 8.3.7
+    value: 8.3.13
   - name: php-extensions
     value:
   - name: php-ini-file
@@ -93,7 +93,7 @@ proto:
   file_extension: proto
   setup_options:
   - name: go-version
-    value: 1.20.2
+    value: 1.23.3
   - name: go-check-latest
     value:
   - name: go-token
@@ -118,7 +118,7 @@ python:
   file_extension: py
   setup_options:
   - name: python-version
-    value: 3.12.3
+    value: 3.13.0
   - name: python-cache
     value: pip
   - name: python-architecture
@@ -156,7 +156,7 @@ ruby:
   file_extension: rb
   setup_options:
   - name: ruby-version
-    value: 3.3.5
+    value: 3.3.6
   - name: ruby-rubygems
     value:
   - name: ruby-bundler
