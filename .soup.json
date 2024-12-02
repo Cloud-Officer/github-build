@@ -95,6 +95,18 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
+  "date": {
+    "language": "Ruby",
+    "package": "date",
+    "version": "3.4.1",
+    "license": "Ruby",
+    "description": "A subclass of Object includes Comparable module for handling dates.",
+    "website": "https://github.com/ruby/date",
+    "last_verified_at": "2024-12-02",
+    "risk_level": "Low",
+    "requirements": "Dependency",
+    "verification_reasoning": "Dependency"
+  },
   "drb": {
     "language": "Ruby",
     "package": "drb",
@@ -170,7 +182,7 @@
   "logger": {
     "language": "Ruby",
     "package": "logger",
-    "version": "1.6.1",
+    "version": "1.6.2",
     "license": "Ruby",
     "description": "Provides a simple logging utility for outputting messages.",
     "website": "https://github.com/ruby/logger",
@@ -266,7 +278,7 @@
   "psych": {
     "language": "Ruby",
     "package": "psych",
-    "version": "5.2.0",
+    "version": "5.2.1",
     "license": "MIT",
     "description": "Psych is a YAML parser and emitter",
     "website": "https://github.com/ruby/psych",
@@ -302,7 +314,7 @@
   "regexp_parser": {
     "language": "Ruby",
     "package": "regexp_parser",
-    "version": "2.9.2",
+    "version": "2.9.3",
     "license": "MIT",
     "description": "A library for tokenizing, lexing, and parsing Ruby regular expressions.",
     "website": "https://github.com/ammar/regexp_parser",
@@ -422,7 +434,7 @@
   "securerandom": {
     "language": "Ruby",
     "package": "securerandom",
-    "version": "0.3.2",
+    "version": "0.4.0",
     "license": "Ruby",
     "description": "Interface for secure random number generator.",
     "website": "https://github.com/ruby/securerandom",
