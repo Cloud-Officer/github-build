@@ -2,7 +2,7 @@
 
 | **Language** | **Package** | **Version** | **License** | **Description** | **Website** | **Last Verified** | **Risk Level** | **Requirements** | **Verification Reasoning** |
 | :---: | :--- | :---: | :---: | :--- | :--- | :---: | :---: | :--- | :--- |
-| Ruby | activesupport | 8.0.0 | MIT | A toolkit of support libraries and Ruby core extensions extracted from the Rails framework | <https://rubyonrails.org> | 2023-06-12 | Low | Provide the deep symbolize and stringify methods on hash | Most popular gem on rubygems |
+| Ruby | activesupport | 8.0.0.1 | MIT | A toolkit of support libraries and Ruby core extensions extracted from the Rails framework | <https://rubyonrails.org> | 2023-06-12 | Low | Provide the deep symbolize and stringify methods on hash | Most popular gem on rubygems |
 | Ruby | ast | 2.4.2 | MIT | A library for working with Abstract Syntax Trees. | <https://whitequark.github.io/ast/> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | base64 | 0.2.0 | Ruby | Support for encoding and decoding binary data using a Base64 representation. | <https://github.com/ruby/base64> | 2023-08-10 | Low | Dependency | Dependency |
 | Ruby | benchmark | 0.4.0 | Ruby | a performance benchmarking library | <https://github.com/ruby/benchmark> | 2024-11-01 | Low | Dependency | Dependency |
