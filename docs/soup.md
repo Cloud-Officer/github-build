@@ -15,9 +15,9 @@
 | Ruby | duplicate | 1.1.1 | Apache License Version 2.0 | Originally extracted from rack-app project | <http://www.rack-app.com> | 2023-06-12 | Low | Handle deep clone | Most popular gem on rubygems |
 | Ruby | httparty | 0.22.0 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2023-06-12 | Low | HTTP access library | Most popular gem on rubygems |
 | Ruby | i18n | 1.14.6 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | json | 2.9.0 | Ruby | This is a JSON implementation as a Ruby extension in C. | <https://ruby.github.io/json> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | json | 2.9.1 | Ruby | This is a JSON implementation as a Ruby extension in C. | <https://ruby.github.io/json> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | language_server-protocol | 3.17.0.3 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2023-06-29 | Low | Dependency | Dependency |
-| Ruby | logger | 1.6.3 | Ruby | Provides a simple logging utility for outputting messages. | <https://github.com/ruby/logger> | 2024-08-12 | Low | Dependency | Dependency |
+| Ruby | logger | 1.6.4 | Ruby | Provides a simple logging utility for outputting messages. | <https://github.com/ruby/logger> | 2024-08-12 | Low | Dependency | Dependency |
 | Ruby | mini_mime | 1.1.5 | MIT | A minimal mime type library | <https://github.com/discourse/mini_mime> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | minitest | 5.25.4 | MIT | minitest provides a complete suite of testing facilities supporting | <https://github.com/minitest/minitest> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | multi_xml | 0.7.1 | MIT | Provides swappable XML backends utilizing LibXML, Nokogiri, Ox, or REXML. | <https://github.com/sferik/multi_xml> | 2023-06-12 | Low | Dependency | Dependency |
@@ -25,7 +25,7 @@
 | Ruby | optparse | 0.6.0 | Ruby | OptionParser is a class for command-line option analysis. | <https://github.com/ruby/optparse> | 2023-06-12 | Low | Command line argument parser | Most popular gem on rubygems |
 | Ruby | parallel | 1.26.3 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | parser | 3.3.6.0 | MIT | A Ruby parser written in pure Ruby. | <https://github.com/whitequark/parser> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | psych | 5.2.1 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2023-06-12 | Low | Yaml parser | Most popular gem on rubygems |
+| Ruby | psych | 5.2.2 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2023-06-12 | Low | Yaml parser | Most popular gem on rubygems |
 | Ruby | racc | 1.8.1 | Ruby | Racc is an LALR(1) parser generator. | <https://github.com/ruby/racc> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rainbow | 3.1.1 | MIT | Colorize printed text on ANSI terminals | <https://github.com/sickill/rainbow> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | regexp_parser | 2.9.3 | MIT | A library for tokenizing, lexing, and parsing Ruby regular expressions. | <https://github.com/ammar/regexp_parser> | 2023-06-12 | Low | Dependency | Dependency |
