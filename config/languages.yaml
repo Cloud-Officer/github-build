@@ -5,7 +5,7 @@ go:
   file_extension: go
   setup_options:
   - name: go-version
-    value: 1.23.3
+    value: 1.23.4
   - name: go-check-latest
     value:
   - name: go-token
@@ -57,7 +57,7 @@ php:
   file_extension: php
   setup_options:
   - name: php-version
-    value: 8.3.13
+    value: 8.4.2
   - name: php-extensions
     value:
   - name: php-ini-file
@@ -93,13 +93,13 @@ proto:
   file_extension: proto
   setup_options:
   - name: go-version
-    value: 1.23.3
+    value: 1.23.4
   - name: go-check-latest
     value:
   - name: go-token
     value:
   - name: xcode-version
-    value: '15.4'
+    value: '16.2'
   dependencies:
   - dependency_file: go.mod
     mongodb_dependency: mongodb
@@ -118,7 +118,7 @@ python:
   file_extension: py
   setup_options:
   - name: python-version
-    value: 3.13.0
+    value: 3.13.1
   - name: python-cache
     value: pip
   - name: python-architecture
@@ -156,7 +156,7 @@ ruby:
   file_extension: rb
   setup_options:
   - name: ruby-version
-    value: 3.3.6
+    value: 3.4.1
   - name: ruby-rubygems
     value:
   - name: ruby-bundler

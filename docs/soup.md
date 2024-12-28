@@ -6,10 +6,10 @@
 | Ruby | ast | 2.4.2 | MIT | A library for working with Abstract Syntax Trees. | <https://whitequark.github.io/ast/> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | base64 | 0.2.0 | Ruby | Support for encoding and decoding binary data using a Base64 representation. | <https://github.com/ruby/base64> | 2023-08-10 | Low | Dependency | Dependency |
 | Ruby | benchmark | 0.4.0 | Ruby | a performance benchmarking library | <https://github.com/ruby/benchmark> | 2024-11-01 | Low | Dependency | Dependency |
-| Ruby | bigdecimal | 3.1.8 | Ruby | This library provides arbitrary-precision decimal floating-point number class. | <https://github.com/ruby/bigdecimal> | 2023-10-16 | Low | Dependency | Dependency |
+| Ruby | bigdecimal | 3.1.9 | Ruby | This library provides arbitrary-precision decimal floating-point number class. | <https://github.com/ruby/bigdecimal> | 2023-10-16 | Low | Dependency | Dependency |
 | Ruby | concurrent-ruby | 1.3.4 | MIT | Modern concurrency tools including agents, futures, promises, thread pools, actors, supervisors, and more. | <http://www.concurrent-ruby.com> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | connection_pool | 2.4.1 | MIT | Generic connection pool for Ruby | <https://github.com/mperham/connection_pool> | 2023-10-16 | Low | Dependency | Dependency |
-| Ruby | csv | 3.3.1 | Ruby | The CSV library provides a complete interface to CSV files and data | <https://github.com/ruby/csv> | 2024-04-29 | Low | Dependency | Dependency |
+| Ruby | csv | 3.3.2 | Ruby | The CSV library provides a complete interface to CSV files and data | <https://github.com/ruby/csv> | 2024-04-29 | Low | Dependency | Dependency |
 | Ruby | date | 3.4.1 | Ruby | A subclass of Object includes Comparable module for handling dates. | <https://github.com/ruby/date> | 2024-12-02 | Low | Dependency | Dependency |
 | Ruby | drb | 2.2.1 | Ruby | Distributed object system for Ruby | <https://github.com/ruby/drb> | 2023-10-16 | Low | Dependency | Dependency |
 | Ruby | duplicate | 1.1.1 | Apache License Version 2.0 | Originally extracted from rack-app project | <http://www.rack-app.com> | 2023-06-12 | Low | Handle deep clone | Most popular gem on rubygems |
@@ -28,7 +28,7 @@
 | Ruby | psych | 5.2.2 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2023-06-12 | Low | Yaml parser | Most popular gem on rubygems |
 | Ruby | racc | 1.8.1 | Ruby | Racc is an LALR(1) parser generator. | <https://github.com/ruby/racc> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rainbow | 3.1.1 | MIT | Colorize printed text on ANSI terminals | <https://github.com/sickill/rainbow> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | regexp_parser | 2.9.3 | MIT | A library for tokenizing, lexing, and parsing Ruby regular expressions. | <https://github.com/ammar/regexp_parser> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | regexp_parser | 2.10.0 | MIT | A library for tokenizing, lexing, and parsing Ruby regular expressions. | <https://github.com/ammar/regexp_parser> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rubocop | 1.69.2 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2023-06-12 | Low | Ruby linter | Most popular gem on rubygems |
 | Ruby | rubocop-ast | 1.37.0 | MIT |   RuboCop's Node and NodePattern classes. | <https://www.rubocop.org/> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rubocop-capybara | 2.21.0 | MIT | Code style checking for Capybara test files (RSpec, Cucumber, Minitest). | <https://github.com/rubocop/rubocop-capybara> | 2024-09-16 | Low | Ruby linter | Most populat gem |
@@ -41,6 +41,6 @@
 | Ruby | securerandom | 0.4.1 | Ruby | Interface for secure random number generator. | <https://github.com/ruby/securerandom> | 2024-08-12 | Low | Dependency | Dependency |
 | Ruby | stringio | 3.1.2 | Ruby | Pseudo `IO` class from/to `String`. | <https://github.com/ruby/stringio> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | tzinfo | 2.0.6 | MIT | TZInfo provides access to time zone data and allows times to be converted using time zone rules. | <https://tzinfo.github.io> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | unicode-display_width | 3.1.2 | MIT | [Unicode 16.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, Emoji specification, and other data. | <https://github.com/janlelis/unicode-display_width> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | unicode-display_width | 3.1.3 | MIT | [Unicode 16.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, Emoji specification, and other data. | <https://github.com/janlelis/unicode-display_width> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | unicode-emoji | 4.0.4 | MIT | [Emoji 16.0] Provides Unicode Emoji data and regexes, incorporating the latest Unicode and Emoji standards | <https://github.com/janlelis/unicode-emoji> | 2024-11-26 | Low | Dependency | Dependency |
 | Ruby | uri | 1.0.2 | Ruby | URI is a module providing classes to handle Uniform Resource Identifiers | <https://github.com/ruby/uri> | 2024-11-11 | Low | Dependency | Dependency |
