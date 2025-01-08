@@ -8,7 +8,7 @@
 | Ruby | benchmark | 0.4.0 | Ruby | a performance benchmarking library | <https://github.com/ruby/benchmark> | 2024-11-01 | Low | Dependency | Dependency |
 | Ruby | bigdecimal | 3.1.9 | Ruby | This library provides arbitrary-precision decimal floating-point number class. | <https://github.com/ruby/bigdecimal> | 2023-10-16 | Low | Dependency | Dependency |
 | Ruby | concurrent-ruby | 1.3.4 | MIT | Modern concurrency tools including agents, futures, promises, thread pools, actors, supervisors, and more. | <http://www.concurrent-ruby.com> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | connection_pool | 2.4.1 | MIT | Generic connection pool for Ruby | <https://github.com/mperham/connection_pool> | 2023-10-16 | Low | Dependency | Dependency |
+| Ruby | connection_pool | 2.5.0 | MIT | Generic connection pool for Ruby | <https://github.com/mperham/connection_pool> | 2023-10-16 | Low | Dependency | Dependency |
 | Ruby | csv | 3.3.2 | Ruby | The CSV library provides a complete interface to CSV files and data | <https://github.com/ruby/csv> | 2024-04-29 | Low | Dependency | Dependency |
 | Ruby | date | 3.4.1 | Ruby | A subclass of Object includes Comparable module for handling dates. | <https://github.com/ruby/date> | 2024-12-02 | Low | Dependency | Dependency |
 | Ruby | drb | 2.2.1 | Ruby | Distributed object system for Ruby | <https://github.com/ruby/drb> | 2023-10-16 | Low | Dependency | Dependency |
