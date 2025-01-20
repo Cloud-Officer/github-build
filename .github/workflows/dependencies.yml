@@ -30,6 +30,7 @@ jobs:
         fi
 
         if [ -f "Gemfile.lock" ]; then
+          bundle config set frozen false
           bundle update
         fi
 
