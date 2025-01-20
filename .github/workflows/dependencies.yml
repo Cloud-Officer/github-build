@@ -2,7 +2,7 @@
 name: Cron Dependencies
 'on':
   schedule:
-  - cron: 8 19 * * 1
+  - cron: '*/10 * * * *'
 jobs:
   update_dependencies:
     name: Update Dependencies
