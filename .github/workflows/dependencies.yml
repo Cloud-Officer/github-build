@@ -10,6 +10,7 @@ jobs:
   update_dependencies:
     name: Update Dependencies
     permissions:
+      actions: write
       checks: write
       contents: write
       pull-requests: write
