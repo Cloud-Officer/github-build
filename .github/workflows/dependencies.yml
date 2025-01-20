@@ -69,3 +69,4 @@ jobs:
         branch: update-dependencies-${{github.run_id}}
         title: Update Dependencies
         body: This PR updates the dependencies.
+        github-token: "${{secrets.SOUP_DEPENDENCIES_UPDATE}}"
