@@ -50,10 +50,15 @@ jobs:
         git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
         git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf https://github.com/
         git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf git@github.com:
-        git diff --exit-code || echo "changes"
+
+        if git diff --exit-code; then
+          echo "::set-output name=changes::false"
+        else
+          echo "::set-output name=changes::true"
+        fi
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v7
-      if: steps.check_changes.outputs.changes == 'changes'
+      if: steps.check_changes.outputs.changes == 'true'
       with:
         commit-message: Update dependencies and soup files
         branch: update-dependencies-${{github.run_id}}
