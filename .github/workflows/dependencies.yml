@@ -37,6 +37,8 @@ jobs:
         if [ -f "requirements.txt" ]; then
           pip-compile --resolver=backtracking --upgrade
         fi
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
     - name: Licenses
       uses: cloud-officer/ci-actions/soup@master
       with:
