@@ -41,7 +41,7 @@ jobs:
       shell: bash
       id: soup
       run: |
-        latest_tag="$(curl --silent --header "Authorization: Bearer ${{ inputs.github-token }}" https://api.github.com/repos/Cloud-Officer/soup/tags | jq -r '.[0].name')"
+        latest_tag="$(curl --silent --header "Authorization: Bearer ${{ github.token }}" https://api.github.com/repos/Cloud-Officer/soup/tags | jq -r '.[0].name')"
         echo "Latest soup tag: ${latest_tag}"
         asset_url=""https://github.com/Cloud-Officer/soup/archive/refs/tags/${latest_tag}.zip""
         curl -L "${asset_url}" -o "${RUNNER_TEMP}/soup.zip"
