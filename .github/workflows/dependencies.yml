@@ -37,12 +37,27 @@ jobs:
         if [ -f "requirements.txt" ]; then
           pip-compile --resolver=backtracking --upgrade
         fi
-    - name: Licenses
-      uses: cloud-officer/ci-actions/soup@master
-      with:
-        ssh-key: "${{secrets.SSH_KEY}}"
-        github-token: "${{secrets.SOUP_DEPENDENCIES_UPDATE}}"
-        parameters: "--no_prompt --soup"
+    - name: Get SOUP Code
+      shell: bash
+      id: soup
+      run: |
+        latest_tag="$(curl --silent --header "Authorization: Bearer ${{ inputs.github-token }}" https://api.github.com/repos/Cloud-Officer/soup/tags | jq -r '.[0].name')"
+        echo "Latest soup tag: ${latest_tag}"
+        asset_url=""https://github.com/Cloud-Officer/soup/archive/refs/tags/${latest_tag}.zip""
+        curl -L "${asset_url}" -o "${RUNNER_TEMP}/soup.zip"
+        unzip -q "${RUNNER_TEMP}/soup.zip" -d "${RUNNER_TEMP}"
+        rm -rf "${RUNNER_TEMP}/soup.zip"
+        echo "soup_location=${RUNNER_TEMP}/soup-${latest_tag}" >> ${GITHUB_ENV}
+    - name: Run SOUP
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        pushd "${{env.soup_location}}"
+        bundle config unset deployment
+        bundle install
+        popd
+        "${{env.soup_location}}/bin/soup.rb" ${{ inputs.parameters }}
     - name: Set GitHub to use https with credentials
       id: check_changes
       shell: bash
