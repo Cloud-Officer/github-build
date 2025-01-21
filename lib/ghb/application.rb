@@ -206,7 +206,7 @@ module GHB
           end
 
           do_step(linter[:short_name]) do
-            copy_properties(find_step(old_workflow.jobs[short_name]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+            copy_properties(find_step(old_workflow.jobs[short_name]&.steps, name), %i[with env])
             do_uses(linter[:uses])
 
             if with.empty?
@@ -247,7 +247,7 @@ module GHB
           do_if("${{needs.variables.outputs.SKIP_LICENSES != '1'}}")
 
           do_step('Licenses') do
-            copy_properties(find_step(old_workflow.jobs[:licenses]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+            copy_properties(find_step(old_workflow.jobs[:licenses]&.steps, name), %i[with env])
             do_uses('cloud-officer/ci-actions/soup@master')
 
             if with.empty?
@@ -342,7 +342,7 @@ module GHB
           do_if("${{#{unit_tests_conditions}#{additional_checks}}}")
 
           do_step('Setup') do
-            copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+            copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[with env])
             do_uses('cloud-officer/ci-actions/setup@master')
 
             if with.empty?
@@ -367,7 +367,7 @@ module GHB
             dependency_detected = true
 
             do_step(dependency[:package_manager_name]) do
-              copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+              copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[with env])
               do_shell('bash')
               do_run(dependency[:package_manager_default]) if run.nil?
               code_deploy_pre_steps << duplicate(self) if language[:short_name] == 'go' or language[:short_name] == 'php' or force_codedeploy_setup
@@ -377,14 +377,14 @@ module GHB
           next unless dependency_detected
 
           do_step(language[:unit_test_framework_name]) do
-            copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+            copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[with env])
             do_shell('bash')
             do_run(language[:unit_test_framework_default]) if run.nil?
           end
 
           if File.exist?('Podfile.lock') and skip_license_check == false
             do_step('Licenses') do
-              copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+              copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[with env])
               do_uses('cloud-officer/ci-actions/soup@master')
 
               if with.empty?
@@ -439,7 +439,7 @@ module GHB
 
         if code_deploy_pre_steps.empty?
           do_step('Checkout') do
-            copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+            copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[with env])
             do_uses('cloud-officer/ci-actions/codedeploy/checkout@master')
             do_with({ 'ssh-key': '${{secrets.SSH_KEY}}' }) if with.empty?
           end
@@ -453,20 +453,20 @@ module GHB
         end
 
         do_step('Update Packages') do
-          copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+          copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[with env])
           do_if("${{needs.variables.outputs.UPDATE_PACKAGES == '1'}}")
           do_shell('bash')
           do_run('touch update-packages')
         end
 
         do_step('Zip') do
-          copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+          copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[with env])
           do_shell('bash')
           do_run('zip --quiet --recurse-paths "${{needs.variables.outputs.BUILD_NAME}}.zip" ./*') if run.nil?
         end
 
         do_step('S3Copy') do
-          copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+          copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[with env])
           do_uses('cloud-officer/ci-actions/codedeploy/s3copy@master')
 
           if with.empty?
@@ -492,7 +492,7 @@ module GHB
           do_if("${{always() && needs.codedeploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_#{environment.upcase} == '1'}}")
 
           do_step("#{environment.capitalize} Deploy") do
-            copy_properties(find_step(old_workflow.jobs[:"#{environment}_deploy"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+            copy_properties(find_step(old_workflow.jobs[:"#{environment}_deploy"]&.steps, name), %i[with env])
             do_uses('cloud-officer/ci-actions/codedeploy/deploy@master')
 
             if with.empty?
@@ -535,7 +535,7 @@ module GHB
         do_if("${{#{if_statement}}}")
 
         do_step('AWS Commands') do
-          copy_properties(find_step(old_workflow.jobs[:aws]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+          copy_properties(find_step(old_workflow.jobs[:aws]&.steps, name), %i[with env])
           do_uses('cloud-officer/ci-actions/aws@master')
 
           if with.empty?
@@ -568,7 +568,7 @@ module GHB
         do_if('always()')
 
         do_step('Publish Statuses') do
-          copy_properties(find_step(old_workflow.jobs[:slack]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+          copy_properties(find_step(old_workflow.jobs[:slack]&.steps, name), %i[with env])
           do_uses('cloud-officer/ci-actions/slack@master')
 
           if with.empty?
@@ -642,7 +642,7 @@ module GHB
         )
 
         do_step('Licenses') do
-          copy_properties(new_workflow.jobs[:licenses]&.steps&.first, %i[id if uses run shell with env continue_on_error timeout_minutes])
+          copy_properties(new_workflow.jobs[:licenses]&.steps&.first, %i[with env])
           do_uses('cloud-officer/ci-actions/soup@master')
 
           if with.empty?
@@ -709,7 +709,7 @@ module GHB
 
         if code_deploy_pre_steps.empty?
           do_step('Checkout') do
-            copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+            copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[with env])
             do_uses('cloud-officer/ci-actions/codedeploy/checkout@master')
             do_with({ 'ssh-key': '${{secrets.SSH_KEY}}' }) if with.empty?
           end
@@ -748,7 +748,7 @@ module GHB
         end
 
         do_step('Licenses') do
-          copy_properties(new_workflow.jobs[:licenses]&.steps&.first, %i[id if uses run shell with env continue_on_error timeout_minutes])
+          copy_properties(new_workflow.jobs[:licenses]&.steps&.first, %i[with env])
           do_uses('cloud-officer/ci-actions/soup@master')
 
           if with.empty?
