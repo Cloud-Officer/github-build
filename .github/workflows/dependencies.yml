@@ -2,7 +2,7 @@
 name: Cron Dependencies
 'on':
   schedule:
-  - cron: "*/10 * * * *"
+  - cron: 0 9 * * 1
 env:
   RUBY-BUNDLER-CACHE: true
   RUBY-VERSION: 3.4.1
@@ -20,9 +20,6 @@ jobs:
       uses: cloud-officer/ci-actions/setup@master
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
-        aws-access-key-id: "${{secrets.AWS_ACCESS_KEY_ID}}"
-        aws-secret-access-key: "${{secrets.AWS_SECRET_ACCESS_KEY}}"
-        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
         ruby-version: "${{env.RUBY-VERSION}}"
         ruby-bundler-cache: "${{env.RUBY-BUNDLER-CACHE}}"
     - name: Update Dependencies
