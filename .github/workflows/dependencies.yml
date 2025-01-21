@@ -56,7 +56,7 @@ jobs:
         git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf git@github.com:
 
         if git diff --exit-code; then
-          echo "changes=false" >> "${}GITHUB_OUTPUT}" 
+          echo "changes=false" >> "${}GITHUB_OUTPUT}"
         else
           echo "changes=true" >> "${GITHUB_OUTPUT}"
         fi
