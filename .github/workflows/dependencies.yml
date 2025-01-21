@@ -2,7 +2,7 @@
 name: Cron Dependencies
 'on':
   schedule:
-  - cron: "*/10 * * * *"
+  - cron: "*/5 * * * *"
 env:
   RUBY-BUNDLER-CACHE: true
   RUBY-VERSION: 3.4.1
