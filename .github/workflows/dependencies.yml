@@ -46,7 +46,7 @@ jobs:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{secrets.SOUP_DEPENDENCIES_UPDATE}}"
         parameters: "--no_prompt --soup"
-        checkout: 'false'
+        checkout: false
     - name: Set GitHub to use https with credentials
       id: check_changes
       shell: bash
