@@ -2,7 +2,7 @@
 name: Cron Dependencies
 'on':
   schedule:
-  - cron: "*/5 * * * *"
+  - cron: "*/10 * * * *"
 env:
   RUBY-BUNDLER-CACHE: true
   RUBY-VERSION: 3.4.1
@@ -62,7 +62,7 @@ jobs:
         fi
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v7
-      if: steps.check_changes.outputs.changes == 'true'
+      if: "${{ steps.check_changes.outputs.changes == true }}"
       with:
         commit-message: Update dependencies and soup files
         branch: update-dependencies-${{github.run_id}}
