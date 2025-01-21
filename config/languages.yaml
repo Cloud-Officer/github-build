@@ -57,7 +57,7 @@ php:
   file_extension: php
   setup_options:
   - name: php-version
-    value: 8.4.2
+    value: 8.4.3
   - name: php-extensions
     value:
   - name: php-ini-file
