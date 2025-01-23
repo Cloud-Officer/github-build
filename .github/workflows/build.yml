@@ -170,4 +170,4 @@ jobs:
       run: bundle install
     - name: RSpec
       shell: bash
-      run: bundle exec rspec
+      run: bundle exec ./bin/github-build.rb --skip_dependabot --skip_repository_settings --skip_slack
