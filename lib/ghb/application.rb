@@ -607,182 +607,185 @@ module GHB
             directory: '/',
             schedule:
               {
-                interval: 'weekly'
+                interval: 'monthly'
               }
           }
         end
 
       File.write('.github/dependabot.yml', { version: 2, updates: package_managers }.deep_stringify_keys.to_yaml({ line_width: -1 }))
 
-      return unless @new_workflow.jobs[:licenses]
-
-      @dependencies_workflow.on =
-        {
-          push:
-            {
-              branches:
-                %w[dependabot/**]
-            },
-          pull_request:
-            {
-              branches:
-                %w[dependabot/**]
-            }
-        }
-
-      new_workflow = @new_workflow
-
-      @dependencies_workflow.do_job(:update_dependencies) do
-        do_name('Update Dependencies')
-        do_runs_on(DEFAULT_UBUNTU_VERSION)
-        do_permissions(
+      if @new_workflow.jobs[:licenses]
+        @dependencies_workflow.on =
           {
-            contents: 'write'
-          }
-        )
-
-        do_step('Licenses') do
-          copy_properties(new_workflow.jobs[:licenses]&.steps&.first, %i[id if uses run shell with env continue_on_error timeout_minutes])
-          do_uses('cloud-officer/ci-actions/soup@master')
-
-          if with.empty?
-            do_with(
+            push:
               {
-                'ssh-key': '${{secrets.SSH_KEY}}',
-                'github-token': '${{secrets.SOUP_DEPENDENCIES_UPDATE}}',
-                parameters: '--no_prompt'
+                branches:
+                  %w[dependabot/**]
+              },
+            pull_request:
+              {
+                branches:
+                  %w[dependabot/**]
               }
+          }
+
+        new_workflow = @new_workflow
+
+        @dependencies_workflow.do_job(:update_dependencies) do
+          do_name('Update Dependencies')
+          do_runs_on(DEFAULT_UBUNTU_VERSION)
+          do_permissions(
+            {
+              contents: 'write'
+            }
+          )
+
+          do_step('Licenses') do
+            copy_properties(new_workflow.jobs[:licenses]&.steps&.first, %i[id if uses run shell with env continue_on_error timeout_minutes])
+            do_uses('cloud-officer/ci-actions/soup@master')
+
+            if with.empty?
+              do_with(
+                {
+                  'ssh-key': '${{secrets.SSH_KEY}}',
+                  'github-token': '${{secrets.SOUP_DEPENDENCIES_UPDATE}}',
+                  parameters: '--no_prompt'
+                }
+              )
+            end
+
+            with['github-token'] = '${{secrets.SOUP_DEPENDENCIES_UPDATE}}'
+          end
+
+          do_step('Set GitHub to use https with credentials') do
+            do_shell('bash')
+            do_run(
+              <<~BASH
+                git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
+                git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf https://github.com/
+                git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf git@github.com:
+              BASH
             )
           end
 
-          with['github-token'] = '${{secrets.SOUP_DEPENDENCIES_UPDATE}}'
-        end
-
-        do_step('Set GitHub to use https with credentials') do
-          do_shell('bash')
-          do_run(
-            <<~BASH
-              git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
-              git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf https://github.com/
-              git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf git@github.com:
-            BASH
-          )
-        end
-
-        do_step('Auto Commit Changes') do
-          do_uses('stefanzweifel/git-auto-commit-action@v5')
-          do_with(
-            {
-              commit_message: 'Updated soup files'
-            }
-          )
-        end
-      end
-
-      @dependencies_workflow.write('.github/workflows/soup.yml')
-
-      @cron_workflow.on =
-        {
-          schedule:
-            [
-              {
-                cron: '0 9 * * 1'
-              }
-            ]
-        }
-
-      @cron_workflow.env = @new_workflow.env.select { |key, _value| key.to_s.start_with?('RUBY', 'PYTHON', 'PHP') } || {}
-      code_deploy_pre_steps = @code_deploy_pre_steps.clone
-      old_workflow = @old_workflow
-
-      @cron_workflow.do_job(:update_dependencies) do
-        do_name('Update Dependencies')
-        do_runs_on(DEFAULT_UBUNTU_VERSION)
-        do_permissions(
-          {
-            actions: 'write',
-            checks: 'write',
-            contents: 'write',
-            'pull-requests': 'write'
-          }
-        )
-
-        if code_deploy_pre_steps.empty?
-          do_step('Checkout') do
-            copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-            do_uses('cloud-officer/ci-actions/codedeploy/checkout@master')
-            do_with({ 'ssh-key': '${{secrets.SSH_KEY}}' }) if with.empty?
-            self.if = nil
-          end
-        else
-          code_deploy_pre_steps.each do |step|
-            step.if = nil
-            step.with.reject! { |key, _value| key.to_s.include?('apt') or key.to_s.include?('mongodb') or key.to_s.include?('mysql') or key.to_s.include?('redis') or key.to_s.include?('aws') }
-          end
-
-          self.steps = code_deploy_pre_steps
-        end
-
-        do_step('Update Dependencies') do
-          do_shell('bash')
-          do_run(
-            <<~BASH
-              git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
-              git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf https://github.com/
-              git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf git@github.com:
-
-              if [ -f "composer.json" ]; then
-                composer update
-              fi
-
-              if [ -f "Gemfile" ]; then
-                bundle config set frozen false
-                bundle update
-              fi
-
-              if [ -f "requirements.in" ]; then
-                pip install pip-tools
-                pip-compile --resolver=backtracking --upgrade
-              fi
-            BASH
-          )
-        end
-
-        do_step('Licenses') do
-          copy_properties(new_workflow.jobs[:licenses]&.steps&.first, %i[id if uses run shell with env continue_on_error timeout_minutes])
-          do_uses('cloud-officer/ci-actions/soup@master')
-
-          if with.empty?
+          do_step('Auto Commit Changes') do
+            do_uses('stefanzweifel/git-auto-commit-action@v5')
             do_with(
               {
-                'ssh-key': '${{secrets.SSH_KEY}}',
-                'github-token': '${{secrets.SOUP_DEPENDENCIES_UPDATE}}',
-                parameters: '--no_prompt',
-                'skip-checkout': 'true'
+                commit_message: 'Updated soup files'
               }
             )
           end
-
-          with['github-token'] = '${{secrets.SOUP_DEPENDENCIES_UPDATE}}'
-          with['skip-checkout'] = 'true'
         end
 
-        do_step('Create Pull Request') do
-          do_uses('peter-evans/create-pull-request@v7')
-          do_with(
+        @dependencies_workflow.write('.github/workflows/soup.yml')
+
+        @cron_workflow.on =
+          {
+            schedule:
+              [
+                {
+                  cron: '0 9 * * 1'
+                }
+              ]
+          }
+
+        @cron_workflow.env = @new_workflow.env.select { |key, _value| key.to_s.start_with?('RUBY', 'PYTHON', 'PHP') } || {}
+        code_deploy_pre_steps = @code_deploy_pre_steps.clone
+        old_workflow = @old_workflow
+
+        @cron_workflow.do_job(:update_dependencies) do
+          do_name('Update Dependencies')
+          do_runs_on(DEFAULT_UBUNTU_VERSION)
+          do_permissions(
             {
-              'commit-message': 'Update dependencies and soup files',
-              branch: 'update-dependencies-${{github.run_id}}',
-              title: 'Update Dependencies',
-              body: 'This PR updates the dependencies.'
+              actions: 'write',
+              checks: 'write',
+              contents: 'write',
+              'pull-requests': 'write'
             }
           )
 
-          with['token'] = '${{secrets.SOUP_DEPENDENCIES_UPDATE}}'
-        end
-      end
+          if code_deploy_pre_steps.empty?
+            do_step('Checkout') do
+              copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+              do_uses('cloud-officer/ci-actions/codedeploy/checkout@master')
+              do_with({ 'ssh-key': '${{secrets.SSH_KEY}}' }) if with.empty?
+              self.if = nil
+            end
+          else
+            code_deploy_pre_steps.each do |step|
+              step.if = nil
+              step.with.reject! { |key, _value| key.to_s.include?('apt') or key.to_s.include?('mongodb') or key.to_s.include?('mysql') or key.to_s.include?('redis') or key.to_s.include?('aws') }
+            end
 
-      @cron_workflow.write('.github/workflows/dependencies.yml')
+            self.steps = code_deploy_pre_steps
+          end
+
+          do_step('Update Dependencies') do
+            do_shell('bash')
+            do_run(
+              <<~BASH
+                git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
+                git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf https://github.com/
+                git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf git@github.com:
+
+                if [ -f "composer.json" ]; then
+                  composer update
+                fi
+
+                if [ -f "Gemfile" ]; then
+                  bundle config set frozen false
+                  bundle update
+                fi
+
+                if [ -f "requirements.in" ]; then
+                  pip install pip-tools
+                  pip-compile --resolver=backtracking --upgrade
+                fi
+              BASH
+            )
+          end
+
+          do_step('Licenses') do
+            copy_properties(new_workflow.jobs[:licenses]&.steps&.first, %i[id if uses run shell with env continue_on_error timeout_minutes])
+            do_uses('cloud-officer/ci-actions/soup@master')
+
+            if with.empty?
+              do_with(
+                {
+                  'ssh-key': '${{secrets.SSH_KEY}}',
+                  'github-token': '${{secrets.SOUP_DEPENDENCIES_UPDATE}}',
+                  parameters: '--no_prompt',
+                  'skip-checkout': 'true'
+                }
+              )
+            end
+
+            with['github-token'] = '${{secrets.SOUP_DEPENDENCIES_UPDATE}}'
+            with['skip-checkout'] = 'true'
+          end
+
+          do_step('Create Pull Request') do
+            do_uses('peter-evans/create-pull-request@v7')
+            do_with(
+              {
+                'commit-message': 'Update dependencies and soup files',
+                branch: 'update-dependencies-${{github.run_id}}',
+                title: 'Update Dependencies',
+                body: 'This PR updates the dependencies.'
+              }
+            )
+
+            with['token'] = '${{secrets.SOUP_DEPENDENCIES_UPDATE}}'
+          end
+        end
+
+        @cron_workflow.write('.github/workflows/dependencies.yml')
+      else
+        FileUtils.rm_f('.github/workflows/soup.yml')
+        FileUtils.rm_f('.github/workflows/dependencies.yml')
+      end
     end
 
     def save_dockerhub_config
