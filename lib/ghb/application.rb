@@ -719,7 +719,7 @@ module GHB
             }
           )
 
-          dependencies_steps.first.if = nil
+          dependencies_steps&.first&.if = nil
           self.steps = dependencies_steps
 
           do_step('Update Dependencies') do
