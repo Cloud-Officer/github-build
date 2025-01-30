@@ -20,6 +20,7 @@ module GHB
       @dependabot_package_managers = %w[github-actions]
       @exit_code = Status::SUCCESS_EXIT_CODE
       @dependencies_workflow = Workflow.new('Dependencies')
+      @dependencies_steps = []
       @cron_workflow = Workflow.new('Cron Dependencies')
       @dockerhub_workflow = Workflow.new('Publish Docker image')
       @new_workflow = Workflow.new('Build')
@@ -28,6 +29,13 @@ module GHB
       @required_status_checks = []
       @submodules = ''
       @unit_tests_conditions = nil
+      @dependencies_commands =
+        <<~BASH
+          git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
+          git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf git@github.com:
+
+        BASH
     end
 
     def execute
@@ -277,6 +285,8 @@ module GHB
       old_workflow = @old_workflow
       unit_tests_conditions = @unit_tests_conditions
       code_deploy_pre_steps = @code_deploy_pre_steps
+      dependencies_steps = @dependencies_steps
+      dependencies_commands = @dependencies_commands
       excluded_folders = ''
 
       @options.excluded_folders.each do |folder|
@@ -356,7 +366,8 @@ module GHB
               )
             end
 
-            code_deploy_pre_steps << duplicate(self) if language[:short_name] == 'go' or language[:short_name] == 'php' or language[:short_name] == 'python' or language[:short_name] == 'ruby' or force_codedeploy_setup
+            code_deploy_pre_steps << duplicate(self) if language[:short_name] == 'go' or language[:short_name] == 'php' or force_codedeploy_setup
+            dependencies_steps << duplicate(self)
           end
 
           dependency_detected = false
@@ -371,6 +382,7 @@ module GHB
               do_shell('bash')
               do_run(dependency[:package_manager_default]) if run.nil?
               code_deploy_pre_steps << duplicate(self) if language[:short_name] == 'go' or language[:short_name] == 'php' or force_codedeploy_setup
+              dependencies_commands += "#{dependency[:package_manager_update]}\n" if dependency[:package_manager_update]
             end
           end
 
@@ -402,6 +414,8 @@ module GHB
       end
 
       @code_deploy_pre_steps = code_deploy_pre_steps
+      @dependencies_steps = dependencies_steps
+      @dependencies_commands = dependencies_commands
     end
 
     def add_setup_options(setup_options, options)
@@ -446,7 +460,6 @@ module GHB
         else
           code_deploy_pre_steps.each do |step|
             step.if = nil
-            step.with.reject! { |key, _value| key.to_s.include?('apt') or key.to_s.include?('mongodb') or key.to_s.include?('mysql') or key.to_s.include?('redis') }
           end
 
           self.steps = code_deploy_pre_steps.clone
@@ -630,6 +643,8 @@ module GHB
           }
 
         new_workflow = @new_workflow
+        dependencies_steps = @dependencies_steps
+        dependencies_commands = @dependencies_commands
 
         @dependencies_workflow.do_job(:update_dependencies) do
           do_name('Update Dependencies')
@@ -690,9 +705,7 @@ module GHB
               ]
           }
 
-        @cron_workflow.env = @new_workflow.env.select { |key, _value| key.to_s.start_with?('RUBY', 'PYTHON', 'PHP') } || {}
-        code_deploy_pre_steps = @code_deploy_pre_steps.clone
-        old_workflow = @old_workflow
+        @cron_workflow.env = @new_workflow.env
 
         @cron_workflow.do_job(:update_dependencies) do
           do_name('Update Dependencies')
@@ -706,45 +719,12 @@ module GHB
             }
           )
 
-          if code_deploy_pre_steps.empty?
-            do_step('Checkout') do
-              copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-              do_uses('cloud-officer/ci-actions/codedeploy/checkout@master')
-              do_with({ 'ssh-key': '${{secrets.SSH_KEY}}' }) if with.empty?
-              self.if = nil
-            end
-          else
-            code_deploy_pre_steps.each do |step|
-              step.if = nil
-              step.with.reject! { |key, _value| key.to_s.include?('apt') or key.to_s.include?('mongodb') or key.to_s.include?('mysql') or key.to_s.include?('redis') or key.to_s.include?('aws') }
-            end
-
-            self.steps = code_deploy_pre_steps
-          end
+          dependencies_steps.first.if = nil
+          self.steps = dependencies_steps
 
           do_step('Update Dependencies') do
             do_shell('bash')
-            do_run(
-              <<~BASH
-                git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
-                git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf https://github.com/
-                git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf git@github.com:
-
-                if [ -f "composer.json" ]; then
-                  composer update
-                fi
-
-                if [ -f "Gemfile" ]; then
-                  bundle config set frozen false
-                  bundle update
-                fi
-
-                if [ -f "requirements.in" ]; then
-                  pip install pip-tools
-                  pip-compile --resolver=backtracking --upgrade
-                fi
-              BASH
-            )
+            do_run(dependencies_commands)
           end
 
           do_step('Licenses') do
