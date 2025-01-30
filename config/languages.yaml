@@ -18,6 +18,7 @@ go:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Go Modules
     package_manager_default: go mod vendor
+    package_manager_update: go mod tidy
     dependabot_ecosystem: gomod
   unit_test_framework_name: Testing
   unit_test_framework_default: go test
@@ -40,6 +41,7 @@ kotlin:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Gradle
     package_manager_default: gradle build
+    package_manager_update: gradle dependencies --refresh-dependencies
     dependabot_ecosystem: gradle
   - dependency_file: pom.xml
     mongodb_dependency: mongo
@@ -48,6 +50,7 @@ kotlin:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Maven
     package_manager_default: mvn install
+    package_manager_update: mvn versions:use-latest-releases
     dependabot_ecosystem: maven
   unit_test_framework_name: JUnit
   unit_test_framework_default: gradle test
@@ -76,6 +79,7 @@ php:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Composer
     package_manager_default: composer install
+    package_manager_update: composer update --no-scripts
     dependabot_ecosystem: composer
   - dependency_file: yarn.lock
     mongodb_dependency: mongodb
@@ -84,6 +88,7 @@ php:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Yarn
     package_manager_default: yarn install
+    package_manager_update: yarn upgrade
     dependabot_ecosystem: npm
   unit_test_framework_name: PHPUnit
   unit_test_framework_default: vendor/bin/phpunit
@@ -108,6 +113,7 @@ proto:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Go Modules
     package_manager_default: go mod vendor
+    package_manager_update: go mod tidy
     dependabot_ecosystem: gomod
   unit_test_framework_name: Protoc
   unit_test_framework_default: protoc
@@ -135,6 +141,7 @@ python:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Pip
     package_manager_default: pip install -r requirements.txt
+    package_manager_update: pip-compile --resolver=backtracking --upgrade
     dependabot_ecosystem: pip
   unit_test_framework_name: Coverage
   unit_test_framework_default: coverage run -m unittest
@@ -175,6 +182,7 @@ ruby:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Bundler
     package_manager_default: bundle install
+    package_manager_update: bundle config set frozen false ; bundle update
     dependabot_ecosystem: bundler
   unit_test_framework_name: RSpec
   unit_test_framework_default: bundle exec rspec
