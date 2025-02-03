@@ -19,7 +19,6 @@ module GHB
       @code_deploy_pre_steps = []
       @dependabot_package_managers = %w[github-actions]
       @exit_code = Status::SUCCESS_EXIT_CODE
-      @dependencies_workflow = Workflow.new('Dependencies')
       @dependencies_steps = []
       @cron_workflow = Workflow.new('Cron Dependencies')
       @dockerhub_workflow = Workflow.new('Publish Docker image')
@@ -109,7 +108,7 @@ module GHB
 
       @new_workflow.run_name = @old_workflow.run_name unless @old_workflow.run_name.nil?
       @new_workflow.permissions = @old_workflow.permissions || {}
-      @new_workflow.env = @old_workflow.env || {}
+      @new_workflow.env = @old_workflow.env.is_a?(Hash) ? @old_workflow.env : {}
       @new_workflow.defaults = @old_workflow.defaults || {}
       @new_workflow.concurrency = @old_workflow.concurrency || {}
     end
@@ -628,72 +627,10 @@ module GHB
       File.write('.github/dependabot.yml', { version: 2, updates: package_managers }.deep_stringify_keys.to_yaml({ line_width: -1 }))
 
       if @new_workflow.jobs[:licenses]
-        @dependencies_workflow.on =
-          {
-            push:
-              {
-                branches:
-                  %w[dependabot/**]
-              },
-            pull_request:
-              {
-                branches:
-                  %w[dependabot/**]
-              }
-          }
-
         new_workflow = @new_workflow
         dependencies_steps = @dependencies_steps
         dependencies_commands = @dependencies_commands
-
-        @dependencies_workflow.do_job(:update_dependencies) do
-          do_name('Update Dependencies')
-          do_runs_on(DEFAULT_UBUNTU_VERSION)
-          do_permissions(
-            {
-              contents: 'write'
-            }
-          )
-
-          do_step('Licenses') do
-            copy_properties(new_workflow.jobs[:licenses]&.steps&.first, %i[id if uses run shell with env continue_on_error timeout_minutes])
-            do_uses('cloud-officer/ci-actions/soup@master')
-
-            if with.empty?
-              do_with(
-                {
-                  'ssh-key': '${{secrets.SSH_KEY}}',
-                  'github-token': '${{secrets.SOUP_DEPENDENCIES_UPDATE}}',
-                  parameters: '--no_prompt'
-                }
-              )
-            end
-
-            with['github-token'] = '${{secrets.SOUP_DEPENDENCIES_UPDATE}}'
-          end
-
-          do_step('Set GitHub to use https with credentials') do
-            do_shell('bash')
-            do_run(
-              <<~BASH
-                git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
-                git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf https://github.com/
-                git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf git@github.com:
-              BASH
-            )
-          end
-
-          do_step('Auto Commit Changes') do
-            do_uses('stefanzweifel/git-auto-commit-action@v5')
-            do_with(
-              {
-                commit_message: 'Updated soup files'
-              }
-            )
-          end
-        end
-
-        @dependencies_workflow.write('.github/workflows/soup.yml')
+        FileUtils.rm_f('.github/workflows/soup.yml')
 
         @cron_workflow.on =
           {
@@ -763,7 +700,6 @@ module GHB
 
         @cron_workflow.write('.github/workflows/dependencies.yml')
       else
-        FileUtils.rm_f('.github/workflows/soup.yml')
         FileUtils.rm_f('.github/workflows/dependencies.yml')
       end
     end

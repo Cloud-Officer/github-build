@@ -6,9 +6,17 @@ go:
   setup_options:
   - name: go-version
     value: 1.23.4
+  - name: go-version-file
+    value:
   - name: go-check-latest
     value:
   - name: go-token
+    value:
+  - name: go-cache
+    value:
+  - name: go-cache-dependency-path
+    value:
+  - name: go-architecture
     value:
   dependencies:
   - dependency_file: go.mod
@@ -22,6 +30,52 @@ go:
     dependabot_ecosystem: gomod
   unit_test_framework_name: Testing
   unit_test_framework_default: go test
+js:
+  short_name: js
+  long_name: JavaScript
+  file_extension: js
+  setup_options:
+  - name: node-version
+    value: 23.7.0
+  - name: node-always-auth
+    value:
+  - name: node-version-file
+    value:
+  - name: node-architecture
+    value:
+  - name: node-check-latest
+    value:
+  - name: node-registry-url
+    value:
+  - name: node-scope
+    value:
+  - name: node-token
+    value:
+  - name: node-cache
+    value:
+  - name: node-cache-dependency-path
+    value:
+  dependencies:
+  - dependency_file: package-lock.json
+    mongodb_dependency: mongodb
+    mysql_dependency: mysql
+    redis_dependency: redis
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: NPM
+    package_manager_default: npm install
+    package_manager_update: npm upgrade
+    dependabot_ecosystem: npm
+  - dependency_file: yarn.lock
+    mongodb_dependency: mongodb
+    mysql_dependency: mysql
+    redis_dependency: redis
+    elasticsearch_dependency: elasticsearch
+    package_manager_name: Yarn
+    package_manager_default: yarn install
+    package_manager_update: yarn upgrade
+    dependabot_ecosystem: npm
+  unit_test_framework_name: Jest
+  unit_test_framework_default: npx jest
 kotlin:
   short_name: kotlin
   long_name: Kotlin
@@ -29,10 +83,60 @@ kotlin:
   setup_options:
   - name: java-version
     value: 24
+  - name: java-version-file
+    value:
   - name: java-distribution
     value: temurin
+  - name: java-package
+    value:
+  - name: java-architecture
+    value:
+  - name: java-jdkFile
+    value:
+  - name: java-check-latest
+    value:
+  - name: java-server-id
+    value:
+  - name: java-server-username
+    value:
+  - name: java-server-password
+    value:
+  - name: java-settings-path
+    value:
+  - name: java-overwrite-settings
+    value:
+  - name: java-gpg-private-key
+    value:
+  - name: java-gpg-passphrase
+    value:
+  - name: java-cache
+    value:
+  - name: java-cache-dependency-path
+    value:
+  - name: java-job-status
+    value:
+  - name: java-token
+    value:
+  - name: java-mvn-toolchain-id
+    value:
+  - name: java-mvn-toolchain-vendor
+    value:
   - name: android-sdk-version
     value: 34
+  - name: android-build-tools-version
+    value:
+  - name: android-ndk-version
+    value:
+  - name: android-cmake-version
+    value:
+  - name: android-cache-disabled
+    value:
+  - name: android-cache-key
+    value:
+  - name: android-generate-job-summary
+    value:
+  - name: android-job-status
+    value:
   dependencies:
   - dependency_file: build.gradle
     mongodb_dependency: mongo
@@ -61,6 +165,8 @@ php:
   setup_options:
   - name: php-version
     value: 8.4.3
+  - name: php-version-file
+    value:
   - name: php-extensions
     value:
   - name: php-ini-file
@@ -99,9 +205,17 @@ proto:
   setup_options:
   - name: go-version
     value: 1.23.4
+  - name: go-version-file
+    value:
   - name: go-check-latest
     value:
   - name: go-token
+    value:
+  - name: go-cache
+    value:
+  - name: go-cache-dependency-path
+    value:
+  - name: go-architecture
     value:
   - name: xcode-version
     value: '16.2'
@@ -125,13 +239,19 @@ python:
   setup_options:
   - name: python-version
     value: 3.13.1
+  - name: python-version-file
+    value:
   - name: python-cache
     value: pip
   - name: python-architecture
     value:
+  - name: python-check-latest
+    value:
   - name: python-token
     value:
   - name: python-cache-dependency-path
+    value:
+  - name: python-allow-prereleases
     value:
   dependencies:
   - dependency_file: requirements.txt
@@ -141,7 +261,7 @@ python:
     elasticsearch_dependency: elasticsearch
     package_manager_name: Pip
     package_manager_default: pip install -r requirements.txt
-    package_manager_update: pip-compile --resolver=backtracking --upgrade
+    package_manager_update: pip install pip-tools ; pip-compile --resolver=backtracking --upgrade
     dependabot_ecosystem: pip
   unit_test_framework_name: Coverage
   unit_test_framework_default: coverage run -m unittest
@@ -173,6 +293,10 @@ ruby:
   - name: ruby-working-directory
     value:
   - name: ruby-cache-version
+    value:
+  - name: ruby-self-hosted
+    value:
+  - name: ruby-windows-toolchain
     value:
   dependencies:
   - dependency_file: Gemfile

@@ -1,8 +1,17 @@
 {
   "env": {
-    "node": true
+    "node": true,
+    "es2021": true
   },
+  "extends": ["eslint:recommended"],
   "parserOptions": {
-    "ecmaVersion": 2018
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-console": "off",         // Allow console logs in AWS Lambda
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }], // Ignore unused variables prefixed with "_"
+    "no-undef": "off",           // Disable "undefined variable" warnings (optional)
+    "strict": ["error", "global"] // Ensure strict mode for better error handling
   }
 }
