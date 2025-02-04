@@ -656,8 +656,16 @@ module GHB
             }
           )
 
+          merged_with = {}
+
+          dependencies_steps.each do |step|
+            merged_with.merge!(step.with) if step.with
+          end
+
           dependencies_steps&.first&.if = nil
-          self.steps = dependencies_steps
+          dependencies_steps&.first&.with = merged_with
+
+          self.steps = [dependencies_steps&.first]
 
           do_step('Update Dependencies') do
             do_shell('bash')
