@@ -24,7 +24,7 @@
 | Ruby | open3 | 0.2.1 | Ruby | Popen, but with stderr, too | <https://github.com/ruby/open3> | 2023-06-12 | Low | System calls | Most popular gem on rubygems |
 | Ruby | optparse | 0.6.0 | Ruby | OptionParser is a class for command-line option analysis. | <https://github.com/ruby/optparse> | 2023-06-12 | Low | Command line argument parser | Most popular gem on rubygems |
 | Ruby | parallel | 1.26.3 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | parser | 3.3.7.0 | MIT | A Ruby parser written in pure Ruby. | <https://github.com/whitequark/parser> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | parser | 3.3.7.1 | MIT | A Ruby parser written in pure Ruby. | <https://github.com/whitequark/parser> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | psych | 5.2.3 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2023-06-12 | Low | Yaml parser | Most popular gem on rubygems |
 | Ruby | racc | 1.8.1 | Ruby | Racc is an LALR(1) parser generator. | <https://github.com/ruby/racc> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | rainbow | 3.1.1 | MIT | Colorize printed text on ANSI terminals | <https://github.com/sickill/rainbow> | 2023-06-12 | Low | Dependency | Dependency |
