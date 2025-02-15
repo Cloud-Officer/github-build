@@ -25,7 +25,7 @@
     <orderEntry type="library" scope="PROVIDED" name="duplicate (v1.1.1, rbenv: 3.4.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="httparty (v0.22.0, rbenv: 3.4.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="i18n (v1.14.7, rbenv: 3.4.1) [gem]" level="application" />
-    <orderEntry type="library" scope="PROVIDED" name="json (v2.9.1, rbenv: 3.4.1) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="json (v2.10.0, rbenv: 3.4.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="language_server-protocol (v3.17.0.4, rbenv: 3.4.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="logger (v1.6.5, rbenv: 3.4.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="mini_mime (v1.1.5, rbenv: 3.4.1) [gem]" level="application" />
@@ -34,7 +34,7 @@
     <orderEntry type="library" scope="PROVIDED" name="open3 (v0.2.1, rbenv: 3.4.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="optparse (v0.6.0, rbenv: 3.4.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="parallel (v1.26.3, rbenv: 3.4.1) [gem]" level="application" />
-    <orderEntry type="library" scope="PROVIDED" name="parser (v3.3.7.0, rbenv: 3.4.1) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="parser (v3.3.7.1, rbenv: 3.4.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="psych (v5.2.3, rbenv: 3.4.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="racc (v1.8.1, rbenv: 3.4.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rainbow (v3.1.1, rbenv: 3.4.1) [gem]" level="application" />
