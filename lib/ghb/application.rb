@@ -818,7 +818,7 @@ module GHB
 
       raise('Error: master branch invalid allow deletions!') unless branch['allow_deletions']['enabled'] == false
 
-      raise('Error: master branch invalid block creations!') unless branch['block_creations']['enabled'] == false
+      raise('Error: master branch invalid block creations!') unless branch['block_creations']['enabled'] == true
 
       raise('Error: master branch invalid required conversation resolution!') unless branch['required_conversation_resolution']['enabled']
 
