@@ -617,6 +617,8 @@ module GHB
           {
             'package-ecosystem': package_manager,
             directory: '/',
+            'open-pull-requests-limit': 0,
+            'security-updates-only': true,
             schedule:
               {
                 interval: 'monthly'
