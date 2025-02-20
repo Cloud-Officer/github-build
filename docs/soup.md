@@ -40,7 +40,7 @@
 | Ruby | rubocop-thread_safety | 0.6.0 | MIT |   Thread-safety checks via static analysis. | <https://github.com/rubocop/rubocop-thread_safety> | 2024-09-16 | Low | Ruby linter | Most popular gem |
 | Ruby | ruby-progressbar | 1.13.0 | MIT | Ruby/ProgressBar is an extremely flexible text progress bar library for Ruby | <https://github.com/jfelchner/ruby-progressbar> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | securerandom | 0.4.1 | Ruby | Interface for secure random number generator. | <https://github.com/ruby/securerandom> | 2024-08-12 | Low | Dependency | Dependency |
-| Ruby | stringio | 3.1.3 | Ruby | Pseudo `IO` class from/to `String`. | <https://github.com/ruby/stringio> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | stringio | 3.1.4 | Ruby | Pseudo `IO` class from/to `String`. | <https://github.com/ruby/stringio> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | tzinfo | 2.0.6 | MIT | TZInfo provides access to time zone data and allows times to be converted using time zone rules. | <https://tzinfo.github.io> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | unicode-display_width | 3.1.4 | MIT | [Unicode 16.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, Emoji specification, and other data. | <https://github.com/janlelis/unicode-display_width> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | unicode-emoji | 4.0.4 | MIT | [Emoji 16.0] Provides Unicode Emoji data and regexes, incorporating the latest Unicode and Emoji standards | <https://github.com/janlelis/unicode-emoji> | 2024-11-26 | Low | Dependency | Dependency |
