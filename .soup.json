@@ -422,7 +422,7 @@
   "rubocop-thread_safety": {
     "language": "Ruby",
     "package": "rubocop-thread_safety",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "license": "MIT",
     "description": "  Thread-safety checks via static analysis.",
     "website": "https://github.com/rubocop/rubocop-thread_safety",
@@ -458,7 +458,7 @@
   "stringio": {
     "language": "Ruby",
     "package": "stringio",
-    "version": "3.1.4",
+    "version": "3.1.5",
     "license": "Ruby",
     "description": "Pseudo `IO` class from/to `String`.",
     "website": "https://github.com/ruby/stringio",
