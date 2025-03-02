@@ -36,7 +36,7 @@ js:
   file_extension: js
   setup_options:
   - name: node-version
-    value: 23.8.0
+    value: 23.9.0
   - name: node-always-auth
     value:
   - name: node-version-file
