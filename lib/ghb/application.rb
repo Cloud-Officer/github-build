@@ -605,8 +605,17 @@ module GHB
 
       languages&.each_value do |language|
         language[:dependencies].each do |dependency|
-          Find.find('.') do |path|
-            @dependabot_package_managers.push(dependency[:dependabot_ecosystem]) if path.end_with?(dependency[:dependency_file]) and dependency[:dependabot_ecosystem]
+          find_command = 'find .'
+          find_command += @submodules unless @submodules.empty?
+          stdout_str, _stderr_str, status = Open3.capture3(find_command)
+
+          next unless status.success?
+
+          stdout_str.each_line do |path|
+            if path.strip.end_with?(dependency[:dependency_file]) and dependency[:dependabot_ecosystem]
+              @dependabot_package_managers.push(dependency[:dependabot_ecosystem])
+              puts("        Enabling #{dependency[:dependabot_ecosystem]}...")
+            end
           end
         end
       end
@@ -628,7 +637,7 @@ module GHB
 
       File.write('.github/dependabot.yml', { version: 2, updates: package_managers }.deep_stringify_keys.to_yaml({ line_width: -1 }))
 
-      if @new_workflow.jobs[:licenses]
+      if @new_workflow.jobs[:licenses] and @dependencies_steps
         new_workflow = @new_workflow
         dependencies_steps = @dependencies_steps
         dependencies_commands = @dependencies_commands
