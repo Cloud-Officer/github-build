@@ -637,7 +637,7 @@ module GHB
 
       File.write('.github/dependabot.yml', { version: 2, updates: package_managers }.deep_stringify_keys.to_yaml({ line_width: -1 }))
 
-      if @new_workflow.jobs[:licenses] and @dependencies_steps
+      if @new_workflow.jobs[:licenses] and !@dependencies_steps.empty?
         new_workflow = @new_workflow
         dependencies_steps = @dependencies_steps
         dependencies_commands = @dependencies_commands
