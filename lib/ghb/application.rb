@@ -419,9 +419,20 @@ module GHB
 
     def add_setup_options(setup_options, options)
       options.each do |option|
-        value = @new_workflow.env[option[:name].upcase.to_sym] || option[:value]
+        existing_value = @new_workflow.env[option[:name].upcase.to_sym]
+        option_value = option[:value]
+        value = existing_value || option_value
 
         next unless value
+
+        if existing_value && option_value && existing_value != option_value
+          puts("\n#{'*' * 80}")
+          puts("WARNING: Value mismatch for #{option[:name].upcase}")
+          puts("Existing value: #{existing_value}")
+          puts("Recommended value: #{option_value}")
+          puts('Using existing value.')
+          puts("#{'*' * 80}\n\n")
+        end
 
         @new_workflow.env[option[:name].upcase.to_sym] = value unless @new_workflow.env[option[:name].upcase.to_sym]
         setup_options[option[:name]] = "${{env.#{option[:name].upcase}}}"
