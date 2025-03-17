@@ -425,7 +425,7 @@ module GHB
 
         next unless value
 
-        if existing_value && option_value && existing_value != option_value
+        if existing_value && option_value && existing_value.to_s != option_value.to_s
           puts("\n#{'*' * 80}")
           puts("WARNING: Value mismatch for #{option[:name].upcase}")
           puts("Existing value: #{existing_value}")
