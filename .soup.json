@@ -398,7 +398,7 @@
   "rubocop-minitest": {
     "language": "Ruby",
     "package": "rubocop-minitest",
-    "version": "0.37.1",
+    "version": "0.38.0",
     "license": "MIT",
     "description": "Automatic Minitest code style checking tool.",
     "website": "https://docs.rubocop.org/rubocop-minitest/",
@@ -410,7 +410,7 @@
   "rubocop-performance": {
     "language": "Ruby",
     "package": "rubocop-performance",
-    "version": "1.24.0",
+    "version": "1.25.0",
     "license": "MIT",
     "description": "A collection of RuboCop cops to check for performance optimizations",
     "website": "https://docs.rubocop.org/rubocop-performance/",
