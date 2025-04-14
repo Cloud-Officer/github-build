@@ -164,7 +164,7 @@ php:
   file_extension: php
   setup_options:
   - name: php-version
-    value: 8.4.5
+    value: 8.4.6
   - name: php-version-file
     value:
   - name: php-extensions
