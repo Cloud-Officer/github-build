@@ -170,7 +170,7 @@
   "language_server-protocol": {
     "language": "Ruby",
     "package": "language_server-protocol",
-    "version": "3.17.0.4",
+    "version": "3.17.0.5",
     "license": "MIT",
     "description": "A Language Server Protocol SDK",
     "website": "https://github.com/mtsmfm/language_server-protocol-ruby",
