@@ -45,7 +45,7 @@ GEM
       ast (~> 2.4.1)
       racc
     prism (1.4.0)
-    psych (5.2.5)
+    psych (5.2.6)
       date
       stringio
     racc (1.8.1)
@@ -117,4 +117,4 @@ DEPENDENCIES
   rubocop-thread_safety (>= 0.5.1)
 
 BUNDLED WITH
-   2.6.8
+   2.6.9

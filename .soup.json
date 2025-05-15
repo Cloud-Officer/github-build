@@ -302,7 +302,7 @@
   "psych": {
     "language": "Ruby",
     "package": "psych",
-    "version": "5.2.5",
+    "version": "5.2.6",
     "license": "MIT",
     "description": "Psych is a YAML parser and emitter",
     "website": "https://github.com/ruby/psych",
