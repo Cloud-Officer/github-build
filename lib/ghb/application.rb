@@ -856,14 +856,6 @@ module GHB
 
       raise(response.message) unless response.code == 200
 
-      repository_settings = JSON.parse(response.body)
-
-      if repository_settings['private']
-        response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { has_issues: false }.to_json))
-
-        raise('Error: cannot disable issues!') unless response.code == 200
-      end
-
       response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { has_wiki: false }.to_json))
 
       raise('Error: cannot disable wiki!') unless response.code == 200
