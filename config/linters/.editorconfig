@@ -1,12 +1,11 @@
 [*.{kt,kts}]
 # https://github.com/pinterest/ktlint#editorconfig
 
-# comma-separated list of rules to disable (Since 0.34.0)
-# note that rules in any ruleset other than the standard ruleset will need to be prefixed
-# by the ruleset identifier.
-disabled_rules=no-wildcard-imports,indent
+# For ktlint 1.0+, use the new format for disabling rules
+ktlint_standard_max-line-length = disabled
 
-# possible values: number (e.g. 2), "unset" (makes ktlint ignore indentation completely)
+# Don't disable indent rule as other rules depend on it
+# Instead, set indent_size to your preference
 indent_size=4
 
 # true (recommended) / false
