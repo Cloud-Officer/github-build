@@ -190,7 +190,7 @@ module GHB
         old_workflow = @old_workflow
 
         if linter[:config]
-          if File.exist?("#{script_path}/linters/#{linter[:config]}")
+          if File.exist?("#{script_path}/linters/#{linter[:config]}") && linter[:config] != '.editorconfig'
             FileUtils.ln_s("#{script_path}/linters/#{linter[:config]}", linter[:config], force: true)
           else
             File.delete(linter[:config]) if File.symlink?(linter[:config]) or File.exist?(linter[:config])
