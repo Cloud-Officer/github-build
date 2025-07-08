@@ -321,11 +321,11 @@ module GHB
           language_detected = true
 
           language[:dependencies].each do |dependency|
-            _stdout_str, _stderr_str, status = Open3.capture3("grep #{dependency[:mongodb_dependency]} #{dependency[:dependency_file]} &> /dev/null")
+            _stdout_str, _stderr_str, status = Open3.capture3("grep -q #{dependency[:mongodb_dependency]} #{dependency[:dependency_file]}")
             mongodb = true if status.success?
-            _stdout_str, _stderr_str, status = Open3.capture3("grep #{dependency[:mysql_dependency]} #{dependency[:dependency_file]} &> /dev/null")
+            _stdout_str, _stderr_str, status = Open3.capture3("grep -q #{dependency[:mysql_dependency]} #{dependency[:dependency_file]}")
             mysql = true if status.success?
-            _stdout_str, _stderr_str, status = Open3.capture3("grep #{dependency[:redis_dependency]} #{dependency[:dependency_file]} &> /dev/null")
+            _stdout_str, _stderr_str, status = Open3.capture3("grep -q #{dependency[:redis_dependency]} #{dependency[:dependency_file]}")
             redis = true if status.success?
           end
         end
