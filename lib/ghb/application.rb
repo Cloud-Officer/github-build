@@ -182,7 +182,7 @@ module GHB
         find_command = "find #{linter[:path]}"
         find_command += excluded_folders unless excluded_folders.empty?
         find_command += @submodules unless @submodules.empty?
-        find_command += " | grep -v linters | grep -v vendor | grep -E '#{linter[:pattern]}'"
+        find_command += " | grep -v /node_modules/ | grep -v linters | grep -v vendor | grep -E '#{linter[:pattern]}'"
         _stdout_str, _stderr_str, status = Open3.capture3(find_command)
 
         next unless status.success?
