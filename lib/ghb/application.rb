@@ -7,6 +7,7 @@ require 'httparty'
 require 'json'
 require 'open3'
 require 'psych'
+require 'rbconfig'
 
 require_relative 'options'
 require_relative 'status'
@@ -301,7 +302,12 @@ module GHB
         redis = false
         setup_options = {}
 
-        _stdout_str, _stderr_str, status = Open3.capture3("find -E . #{excluded_folders} -regex '.*\\.(#{language[:file_extension]})' #{@submodules} | grep -E '.*' &> /dev/null")
+        case RbConfig::CONFIG['host_os']
+        when /linux/
+          _stdout_str, _stderr_str, status = Open3.capture3("find . #{excluded_folders} -regextype posix-extended -regex '.*\\.(#{language[:file_extension]})' #{@submodules} | grep -qE '.*'")
+        else
+          _stdout_str, _stderr_str, status = Open3.capture3("find -E . #{excluded_folders} -regex '.*\\.(#{language[:file_extension]})' #{@submodules} | grep -qE '.*'")
+        end
 
         if status.success?
           dependency_detected = false
