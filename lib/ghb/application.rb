@@ -7,6 +7,7 @@ require 'httparty'
 require 'json'
 require 'open3'
 require 'psych'
+require 'rbconfig'
 
 require_relative 'options'
 require_relative 'status'
@@ -181,7 +182,7 @@ module GHB
         find_command = "find #{linter[:path]}"
         find_command += excluded_folders unless excluded_folders.empty?
         find_command += @submodules unless @submodules.empty?
-        find_command += " | grep -v linters | grep -v vendor | grep -E '#{linter[:pattern]}'"
+        find_command += " | grep -v /node_modules/ | grep -v linters | grep -v vendor | grep -E '#{linter[:pattern]}'"
         _stdout_str, _stderr_str, status = Open3.capture3(find_command)
 
         next unless status.success?
@@ -301,7 +302,12 @@ module GHB
         redis = false
         setup_options = {}
 
-        _stdout_str, _stderr_str, status = Open3.capture3("find -E . #{excluded_folders} -regex '.*\\.(#{language[:file_extension]})' #{@submodules} | grep -E '.*' &> /dev/null")
+        case RbConfig::CONFIG['host_os']
+        when /linux/
+          _stdout_str, _stderr_str, status = Open3.capture3("find . #{excluded_folders} -regextype posix-extended -regex '.*\\.(#{language[:file_extension]})' #{@submodules} | grep -qE '.*'")
+        else
+          _stdout_str, _stderr_str, status = Open3.capture3("find -E . #{excluded_folders} -regex '.*\\.(#{language[:file_extension]})' #{@submodules} | grep -qE '.*'")
+        end
 
         if status.success?
           dependency_detected = false
@@ -315,11 +321,11 @@ module GHB
           language_detected = true
 
           language[:dependencies].each do |dependency|
-            _stdout_str, _stderr_str, status = Open3.capture3("grep #{dependency[:mongodb_dependency]} #{dependency[:dependency_file]} &> /dev/null")
+            _stdout_str, _stderr_str, status = Open3.capture3("grep -q #{dependency[:mongodb_dependency]} #{dependency[:dependency_file]}")
             mongodb = true if status.success?
-            _stdout_str, _stderr_str, status = Open3.capture3("grep #{dependency[:mysql_dependency]} #{dependency[:dependency_file]} &> /dev/null")
+            _stdout_str, _stderr_str, status = Open3.capture3("grep -q #{dependency[:mysql_dependency]} #{dependency[:dependency_file]}")
             mysql = true if status.success?
-            _stdout_str, _stderr_str, status = Open3.capture3("grep #{dependency[:redis_dependency]} #{dependency[:dependency_file]} &> /dev/null")
+            _stdout_str, _stderr_str, status = Open3.capture3("grep -q #{dependency[:redis_dependency]} #{dependency[:dependency_file]}")
             redis = true if status.success?
           end
         end
