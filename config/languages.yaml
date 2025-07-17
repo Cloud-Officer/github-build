@@ -4,30 +4,30 @@ go:
   long_name: Go
   file_extension: go
   setup_options:
-  - name: go-version
-    value: 1.23.4
-  - name: go-version-file
-    value:
-  - name: go-check-latest
-    value:
-  - name: go-token
-    value:
-  - name: go-cache
-    value:
-  - name: go-cache-dependency-path
-    value:
-  - name: go-architecture
-    value:
+    - name: go-version
+      value: 1.24.5 time
+    - name: go-version-file
+      value:
+    - name: go-check-latest
+      value:
+    - name: go-token
+      value:
+    - name: go-cache
+      value:
+    - name: go-cache-dependency-path
+      value:
+    - name: go-architecture
+      value:
   dependencies:
-  - dependency_file: go.mod
-    mongodb_dependency: mongodb
-    mysql_dependency: sql
-    redis_dependency: redis
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: Go Modules
-    package_manager_default: go mod vendor
-    package_manager_update: go mod tidy
-    dependabot_ecosystem: gomod
+    - dependency_file: go.mod
+      mongodb_dependency: mongodb
+      mysql_dependency: sql
+      redis_dependency: redis
+      elasticsearch_dependency: elasticsearch
+      package_manager_name: Go Modules
+      package_manager_default: go mod vendor
+      package_manager_update: go mod tidy
+      dependabot_ecosystem: gomod
   unit_test_framework_name: Testing
   unit_test_framework_default: go test
 js:
@@ -35,45 +35,45 @@ js:
   long_name: JavaScript
   file_extension: js
   setup_options:
-  - name: node-version
-    value: 24.4.0
-  - name: node-always-auth
-    value:
-  - name: node-version-file
-    value:
-  - name: node-architecture
-    value:
-  - name: node-check-latest
-    value:
-  - name: node-registry-url
-    value:
-  - name: node-scope
-    value:
-  - name: node-token
-    value:
-  - name: node-cache
-    value:
-  - name: node-cache-dependency-path
-    value:
+    - name: node-version
+      value: 24.4.1
+    - name: node-always-auth
+      value:
+    - name: node-version-file
+      value:
+    - name: node-architecture
+      value:
+    - name: node-check-latest
+      value:
+    - name: node-registry-url
+      value:
+    - name: node-scope
+      value:
+    - name: node-token
+      value:
+    - name: node-cache
+      value:
+    - name: node-cache-dependency-path
+      value:
   dependencies:
-  - dependency_file: package-lock.json
-    mongodb_dependency: mongodb
-    mysql_dependency: mysql
-    redis_dependency: redis
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: NPM
-    package_manager_default: npm install
-    package_manager_update: npm upgrade
-    dependabot_ecosystem: npm
-  - dependency_file: yarn.lock
-    mongodb_dependency: mongodb
-    mysql_dependency: mysql
-    redis_dependency: redis
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: Yarn
-    package_manager_default: yarn install
-    package_manager_update: yarn upgrade
-    dependabot_ecosystem: npm
+    - dependency_file: package-lock.json
+      mongodb_dependency: mongodb
+      mysql_dependency: mysql
+      redis_dependency: redis
+      elasticsearch_dependency: elasticsearch
+      package_manager_name: NPM
+      package_manager_default: npm install
+      package_manager_update: npm upgrade
+      dependabot_ecosystem: npm
+    - dependency_file: yarn.lock
+      mongodb_dependency: mongodb
+      mysql_dependency: mysql
+      redis_dependency: redis
+      elasticsearch_dependency: elasticsearch
+      package_manager_name: Yarn
+      package_manager_default: yarn install
+      package_manager_update: yarn upgrade
+      dependabot_ecosystem: npm
   unit_test_framework_name: Jest
   unit_test_framework_default: npx jest
 kotlin:
@@ -81,81 +81,81 @@ kotlin:
   long_name: Kotlin
   file_extension: kt
   setup_options:
-  - name: java-version
-    value: 24
-  - name: java-version-file
-    value:
-  - name: java-distribution
-    value: temurin
-  - name: java-package
-    value:
-  - name: java-architecture
-    value:
-  - name: java-jdkFile
-    value:
-  - name: java-check-latest
-    value:
-  - name: java-server-id
-    value:
-  - name: java-server-username
-    value:
-  - name: java-server-password
-    value:
-  - name: java-settings-path
-    value:
-  - name: java-overwrite-settings
-    value:
-  - name: java-gpg-private-key
-    value:
-  - name: java-gpg-passphrase
-    value:
-  - name: java-cache
-    value:
-  - name: java-cache-dependency-path
-    value:
-  - name: java-job-status
-    value:
-  - name: java-token
-    value:
-  - name: java-mvn-toolchain-id
-    value:
-  - name: java-mvn-toolchain-vendor
-    value:
-  - name: android-sdk-version
-    value: 34
-  - name: android-build-tools-version
-    value:
-  - name: android-ndk-version
-    value:
-  - name: android-cmake-version
-    value:
-  - name: android-cache-disabled
-    value:
-  - name: android-cache-key
-    value:
-  - name: android-generate-job-summary
-    value:
-  - name: android-job-status
-    value:
+    - name: java-version
+      value: 24.0.1
+    - name: java-version-file
+      value:
+    - name: java-distribution
+      value: temurin
+    - name: java-package
+      value:
+    - name: java-architecture
+      value:
+    - name: java-jdkFile
+      value:
+    - name: java-check-latest
+      value:
+    - name: java-server-id
+      value:
+    - name: java-server-username
+      value:
+    - name: java-server-password
+      value:
+    - name: java-settings-path
+      value:
+    - name: java-overwrite-settings
+      value:
+    - name: java-gpg-private-key
+      value:
+    - name: java-gpg-passphrase
+      value:
+    - name: java-cache
+      value:
+    - name: java-cache-dependency-path
+      value:
+    - name: java-job-status
+      value:
+    - name: java-token
+      value:
+    - name: java-mvn-toolchain-id
+      value:
+    - name: java-mvn-toolchain-vendor
+      value:
+    - name: android-sdk-version
+      value: 34
+    - name: android-build-tools-version
+      value:
+    - name: android-ndk-version
+      value:
+    - name: android-cmake-version
+      value:
+    - name: android-cache-disabled
+      value:
+    - name: android-cache-key
+      value:
+    - name: android-generate-job-summary
+      value:
+    - name: android-job-status
+      value:
   dependencies:
-  - dependency_file: build.gradle
-    mongodb_dependency: mongo
-    mysql_dependency: mysql
-    redis_dependency: redis
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: Gradle
-    package_manager_default: gradle build
-    package_manager_update: gradle dependencies --refresh-dependencies
-    dependabot_ecosystem: gradle
-  - dependency_file: pom.xml
-    mongodb_dependency: mongo
-    mysql_dependency: mysql
-    redis_dependency: redis
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: Maven
-    package_manager_default: mvn install
-    package_manager_update: mvn versions:use-latest-releases
-    dependabot_ecosystem: maven
+    - dependency_file: build.gradle
+      mongodb_dependency: mongo
+      mysql_dependency: mysql
+      redis_dependency: redis
+      elasticsearch_dependency: elasticsearch
+      package_manager_name: Gradle
+      package_manager_default: gradle build
+      package_manager_update: gradle dependencies --refresh-dependencies
+      dependabot_ecosystem: gradle
+    - dependency_file: pom.xml
+      mongodb_dependency: mongo
+      mysql_dependency: mysql
+      redis_dependency: redis
+      elasticsearch_dependency: elasticsearch
+      package_manager_name: Maven
+      package_manager_default: mvn install
+      package_manager_update: mvn versions:use-latest-releases
+      dependabot_ecosystem: maven
   unit_test_framework_name: JUnit
   unit_test_framework_default: gradle test
 php:
@@ -163,39 +163,39 @@ php:
   long_name: PHP
   file_extension: php
   setup_options:
-  - name: php-version
-    value: 8.4.10
-  - name: php-version-file
-    value:
-  - name: php-extensions
-    value:
-  - name: php-ini-file
-    value:
-  - name: php-ini-values
-    value:
-  - name: php-coverage
-    value:
-  - name: php-tools
-    value: composer
+    - name: php-version
+      value: 8.4.10
+    - name: php-version-file
+      value:
+    - name: php-extensions
+      value:
+    - name: php-ini-file
+      value:
+    - name: php-ini-values
+      value:
+    - name: php-coverage
+      value:
+    - name: php-tools
+      value: composer
   dependencies:
-  - dependency_file: composer.json
-    mongodb_dependency: mongodb
-    mysql_dependency: doctrine-bundle
-    redis_dependency: redis
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: Composer
-    package_manager_default: composer install
-    package_manager_update: composer update --no-scripts
-    dependabot_ecosystem: composer
-  - dependency_file: yarn.lock
-    mongodb_dependency: mongodb
-    mysql_dependency: mysql
-    redis_dependency: redis
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: Yarn
-    package_manager_default: yarn install
-    package_manager_update: yarn upgrade
-    dependabot_ecosystem: npm
+    - dependency_file: composer.json
+      mongodb_dependency: mongodb
+      mysql_dependency: doctrine-bundle
+      redis_dependency: redis
+      elasticsearch_dependency: elasticsearch
+      package_manager_name: Composer
+      package_manager_default: composer install
+      package_manager_update: composer update --no-scripts
+      dependabot_ecosystem: composer
+    - dependency_file: yarn.lock
+      mongodb_dependency: mongodb
+      mysql_dependency: mysql
+      redis_dependency: redis
+      elasticsearch_dependency: elasticsearch
+      package_manager_name: Yarn
+      package_manager_default: yarn install
+      package_manager_update: yarn upgrade
+      dependabot_ecosystem: npm
   unit_test_framework_name: PHPUnit
   unit_test_framework_default: vendor/bin/phpunit
 proto:
@@ -203,32 +203,32 @@ proto:
   long_name: Protocol Buffer
   file_extension: proto
   setup_options:
-  - name: go-version
-    value: 1.23.4
-  - name: go-version-file
-    value:
-  - name: go-check-latest
-    value:
-  - name: go-token
-    value:
-  - name: go-cache
-    value:
-  - name: go-cache-dependency-path
-    value:
-  - name: go-architecture
-    value:
-  - name: xcode-version
-    value: '16.2'
+    - name: go-version
+      value: 1.24.5 time
+    - name: go-version-file
+      value:
+    - name: go-check-latest
+      value:
+    - name: go-token
+      value:
+    - name: go-cache
+      value:
+    - name: go-cache-dependency-path
+      value:
+    - name: go-architecture
+      value:
+    - name: xcode-version
+      value: 16.4
   dependencies:
-  - dependency_file: go.mod
-    mongodb_dependency: mongodb
-    mysql_dependency: sql
-    redis_dependency: redis
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: Go Modules
-    package_manager_default: go mod vendor
-    package_manager_update: go mod tidy
-    dependabot_ecosystem: gomod
+    - dependency_file: go.mod
+      mongodb_dependency: mongodb
+      mysql_dependency: sql
+      redis_dependency: redis
+      elasticsearch_dependency: elasticsearch
+      package_manager_name: Go Modules
+      package_manager_default: go mod vendor
+      package_manager_update: go mod tidy
+      dependabot_ecosystem: gomod
   unit_test_framework_name: Protoc
   unit_test_framework_default: protoc
   runs-on: macos-latest
@@ -237,76 +237,76 @@ python:
   long_name: Python
   file_extension: py
   setup_options:
-  - name: python-version
-    value: 3.13.3
-  - name: python-version-file
-    value:
-  - name: python-cache
-    value: pip
-  - name: python-architecture
-    value:
-  - name: python-check-latest
-    value:
-  - name: python-token
-    value:
-  - name: python-cache-dependency-path
-    value:
-  - name: python-allow-prereleases
-    value:
+    - name: python-version
+      value: 3.13.5
+    - name: python-version-file
+      value:
+    - name: python-cache
+      value: pip
+    - name: python-architecture
+      value:
+    - name: python-check-latest
+      value:
+    - name: python-token
+      value:
+    - name: python-cache-dependency-path
+      value:
+    - name: python-allow-prereleases
+      value:
   dependencies:
-  - dependency_file: requirements.txt
-    mongodb_dependency: mongo
-    mysql_dependency: mysql
-    redis_dependency: redis
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: Pip
-    package_manager_default: pip install -r requirements.txt
-    package_manager_update: pip install pip-tools ; pip-compile --resolver=backtracking --upgrade
-    dependabot_ecosystem: pip
+    - dependency_file: requirements.txt
+      mongodb_dependency: mongo
+      mysql_dependency: mysql
+      redis_dependency: redis
+      elasticsearch_dependency: elasticsearch
+      package_manager_name: Pip
+      package_manager_default: pip install -r requirements.txt
+      package_manager_update: pip install pip-tools ; pip-compile --resolver=backtracking --upgrade
+      dependabot_ecosystem: pip
   unit_test_framework_name: Coverage
   unit_test_framework_default: coverage run -m unittest
 swift:
   short_name: swift
   long_name: Swift
   dependencies:
-  - dependency_file: Gemfile
-    dependabot_ecosystem: bundler
-  - dependency_file: Cartfile
-    dependabot_ecosystem: swift
-  - dependency_file: Podfile
-    dependabot_ecosystem: swift
-  - dependency_file: Package.swift
-    dependabot_ecosystem: swift
+    - dependency_file: Gemfile
+      dependabot_ecosystem: bundler
+    - dependency_file: Cartfile
+      dependabot_ecosystem: swift
+    - dependency_file: Podfile
+      dependabot_ecosystem: swift
+    - dependency_file: Package.swift
+      dependabot_ecosystem: swift
 ruby:
   short_name: ruby
   long_name: Ruby
   file_extension: rb
   setup_options:
-  - name: ruby-version
-    value: 3.4.4
-  - name: ruby-rubygems
-    value:
-  - name: ruby-bundler
-    value:
-  - name: ruby-bundler-cache
-    value: true
-  - name: ruby-working-directory
-    value:
-  - name: ruby-cache-version
-    value:
-  - name: ruby-self-hosted
-    value:
-  - name: ruby-windows-toolchain
-    value:
+    - name: ruby-version
+      value: 3.4.4
+    - name: ruby-rubygems
+      value:
+    - name: ruby-bundler
+      value:
+    - name: ruby-bundler-cache
+      value: true
+    - name: ruby-working-directory
+      value:
+    - name: ruby-cache-version
+      value:
+    - name: ruby-self-hosted
+      value:
+    - name: ruby-windows-toolchain
+      value:
   dependencies:
-  - dependency_file: Gemfile
-    mongodb_dependency: mongo
-    mysql_dependency: mysql
-    redis_dependency: redis
-    elasticsearch_dependency: elasticsearch
-    package_manager_name: Bundler
-    package_manager_default: bundle install
-    package_manager_update: bundle config set frozen false ; bundle update
-    dependabot_ecosystem: bundler
+    - dependency_file: Gemfile
+      mongodb_dependency: mongo
+      mysql_dependency: mysql
+      redis_dependency: redis
+      elasticsearch_dependency: elasticsearch
+      package_manager_name: Bundler
+      package_manager_default: bundle install
+      package_manager_update: bundle config set frozen false ; bundle update
+      dependabot_ecosystem: bundler
   unit_test_framework_name: RSpec
   unit_test_framework_default: bundle exec rspec
