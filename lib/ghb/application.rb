@@ -432,12 +432,12 @@ module GHB
         next unless value
 
         if existing_value && option_value && existing_value.to_s != option_value.to_s
-          puts("\n#{'*' * 80}")
+          puts("\e[31m\n#{'*' * 80}")
           puts("WARNING: Value mismatch for #{option[:name].upcase}")
           puts("Existing value: #{existing_value}")
           puts("Recommended value: #{option_value}")
           puts('Using existing value.')
-          puts("#{'*' * 80}\n\n")
+          puts("#{'*' * 80}\n\e[0m")
         end
 
         @new_workflow.env[option[:name].upcase.to_sym] = value unless @new_workflow.env[option[:name].upcase.to_sym]
