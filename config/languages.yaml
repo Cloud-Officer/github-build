@@ -82,7 +82,7 @@ kotlin:
   file_extension: kt
   setup_options:
     - name: java-version
-      value: 24.0.1
+      value: 24.0.2
     - name: java-version-file
       value:
     - name: java-distribution
