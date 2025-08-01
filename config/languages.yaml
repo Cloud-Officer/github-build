@@ -36,7 +36,7 @@ js:
   file_extension: js
   setup_options:
     - name: node-version
-      value: 24.4.1
+      value: 24.5.0
     - name: node-always-auth
       value:
     - name: node-version-file
@@ -164,7 +164,7 @@ php:
   file_extension: php
   setup_options:
     - name: php-version
-      value: 8.4.10
+      value: 8.4.11
     - name: php-version-file
       value:
     - name: php-extensions
