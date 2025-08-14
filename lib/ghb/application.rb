@@ -183,11 +183,21 @@ module GHB
         find_command += excluded_folders unless excluded_folders.empty?
         find_command += @submodules unless @submodules.empty?
         find_command += " | grep -v /node_modules/ | grep -v linters | grep -v vendor | grep -E '#{linter[:pattern]}'"
-        _stdout_str, _stderr_str, status = Open3.capture3(find_command)
+        stdout_str, _stderr_str, status = Open3.capture3(find_command)
 
         next unless status.success?
 
+        result = stdout_str.strip
+
+        next if result.empty?
+
         puts("        Enabling #{linter[:short_name]}...")
+        puts('            Found:')
+
+        result.each_line.map(&:strip).first(5).each do |line|
+          puts("              #{line}")
+        end
+
         old_workflow = @old_workflow
 
         if linter[:config]
