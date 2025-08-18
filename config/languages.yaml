@@ -238,7 +238,7 @@ python:
   file_extension: py
   setup_options:
     - name: python-version
-      value: 3.13.6
+      value: 3.13.7
     - name: python-version-file
       value:
     - name: python-cache
