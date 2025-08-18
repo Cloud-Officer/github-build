@@ -650,7 +650,7 @@ module GHB
       @dependabot_package_managers.uniq!
       package_managers =
         @dependabot_package_managers.map do |package_manager|
-          {
+          data = {
             'package-ecosystem': package_manager,
             directory: '/',
             'open-pull-requests-limit': 0,
@@ -659,6 +659,14 @@ module GHB
                 interval: 'monthly'
               }
           }
+
+          if package_manager == 'pip'
+            data['ignore'] = [
+              'dependency-name': 'nvidia-*'
+            ]
+          end
+
+          data
         end
 
       File.write('.github/dependabot.yml', { version: 2, updates: package_managers }.deep_stringify_keys.to_yaml({ line_width: -1 }))
