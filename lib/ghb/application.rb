@@ -924,6 +924,15 @@ module GHB
       end
 
       new_git_ignore += "\n"
+
+      # Uncomment specific lines if present:
+      patterns = %w[*.iml modules.xml .idea/misc.xml *.ipr auto-import. .idea/artifacts .idea/compiler.xml .idea/jarRepositories.xml .idea/modules.xml .idea/*.iml .idea/modules]
+
+      patterns.each do |pattern|
+        regex = Regexp.new("^\\s*#\\s*(#{Regexp.escape(pattern)})")
+        new_git_ignore.gsub!(regex, '\\1')
+      end
+
       File.write('.gitignore', new_git_ignore.gsub(/\n{3,16}/, "\n").gsub('/bin/*', '#/bin/*').gsub('# Pods/', 'Pods/'))
     end
   end
