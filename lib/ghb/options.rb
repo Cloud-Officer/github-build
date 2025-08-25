@@ -29,11 +29,12 @@ module GHB
       @skip_license_check = false
       @skip_repository_settings = false
       @skip_slack = false
+      @strict_version_check = true
 
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :ignored_linters, :languages_config_file, :linters_config_file, :only_dependabot, :options_config_file_apt, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :skip_codeql, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_slack
+    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :ignored_linters, :languages_config_file, :linters_config_file, :only_dependabot, :options_config_file_apt, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :skip_codeql, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_slack, :strict_version_check
 
     def parse
       @parser.parse!(@argv)
@@ -124,6 +125,10 @@ module GHB
 
       @parser.on('', '--skip_slack', 'Skip slack') do
         @skip_slack = true
+      end
+
+      @parser.on('', '--no_strict_version_check', 'Do not exit with error when VERSION options do not match recommended defaults') do
+        @strict_version_check = false
       end
 
       @parser.on_tail('-h', '--help', 'Show this message') do
