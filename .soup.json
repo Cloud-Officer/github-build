@@ -50,7 +50,7 @@
   "bigdecimal": {
     "language": "Ruby",
     "package": "bigdecimal",
-    "version": "3.2.2",
+    "version": "3.2.3",
     "license": "Ruby",
     "description": "This library provides arbitrary-precision decimal floating-point number class.",
     "website": "https://github.com/ruby/bigdecimal",
@@ -350,7 +350,7 @@
   "rubocop": {
     "language": "Ruby",
     "package": "rubocop",
-    "version": "1.80.1",
+    "version": "1.80.2",
     "license": "MIT",
     "description": "RuboCop is a Ruby code style checking and code formatting tool.",
     "website": "https://rubocop.org/",
@@ -410,7 +410,7 @@
   "rubocop-performance": {
     "language": "Ruby",
     "package": "rubocop-performance",
-    "version": "1.25.0",
+    "version": "1.26.0",
     "license": "MIT",
     "description": "A collection of RuboCop cops to check for performance optimizations",
     "website": "https://docs.rubocop.org/rubocop-performance/",
