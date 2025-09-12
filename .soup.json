@@ -494,9 +494,9 @@
   "unicode-display_width": {
     "language": "Ruby",
     "package": "unicode-display_width",
-    "version": "3.1.5",
+    "version": "3.2.0",
     "license": "MIT",
-    "description": "[Unicode 16.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, Emoji specification, and other data.",
+    "description": "[Unicode 17.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, Emoji specification, and other data.",
     "website": "https://github.com/janlelis/unicode-display_width",
     "last_verified_at": "2023-06-12",
     "risk_level": "Low",
@@ -506,9 +506,9 @@
   "unicode-emoji": {
     "language": "Ruby",
     "package": "unicode-emoji",
-    "version": "4.0.4",
+    "version": "4.1.0",
     "license": "MIT",
-    "description": "[Emoji 16.0] Provides Unicode Emoji data and regexes, incorporating the latest Unicode and Emoji standards",
+    "description": "[Emoji 17.0] Provides Unicode Emoji data and regexes, incorporating the latest Unicode and Emoji standards",
     "website": "https://github.com/janlelis/unicode-emoji",
     "last_verified_at": "2024-11-26",
     "risk_level": "Low",

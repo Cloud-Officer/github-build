@@ -91,9 +91,9 @@ GEM
     stringio (3.1.7)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
-    unicode-display_width (3.1.5)
-      unicode-emoji (~> 4.0, >= 4.0.4)
-    unicode-emoji (4.0.4)
+    unicode-display_width (3.2.0)
+      unicode-emoji (~> 4.1)
+    unicode-emoji (4.1.0)
     uri (1.0.3)
 
 PLATFORMS
@@ -118,4 +118,4 @@ DEPENDENCIES
   rubocop-thread_safety (>= 0.5.1)
 
 BUNDLED WITH
-   2.7.1
+   2.7.2

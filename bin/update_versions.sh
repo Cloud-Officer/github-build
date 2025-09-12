@@ -49,3 +49,50 @@ yq --indent=2 e '(.python.setup_options[] | select(.name == "python-version").va
 latest_ruby=$(rbenv install -l | grep -E '^[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^[[:space:]]*//' | sort -V | tail -n1)
 export latest_ruby
 yq --indent=2 e '(.ruby.setup_options[] | select(.name == "ruby-version").value) = env(latest_ruby)' -i "${LANGUAGE_FILE}"
+
+# MongoDB (DocumentDB)
+
+latest_mongodb=$(aws docdb describe-db-engine-versions --engine docdb --query 'DBEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1)
+
+if [ -z "${latest_mongodb}" ]; then
+    latest_mongodb=$(curl -s https://api.github.com/repos/mongodb/mongo/releases | jq -r '[.[] | select(.tag_name | test("^r[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name | ltrimstr("r")] | map(select(. | startswith("5.0") or startswith("4."))) | sort_by(. | split(".") | map(tonumber)) | last')
+fi
+
+export latest_mongodb
+yq --indent=2 e '(.options[] | select(.name == "mongodb-version").value) = env(latest_mongodb)' -i "config/options/mongodb.yaml"
+
+# MySQL (Aurora)
+
+latest_mysql=$(aws rds describe-db-engine-versions --engine aurora-mysql --query 'DBEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1 | sed -E 's/^([0-9]+\.[0-9]+).*/\1/')
+
+if [ -z "${latest_mysql}" ]; then
+    latest_mysql=$(curl -s https://dev.mysql.com/downloads/mysql/ | grep -oE 'MySQL Community Server [0-9]+\.[0-9]+\.[0-9]+' | head -n1 | grep -oE '[0-9]+\.[0-9]+' | head -n1)
+fi
+
+export latest_mysql
+yq --indent=2 e '(.options[] | select(.name == "mysql-version").value) = env(latest_mysql)' -i "config/options/mysql.yaml"
+
+# Redis (ElastiCache/Valkey)
+
+latest_redis=$(aws elasticache describe-cache-engine-versions --engine redis --query 'CacheEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1)
+latest_valkey=$(aws elasticache describe-cache-engine-versions --engine valkey --query 'CacheEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1)
+
+# Compare and use the highest version
+if [ -n "${latest_valkey}" ] && [ -n "${latest_redis}" ]; then
+    if [ "$(printf '%s\n' "${latest_valkey}" "${latest_redis}" | sort -V | tail -n1)" == "${latest_valkey}" ]; then
+        latest_redis="${latest_valkey}"
+    fi
+elif [ -n "${latest_valkey}" ]; then
+    latest_redis="${latest_valkey}"
+fi
+
+if [ -z "${latest_redis}" ]; then
+    latest_redis=$(curl -s https://api.github.com/repos/valkey-io/valkey/releases | jq -r '[.[] | select(.tag_name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name] | first')
+
+    if [ -z "${latest_redis}" ]; then
+        latest_redis=$(curl -s https://raw.githubusercontent.com/redis/redis/unstable/src/version.h | grep REDIS_VERSION | cut -d'"' -f2)
+    fi
+fi
+
+export latest_redis
+yq --indent=2 e '(.options[] | select(.name == "redis-version").value) = env(latest_redis)' -i "config/options/redis.yaml"
