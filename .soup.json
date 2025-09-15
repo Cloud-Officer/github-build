@@ -290,7 +290,7 @@
   "prism": {
     "language": "Ruby",
     "package": "prism",
-    "version": "1.4.0",
+    "version": "1.5.1",
     "license": "MIT",
     "description": "Prism Ruby parser",
     "website": "https://github.com/ruby/prism",
@@ -338,7 +338,7 @@
   "regexp_parser": {
     "language": "Ruby",
     "package": "regexp_parser",
-    "version": "2.11.2",
+    "version": "2.11.3",
     "license": "MIT",
     "description": "A library for tokenizing, lexing, and parsing Ruby regular expressions.",
     "website": "https://github.com/ammar/regexp_parser",
