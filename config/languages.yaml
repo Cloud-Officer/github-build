@@ -218,7 +218,7 @@ proto:
     - name: go-architecture
       value:
     - name: xcode-version
-      value: 16.4
+      value: 26.0
   dependencies:
     - dependency_file: go.mod
       mongodb_dependency: mongodb
@@ -283,7 +283,7 @@ ruby:
   file_extension: rb
   setup_options:
     - name: ruby-version
-      value: 3.4.5
+      value: 3.4.6
     - name: ruby-rubygems
       value:
     - name: ruby-bundler
