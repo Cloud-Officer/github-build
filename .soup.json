@@ -158,7 +158,7 @@
   "json": {
     "language": "Ruby",
     "package": "json",
-    "version": "2.14.0",
+    "version": "2.14.1",
     "license": "Ruby",
     "description": "A JSON implementation as a JRuby extension.",
     "website": "https://github.com/ruby/json",
@@ -362,7 +362,7 @@
   "rubocop-ast": {
     "language": "Ruby",
     "package": "rubocop-ast",
-    "version": "1.46.0",
+    "version": "1.47.1",
     "license": "MIT",
     "description": "  RuboCop's Node and NodePattern classes.",
     "website": "https://www.rubocop.org/",
