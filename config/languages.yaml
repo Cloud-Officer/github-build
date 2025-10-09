@@ -238,7 +238,7 @@ python:
   file_extension: py
   setup_options:
     - name: python-version
-      value: 3.13.7
+      value: 3.14.0
     - name: python-version-file
       value:
     - name: python-cache
@@ -283,7 +283,7 @@ ruby:
   file_extension: rb
   setup_options:
     - name: ruby-version
-      value: 3.4.6
+      value: 3.4.7
     - name: ruby-rubygems
       value:
     - name: ruby-bundler
