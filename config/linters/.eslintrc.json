@@ -8,6 +8,15 @@
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
+  "overrides": [
+    {
+      "files": [
+        "**/*.mjs",
+        "**/*.cjs",
+        "**/*.js"
+      ]
+    }
+  ],
   "rules": {
     "no-console": "off",         // Allow console logs in AWS Lambda
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }], // Ignore unused variables prefixed with "_"
