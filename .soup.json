@@ -2,7 +2,7 @@
   "activesupport": {
     "language": "Ruby",
     "package": "activesupport",
-    "version": "8.1.0",
+    "version": "8.1.1",
     "license": "MIT",
     "description": "A toolkit of support libraries and Ruby core extensions extracted from the Rails framework",
     "website": "https://rubyonrails.org",
@@ -86,9 +86,9 @@
   "date": {
     "language": "Ruby",
     "package": "date",
-    "version": "3.4.1",
+    "version": "3.5.0",
     "license": "Ruby",
-    "description": "A subclass of Object includes Comparable module for handling dates.",
+    "description": "The official date library for Ruby.",
     "website": "https://github.com/ruby/date",
     "last_verified_at": "2024-12-02",
     "risk_level": "Low",
