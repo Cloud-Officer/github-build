@@ -6,7 +6,7 @@ LANGUAGE_FILE="config/languages.yaml"
 # Go
 
 latest=$(curl -s https://go.dev/VERSION?m=text)
-latest_go=$(echo "${latest#go}" | awk '{ print $1 }')
+latest_go=$(echo "${latest#go}" | awk 'NR==1 { print $1 }')
 export latest_go
 yq --indent=2 e '(.go.setup_options[] | select(.name == "go-version").value) = env(latest_go)' -i "${LANGUAGE_FILE}"
 yq --indent=2 e '(.proto.setup_options[] | select(.name == "go-version").value) = env(latest_go)' -i "${LANGUAGE_FILE}"
