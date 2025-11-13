@@ -36,7 +36,7 @@ js:
   file_extension: js
   setup_options:
     - name: node-version
-      value: 25.1.0
+      value: 25.2.0
     - name: node-always-auth
       value:
     - name: node-version-file
@@ -218,7 +218,7 @@ proto:
     - name: go-architecture
       value:
     - name: xcode-version
-      value: 26.1
+      value: 26.1.1
   dependencies:
     - dependency_file: go.mod
       mongodb_dependency: mongodb

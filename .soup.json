@@ -410,7 +410,7 @@
   "rubocop-rspec": {
     "language": "Ruby",
     "package": "rubocop-rspec",
-    "version": "3.7.0",
+    "version": "3.8.0",
     "license": "MIT",
     "description": "Code style checking for RSpec files.",
     "website": "https://github.com/rubocop/rubocop-rspec",
@@ -458,7 +458,7 @@
   "stringio": {
     "language": "Ruby",
     "package": "stringio",
-    "version": "3.1.7",
+    "version": "3.1.8",
     "license": "Ruby",
     "description": "Pseudo `IO` class from/to `String`.",
     "website": "https://github.com/ruby/stringio",
