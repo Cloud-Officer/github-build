@@ -1,7 +1,7 @@
 ---
 options:
   - name: mongodb-version
-    value: 5.0.0
+    value: 8.0.0
   - name: mongodb-replica-set
     value:
   - name: mongodb-port
