@@ -5,7 +5,7 @@ go:
   file_extension: go
   setup_options:
     - name: go-version
-      value: 1.25.4
+      value: 1.25.5
     - name: go-version-file
       value:
     - name: go-check-latest
@@ -204,7 +204,7 @@ proto:
   file_extension: proto
   setup_options:
     - name: go-version
-      value: 1.25.4
+      value: 1.25.5
     - name: go-version-file
       value:
     - name: go-check-latest
