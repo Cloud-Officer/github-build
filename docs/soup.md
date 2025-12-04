@@ -7,14 +7,14 @@
 | Ruby | base64 | 0.3.0 | Ruby | Support for encoding and decoding binary data using a Base64 representation. | <https://github.com/ruby/base64> | 2023-08-10 | Low | Dependency | Dependency |
 | Ruby | bigdecimal | 3.3.1 | Ruby | This library provides arbitrary-precision decimal floating-point number class. | <https://github.com/ruby/bigdecimal> | 2023-10-16 | Low | Dependency | Dependency |
 | Ruby | concurrent-ruby | 1.3.5 | MIT | Modern concurrency tools including agents, futures, promises, thread pools, actors, supervisors, and more. | <http://www.concurrent-ruby.com> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | connection_pool | 2.5.5 | MIT | Generic connection pool for Ruby | <https://github.com/mperham/connection_pool> | 2023-10-16 | Low | Dependency | Dependency |
+| Ruby | connection_pool | 3.0.1 | MIT | Generic connection pool for Ruby | <https://github.com/mperham/connection_pool> | 2023-10-16 | Low | Dependency | Dependency |
 | Ruby | csv | 3.3.5 | Ruby | The CSV library provides a complete interface to CSV files and data | <https://github.com/ruby/csv> | 2024-04-29 | Low | Dependency | Dependency |
 | Ruby | date | 3.5.0 | Ruby | The official date library for Ruby. | <https://github.com/ruby/date> | 2024-12-02 | Low | Dependency | Dependency |
 | Ruby | drb | 2.2.3 | Ruby | Distributed object system for Ruby | <https://github.com/ruby/drb> | 2023-10-16 | Low | Dependency | Dependency |
 | Ruby | duplicate | 1.1.1 | Apache License Version 2.0 | Originally extracted from rack-app project | <http://www.rack-app.com> | 2023-06-12 | Low | Handle deep clone | Most popular gem on rubygems |
 | Ruby | httparty | 0.23.2 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2023-06-12 | Low | HTTP access library | Most popular gem on rubygems |
 | Ruby | i18n | 1.14.7 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | json | 2.17.0 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | json | 2.17.1 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | language_server-protocol | 3.17.0.5 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2023-06-29 | Low | Dependency | Dependency |
 | Ruby | lint_roller | 1.1.0 | MIT | A plugin specification for linter and formatter rulesets | <https://github.com/standardrb/lint_roller> | 2025-02-15 | Low | Dependency | Dependency |
 | Ruby | logger | 1.7.0 | Ruby | Provides a simple logging utility for outputting messages. | <https://github.com/ruby/logger> | 2024-08-12 | Low | Dependency | Dependency |
