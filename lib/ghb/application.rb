@@ -778,8 +778,9 @@ module GHB
     def check_repository_settings
       return if @options.skip_repository_settings
 
-      puts('Checking repository settings...')
+      puts('Configuring repository settings...')
       repository = Dir.pwd.split('/').last
+      repo_url = "https://api.github.com/repos/#{@options.organization}/#{repository}"
 
       headers =
         {
@@ -790,97 +791,155 @@ module GHB
             }
         }
 
-      response = HTTParty.get("https://api.github.com/repos/#{@options.organization}/#{repository}/branches/master/protection", headers)
+      # Get current branch protection to preserve dismissal_restrictions and bypass_pull_request_allowances
+      response = HTTParty.get("#{repo_url}/branches/master/protection", headers)
+      current_protection = response.code == 200 ? JSON.parse(response.body) : {}
 
-      raise(response.message) unless response.code == 200
+      # Build status checks from generated workflow
+      @required_status_checks << 'Vercel' if File.exist?('package.json') && File.read('package.json').include?('"next"')
+      @required_status_checks << 'xcodebuild' if Dir.exist?('ci_scripts')
 
-      branch = JSON.parse(response.body)
+      status_checks = @required_status_checks.map { |check| { context: check } }
 
-      addition_check =
-        if Dir.exist?('ci_scripts')
-          1
-        else
-          0
-        end
+      # Preserve existing dismissal restrictions or use empty defaults
+      dismissal_users = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'users')&.map { |u| u['login'] } || []
+      dismissal_teams = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'teams')&.map { |t| t['slug'] } || []
 
-      @required_status_checks << 'Vercel' if File.exist?('package.json') and File.read('package.json').include?('"next"')
+      # Preserve existing bypass allowances or use empty defaults
+      bypass_users = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'users')&.map { |u| u['login'] } || []
+      bypass_teams = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'teams')&.map { |t| t['slug'] } || []
 
-      unless branch['required_status_checks']['contexts'].length == (@required_status_checks.length + addition_check) and branch['required_status_checks']['checks'].length == (@required_status_checks.length + addition_check)
-        @required_status_checks.each { |job| puts("Missing check #{job}!") unless branch['required_status_checks']['contexts'].include?(job) }
+      # Set branch protection
+      puts('    Setting branch protection...')
+      branch_protection = {
+        required_status_checks: {
+          strict: false,
+          checks: status_checks
+        },
+        enforce_admins: false,
+        required_pull_request_reviews: {
+          dismiss_stale_reviews: true,
+          require_code_owner_reviews: true,
+          require_last_push_approval: true,
+          required_approving_review_count: 1,
+          dismissal_restrictions: {
+            users: dismissal_users,
+            teams: dismissal_teams
+          },
+          bypass_pull_request_allowances: {
+            users: bypass_users,
+            teams: bypass_teams
+          }
+        },
+        restrictions: nil,
+        required_linear_history: false,
+        allow_force_pushes: false,
+        allow_deletions: false,
+        block_creations: false,
+        required_conversation_resolution: true
+      }
 
-        puts("@required_status_checks.length : #{@required_status_checks.length}")
-        puts("addition_check : #{addition_check}")
-        puts("branch['required_status_checks']['checks'].length : #{branch['required_status_checks']['checks'].length}")
-        puts("branch['required_status_checks']['contexts'].length : #{branch['required_status_checks']['contexts'].length}")
-        puts("branch['required_status_checks']['checks'] : #{branch['required_status_checks']['checks']}")
-        puts("branch['required_status_checks']['contexts'] : #{branch['required_status_checks']['contexts']}")
+      response = HTTParty.put(
+        "#{repo_url}/branches/master/protection",
+        headers.merge(body: branch_protection.to_json)
+      )
+      raise("Error: cannot set branch protection! #{response.message}") unless response.code == 200
 
-        raise('Error: master branch missing checks!') unless branch['required_status_checks']['contexts'].length == (@required_status_checks.length + addition_check) and branch['required_status_checks']['checks'].length == (@required_status_checks.length + addition_check)
+      # Enable required signatures (separate endpoint)
+      puts('    Enabling required signatures...')
+      response = HTTParty.post(
+        "#{repo_url}/branches/master/protection/required_signatures",
+        headers.merge(headers: headers[:headers].merge(Accept: 'application/vnd.github.zzzax-preview+json'))
+      )
+      raise("Error: cannot enable required signatures! #{response.message}") unless [200, 204].include?(response.code)
+
+      # Enable vulnerability alerts
+      puts('    Enabling vulnerability alerts...')
+      response = HTTParty.put("#{repo_url}/vulnerability-alerts", headers)
+      raise("Error: cannot enable vulnerability alerts! #{response.message}") unless [200, 204].include?(response.code)
+
+      # Enable automated security fixes
+      puts('    Enabling automated security fixes...')
+      response = HTTParty.put("#{repo_url}/automated-security-fixes", headers)
+      raise("Error: cannot enable automated security fixes! #{response.message}") unless [200, 204].include?(response.code)
+
+      # Configure repository settings
+      puts('    Configuring repository options...')
+      repo_settings = {
+        has_wiki: false,
+        has_projects: false,
+        allow_merge_commit: false,
+        allow_squash_merge: true,
+        allow_rebase_merge: true,
+        delete_branch_on_merge: true
+      }
+
+      response = HTTParty.patch(repo_url, headers.merge(body: repo_settings.to_json))
+      raise("Error: cannot configure repository settings! #{response.message}") unless response.code == 200
+
+      # Enable Advanced Security features (free for public repos)
+      puts('    Enabling Advanced Security features...')
+      security_settings = {
+        security_and_analysis: {
+          secret_scanning: { status: 'enabled' },
+          secret_scanning_push_protection: { status: 'enabled' },
+          secret_scanning_validity_checks: { status: 'enabled' },
+          secret_scanning_non_provider_patterns: { status: 'enabled' },
+          secret_scanning_ai_detection: { status: 'enabled' }
+        }
+      }
+
+      response = HTTParty.patch(repo_url, headers.merge(body: security_settings.to_json))
+      # Don't fail if this doesn't work (might be private repo without GHAS license)
+      if response.code == 200
+        puts('        Secret scanning enabled')
+        puts('        Secret scanning push protection enabled')
+        puts('        Secret scanning validity checks enabled')
+        puts('        Secret scanning non-provider patterns enabled')
+        puts('        Secret scanning AI detection (generic passwords) enabled')
+      else
+        puts("        Warning: could not enable security features (#{response.code})")
       end
 
-      raise('Error: master branch invalid required status checks!') unless branch['required_status_checks']['strict'] == false
+      # Enable code scanning default setup (CodeQL)
+      puts('    Enabling CodeQL default setup...')
 
-      raise('Error: master branch invalid dismiss stale reviews!') unless branch['required_pull_request_reviews']['dismiss_stale_reviews']
+      # First check current status
+      response = HTTParty.get("#{repo_url}/code-scanning/default-setup", headers)
 
-      raise('Error: master branch invalid require code owner reviews!') unless branch['required_pull_request_reviews']['require_code_owner_reviews']
+      if response.code == 200
+        current_setup = JSON.parse(response.body)
 
-      raise('Error: master branch invalid require last push approval!') unless branch['required_pull_request_reviews']['require_last_push_approval']
+        if current_setup['state'] == 'configured'
+          puts('        CodeQL default setup already configured')
+        else
+          code_scanning_config = {
+            state: 'configured',
+            query_suite: 'default'
+          }
 
-      raise('Error: master branch invalid required approving review count!') unless branch['required_pull_request_reviews']['required_approving_review_count'] == 1
+          response = HTTParty.patch(
+            "#{repo_url}/code-scanning/default-setup",
+            headers.merge(body: code_scanning_config.to_json)
+          )
 
-      raise('Error: master branch invalid dismissal restrictions!') if branch['required_pull_request_reviews']['dismissal_restrictions']['users'].empty?
+          if [200, 202].include?(response.code)
+            puts('        CodeQL default setup enabled')
+          else
+            error_body =
+              begin
+                JSON.parse(response.body)
+              rescue JSON::ParserError
+                {}
+              end
+            puts("        Warning: could not enable CodeQL default setup (#{response.code}): #{error_body['message'] || 'unknown error'}")
+          end
+        end
+      else
+        puts("        Warning: could not check CodeQL status (#{response.code}) - may require GitHub Advanced Security")
+      end
 
-      raise('Error: master branch invalid bypass pull request allowances!') if branch['required_pull_request_reviews']['bypass_pull_request_allowances']['users'].empty?
-
-      raise('Error: master branch invalid required signatures!') unless branch['required_signatures']['enabled'] == false
-
-      raise('Error: master branch invalid enforce admins!') unless branch['enforce_admins']['enabled'] == false
-
-      raise('Error: master branch invalid required linear history!') unless branch['required_linear_history']['enabled'] == false
-
-      raise('Error: master branch invalid allow force pushes!') unless branch['allow_force_pushes']['enabled'] == false
-
-      raise('Error: master branch invalid allow deletions!') unless branch['allow_deletions']['enabled'] == false
-
-      raise('Error: master branch invalid block creations!') unless branch['block_creations']['enabled'] == false
-
-      raise('Error: master branch invalid required conversation resolution!') unless branch['required_conversation_resolution']['enabled']
-
-      response = HTTParty.get("https://api.github.com/repos/#{@options.organization}/#{repository}/vulnerability-alerts", headers)
-
-      raise('Error: vulnerability alerts disabled!') unless response.code == 204
-
-      response = HTTParty.put("https://api.github.com/repos/#{@options.organization}/#{repository}/automated-security-fixes", headers)
-
-      raise('Error: cannot enable automated security fixes!') unless response.code == 204
-
-      response = HTTParty.get("https://api.github.com/repos/#{@options.organization}/#{repository}", headers)
-
-      raise(response.message) unless response.code == 200
-
-      response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { has_wiki: false }.to_json))
-
-      raise('Error: cannot disable wiki!') unless response.code == 200
-
-      response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { has_projects: false }.to_json))
-
-      raise('Error: cannot disable projects!') unless response.code == 200
-
-      response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { allow_merge_commit: false }.to_json))
-
-      raise('Error: cannot disable merge commit!') unless response.code == 200
-
-      response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { allow_squash_merge: true }.to_json))
-
-      raise('Error: cannot enable squash merge!') unless response.code == 200
-
-      response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { allow_rebase_merge: true }.to_json))
-
-      raise('Error: cannot enable rebase merge!') unless response.code == 200
-
-      response = HTTParty.patch("https://api.github.com/repos/#{@options.organization}/#{repository}", headers.merge(body: { delete_branch_on_merge: true }.to_json))
-
-      raise('Error: cannot enable delete branch after merge!') unless response.code == 200
+      puts('    Repository settings configured successfully!')
     end
 
     def update_gitignore

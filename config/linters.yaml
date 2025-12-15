@@ -3,148 +3,22 @@ actionlint:
   short_name: Actionlint
   long_name: Github Actions Linter
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/actionlint@master
+  uses: cloud-officer/ci-actions/linters/actionlint@v1
   config:
   path: ".github/workflows"
   pattern: ".*\\.(yml|yaml)$"
 bandit:
   short_name: Bandit
   long_name: Python Bandit Linter
-  uses: cloud-officer/ci-actions/linters/bandit@master
+  uses: cloud-officer/ci-actions/linters/bandit@v1
   config: ".bandit"
   path: "."
   pattern: ".*\\.(py)$"
-codeql-c-cpp:
-  short_name: CodeQL C-Cpp
-  long_name: CodeQL C-Cpp Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/codeql@master
-  config:
-  path: "."
-  pattern: ".*\\.(cpp|c++|cxx|hpp|hh|h++|hxx|c|cc|h)$"
-  options:
-    languages: "c-cpp"
-  permissions:
-    actions: read
-    contents: read
-    security-events: write
-codeql-csharp:
-  short_name: CodeQL CSharp
-  long_name: CodeQL CSharp Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/codeql@master
-  config:
-  path: "."
-  pattern: ".*\\.(sln|csproj|cs|cshtml|xaml)$"
-  options:
-    languages: "csharp"
-  permissions:
-    actions: read
-    contents: read
-    security-events: write
-codeql-go:
-  short_name: CodeQL Go
-  long_name: CodeQL Go Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/codeql@master
-  config:
-  path: "."
-  pattern: ".*\\.(go)$"
-  options:
-    languages: "go"
-  permissions:
-    actions: read
-    contents: read
-    security-events: write
-codeql-java-kotlin:
-  short_name: CodeQL Java-Kotlin
-  long_name: CodeQL Java-Kotlin Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/codeql@master
-  config:
-  path: "."
-  pattern: ".*\\.(java|kt)$"
-  options:
-    languages: "java-kotlin"
-  permissions:
-    actions: read
-    contents: read
-    security-events: write
-codeql-javascript-typescript:
-  short_name: CodeQL Javascript-Typescript
-  long_name: CodeQL Javascript-Typescript Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/codeql@master
-  config:
-  path: "."
-  pattern: ".*\\.(js|jsx|mjs|es|es6|ts|tsx|mts|cts|vue|htm|html|xhtm|xhtml|hbs|ejs|njk)$"
-  options:
-    languages: "javascript-typescript"
-  permissions:
-    actions: read
-    contents: read
-    security-events: write
-codeql-python:
-  short_name: CodeQL Python
-  long_name: CodeQL Python Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/codeql@master
-  config:
-  path: "."
-  pattern: ".*\\.(py)$"
-  options:
-    languages: "python"
-  permissions:
-    actions: read
-    contents: read
-    security-events: write
-codeql-ruby:
-  short_name: CodeQL Ruby
-  long_name: CodeQL Ruby Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/codeql@master
-  config:
-  path: "."
-  pattern: ".*\\.(rb|erb|gemspec)$"
-  options:
-    languages: "ruby"
-  permissions:
-    actions: read
-    contents: read
-    security-events: write
-codeql-rust:
-  short_name: CodeQL Rust
-  long_name: CodeQL Rust Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/codeql@master
-  config:
-  path: "."
-  pattern: ".*\\.(rs)$"
-  options:
-    languages: "rust"
-  permissions:
-    actions: read
-    contents: read
-    security-events: write
-codeql-swift:
-  short_name: CodeQL Swift
-  long_name: CodeQL Swift Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/codeql@master
-  config:
-  path: "."
-  pattern: ".*\\.(swift)$"
-  options:
-    languages: "swift"
-  permissions:
-    actions: read
-    contents: read
-    security-events: write
 eslint:
   short_name: ESLint
   long_name: JavaScript ES Linter
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/eslint@master
+  uses: cloud-officer/ci-actions/linters/eslint@v1
   config: ".eslintrc.json"
   path: "."
   pattern: ".*\\.(js)$"
@@ -152,7 +26,7 @@ flake8:
   short_name: Flake8
   long_name: Python Flake8 Linter
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/flake8@master
+  uses: cloud-officer/ci-actions/linters/flake8@v1
   config: ".flake8"
   path: "."
   pattern: ".*\\.(py)$"
@@ -160,7 +34,7 @@ golangci:
   short_name: Golangci-lint
   long_name: Go Linter
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/golangci@master
+  uses: cloud-officer/ci-actions/linters/golangci@v1
   config: ".golangci.yml"
   path: "."
   pattern: ".*\\.(go)$"
@@ -168,7 +42,7 @@ hadolint:
   short_name: Hadolint
   long_name: Docker Linter
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/hadolint@master
+  uses: cloud-officer/ci-actions/linters/hadolint@v1
   config: ".hadolint.yaml"
   path: "."
   pattern: ".*Dockerfile$"
@@ -176,7 +50,7 @@ ktlint:
   short_name: KTLint
   long_name: Kotlin Linter
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/ktlint@master
+  uses: cloud-officer/ci-actions/linters/ktlint@v1
   config: ".editorconfig"
   path: "."
   pattern: ".*\\.(kt|kts)$"
@@ -184,21 +58,21 @@ markdownlint:
   short_name: Markdownlint
   long_name: Markdown Linter
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/markdownlint@master
+  uses: cloud-officer/ci-actions/linters/markdownlint@v1
   config: ".markdownlint.yml"
   path: "."
   pattern: ".*\\.(md)$"
 phpcs:
   short_name: PHPCS
   long_name: PHP CS Linter
-  uses: cloud-officer/ci-actions/linters/phpcs@master
+  uses: cloud-officer/ci-actions/linters/phpcs@v1
   config:
   path: "."
   pattern: ".*\\.(php)$"
 phpstan:
   short_name: PHPStan
   long_name: PHP Stan Linter
-  uses: cloud-officer/ci-actions/linters/phpstan@master
+  uses: cloud-officer/ci-actions/linters/phpstan@v1
   config:
   path: "."
   pattern: ".*\\.(php)$"
@@ -206,7 +80,7 @@ pmd:
   short_name: PMD
   long_name: Java Linter
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/pmd@master
+  uses: cloud-officer/ci-actions/linters/pmd@v1
   config: ".pmd.xml"
   path: "."
   pattern: ".*\\.(java)$"
@@ -214,7 +88,7 @@ protolint:
   short_name: Protolint
   long_name: Protocol Buffer Linter
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/protolint@master
+  uses: cloud-officer/ci-actions/linters/protolint@v1
   config: ".protolint.yaml"
   path: "."
   pattern: ".*\\.(proto)$"
@@ -222,7 +96,7 @@ semgrep:
   short_name: Semgrep
   long_name: Semgrep Security Scanner
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/semgrep@master
+  uses: cloud-officer/ci-actions/linters/semgrep@v1
   config: ".semgrep.yml"
   path: "."
   pattern: ".*\\.(py|js|jsx|ts|tsx|go|rb|java|kt|php|c|cpp|cs|rs|swift|scala)$"
@@ -234,7 +108,7 @@ rubocop:
   short_name: Rubocop
   long_name: Ruby Linter
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/rubocop@master
+  uses: cloud-officer/ci-actions/linters/rubocop@v1
   config: ".rubocop.yml"
   path: "."
   pattern: "(.*\/Fastfile$)|(.*\\.(rb)$)"
@@ -243,14 +117,14 @@ shellcheck:
   short_name: ShellCheck
   long_name: Shell Scripts Linter
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/shellcheck@master
+  uses: cloud-officer/ci-actions/linters/shellcheck@v1
   config: ".shellcheckrc"
   path: "."
   pattern: ".*\\.(sh)$"
 swiftlint:
   short_name: Swiftlint
   long_name: Swift Linter
-  uses: cloud-officer/ci-actions/linters/swiftlint@master
+  uses: cloud-officer/ci-actions/linters/swiftlint@v1
   config: ".swiftlint.yml"
   path: "."
   pattern: ".*\\.(swift)$"
@@ -258,7 +132,7 @@ yamllint:
   short_name: Yamllint
   long_name: YAML Linter
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
-  uses: cloud-officer/ci-actions/linters/yamllint@master
+  uses: cloud-officer/ci-actions/linters/yamllint@v1
   config: ".yamllint.yml"
   path: "."
   pattern: ".*\\.(yml|yaml)$"

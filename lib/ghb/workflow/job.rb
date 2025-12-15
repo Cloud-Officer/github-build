@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../../ghb'
 require_relative 'step'
 
 module GHB
@@ -136,7 +137,7 @@ module GHB
       hash[:outputs] = @outputs unless @outputs.empty?
       hash[:env] = @env unless @env.empty?
       hash[:defaults] = @defaults unless @defaults.empty?
-      hash[:'timeout-minutes'] = @timeout_minutes unless @timeout_minutes.nil?
+      hash[:'timeout-minutes'] = @timeout_minutes || DEFAULT_JOB_TIMEOUT_MINUTES
       hash[:strategy] = @strategy unless @strategy.empty?
       hash[:'continue-on-error'] = @continue_on_error unless @continue_on_error.nil?
       hash[:container] = @container unless @container.empty?

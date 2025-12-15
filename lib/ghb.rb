@@ -10,6 +10,7 @@ module GHB
   OPTIONS_REDIS_CONFIG_FILE = 'config/options/redis.yaml'
   DEFAULT_UBUNTU_VERSION = 'ubuntu-latest'
   DEFAULT_MACOS_VERSION = 'macos-latest'
+  DEFAULT_JOB_TIMEOUT_MINUTES = 30
 
   private_constant :DEFAULT_BUILD_FILE
   private_constant :DEFAULT_LANGUAGES_CONFIG_FILE
@@ -20,4 +21,5 @@ module GHB
   private_constant :OPTIONS_REDIS_CONFIG_FILE
   private_constant :DEFAULT_UBUNTU_VERSION
   private_constant :DEFAULT_MACOS_VERSION
+  public_constant :DEFAULT_JOB_TIMEOUT_MINUTES
 end
