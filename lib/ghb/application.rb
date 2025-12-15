@@ -18,7 +18,6 @@ module GHB
   class Application
     def initialize(argv)
       @code_deploy_pre_steps = []
-      @dependabot_package_managers = %w[github-actions]
       @exit_code = Status::SUCCESS_EXIT_CODE
       @dependencies_steps = []
       @cron_workflow = Workflow.new('Cron Dependencies')
@@ -108,7 +107,12 @@ module GHB
         }
 
       @new_workflow.run_name = @old_workflow.run_name unless @old_workflow.run_name.nil?
-      @new_workflow.permissions = @old_workflow.permissions || {}
+      @new_workflow.permissions =
+        if @old_workflow.permissions.is_a?(Hash) && @old_workflow.permissions.any?
+          @old_workflow.permissions
+        else
+          { contents: 'read', 'pull-requests': 'read' }
+        end
       @new_workflow.env = @old_workflow.env.is_a?(Hash) ? @old_workflow.env : {}
       @new_workflow.defaults = @old_workflow.defaults || {}
       @new_workflow.concurrency = @old_workflow.concurrency || {}
@@ -178,6 +182,7 @@ module GHB
         next if @options.ignored_linters[short_name]
 
         next if linter[:short_name].include?('CodeQL') and @options.skip_codeql
+        next if linter[:short_name].include?('Semgrep') and @options.skip_semgrep
 
         find_command = "find #{linter[:path]}"
         find_command += excluded_folders unless excluded_folders.empty?
@@ -638,41 +643,12 @@ module GHB
     end
 
     def save_dependabot_config
-      puts('    Adding dependabot...')
-      languages = Psych.safe_load(File.read("#{__dir__}/../../#{@options.languages_config_file}"))&.deep_symbolize_keys
+      dependabot_file = '.github/dependabot.yml'
 
-      languages&.each_value do |language|
-        language[:dependencies].each do |dependency|
-          find_command = 'find .'
-          find_command += @submodules unless @submodules.empty?
-          stdout_str, _stderr_str, status = Open3.capture3(find_command)
-
-          next unless status.success?
-
-          stdout_str.each_line do |path|
-            if path.strip.end_with?(dependency[:dependency_file]) and dependency[:dependabot_ecosystem]
-              @dependabot_package_managers.push(dependency[:dependabot_ecosystem])
-              puts("        Enabling #{dependency[:dependabot_ecosystem]}...")
-            end
-          end
-        end
+      if File.exist?(dependabot_file)
+        puts('    Removing dependabot config (CVE alerts are handled by repository settings)...')
+        FileUtils.rm_f(dependabot_file)
       end
-
-      @dependabot_package_managers.uniq!
-      package_managers =
-        @dependabot_package_managers.map do |package_manager|
-          {
-            'package-ecosystem': package_manager,
-            directory: '/',
-            'open-pull-requests-limit': 0,
-            schedule:
-              {
-                interval: 'monthly'
-              }
-          }
-        end
-
-      File.write('.github/dependabot.yml', { version: 2, updates: package_managers }.deep_stringify_keys.to_yaml({ line_width: -1 }))
 
       if @new_workflow.jobs[:licenses] and !@dependencies_steps.empty?
         new_workflow = @new_workflow

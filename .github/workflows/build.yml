@@ -14,6 +14,9 @@ name: Build
     - dependabot/**
     tags:
     - "**"
+permissions:
+  contents: read
+  pull-requests: read
 env:
   RUBY-BUNDLER-CACHE: true
   RUBY-VERSION: 3.4.7
@@ -83,6 +86,23 @@ jobs:
     steps:
     - name: Markdownlint
       uses: cloud-officer/ci-actions/linters/markdownlint@master
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github_token: "${{secrets.GITHUB_TOKEN}}"
+  semgrep:
+    name: Semgrep Security Scanner
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')}}"
+    steps:
+    - name: Semgrep
+      uses: cloud-officer/ci-actions/linters/semgrep@master
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"

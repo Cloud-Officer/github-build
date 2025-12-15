@@ -1,0 +1,21 @@
+rules: []
+
+# Use auto config for security rules (set via CLI --config=auto)
+# This file is for project-specific exclusions and customizations
+
+# Paths to exclude from scanning
+exclude:
+  - "vendor"
+  - "node_modules"
+  - "*_test.go"
+  - "*_spec.rb"
+  - "**/__tests__/**"
+  - "**/*.test.js"
+  - "**/*.test.ts"
+  - "**/*.spec.js"
+  - "**/*.spec.ts"
+  - "**/test/**"
+  - "**/tests/**"
+  - "**/testdata/**"
+  - "**/fixtures/**"
+  - "**/mocks/**"
