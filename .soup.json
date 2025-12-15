@@ -50,7 +50,7 @@
   "concurrent-ruby": {
     "language": "Ruby",
     "package": "concurrent-ruby",
-    "version": "1.3.5",
+    "version": "1.3.6",
     "license": "MIT",
     "description": "Modern concurrency tools including agents, futures, promises, thread pools, actors, supervisors, and more.",
     "website": "http://www.concurrent-ruby.com",
@@ -86,7 +86,7 @@
   "date": {
     "language": "Ruby",
     "package": "date",
-    "version": "3.5.0",
+    "version": "3.5.1",
     "license": "Ruby",
     "description": "The official date library for Ruby.",
     "website": "https://github.com/ruby/date",
@@ -146,7 +146,7 @@
   "json": {
     "language": "Ruby",
     "package": "json",
-    "version": "2.17.1",
+    "version": "2.18.0",
     "license": "Ruby",
     "description": "A JSON implementation as a JRuby extension.",
     "website": "https://github.com/ruby/json",
@@ -206,10 +206,10 @@
   "minitest": {
     "language": "Ruby",
     "package": "minitest",
-    "version": "5.26.2",
+    "version": "5.27.0",
     "license": "MIT",
     "description": "minitest provides a complete suite of testing facilities supporting",
-    "website": "https://github.com/minitest/minitest",
+    "website": "https://minite.st/",
     "last_verified_at": "2023-06-12",
     "risk_level": "Low",
     "requirements": "Dependency",
@@ -242,7 +242,7 @@
   "optparse": {
     "language": "Ruby",
     "package": "optparse",
-    "version": "0.8.0",
+    "version": "0.8.1",
     "license": "Ruby",
     "description": "OptionParser is a class for command-line option analysis",
     "website": "https://github.com/ruby/optparse",
@@ -290,7 +290,7 @@
   "psych": {
     "language": "Ruby",
     "package": "psych",
-    "version": "5.2.6",
+    "version": "5.3.0",
     "license": "MIT",
     "description": "Psych is a YAML parser and emitter",
     "website": "https://github.com/ruby/psych",
