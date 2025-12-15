@@ -803,6 +803,21 @@ module GHB
       addition_check = Dir.exist?('ci_scripts') ? 1 : 0
       @required_status_checks << 'Vercel' if File.exist?('package.json') && File.read('package.json').include?('"next"')
 
+      # Get CodeQL languages count
+      codeql_response = HTTParty.get("#{repo_url}/code-scanning/default-setup", headers)
+      codeql_languages_count = 0
+
+      if codeql_response.code == 200
+        codeql_setup = JSON.parse(codeql_response.body)
+
+        if codeql_setup['state'] == 'configured' && codeql_setup['languages'].is_a?(Array)
+          codeql_languages_count = codeql_setup['languages'].length
+          puts("    CodeQL languages detected: #{codeql_setup['languages'].join(', ')} (#{codeql_languages_count})")
+        end
+      end
+
+      addition_check += codeql_languages_count
+
       puts('    Checking required status checks...')
       unless current_protection['required_status_checks']['contexts'].length == (@required_status_checks.length + addition_check) && current_protection['required_status_checks']['checks'].length == (@required_status_checks.length + addition_check)
         @required_status_checks.each { |job| puts("        Missing check #{job}!") unless current_protection['required_status_checks']['contexts'].include?(job) }
