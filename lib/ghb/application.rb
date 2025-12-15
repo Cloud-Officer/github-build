@@ -792,15 +792,30 @@ module GHB
             }
         }
 
-      # Get current branch protection to preserve dismissal_restrictions and bypass_pull_request_allowances
+      # Get current branch protection to preserve settings
       response = HTTParty.get("#{repo_url}/branches/master/protection", headers)
-      current_protection = response.code == 200 ? JSON.parse(response.body) : {}
 
-      # Build status checks from generated workflow
+      raise(response.message) unless response.code == 200
+
+      current_protection = JSON.parse(response.body)
+
+      # Verify status checks count (don't set them via API due to naming complexity)
+      addition_check = Dir.exist?('ci_scripts') ? 1 : 0
       @required_status_checks << 'Vercel' if File.exist?('package.json') && File.read('package.json').include?('"next"')
-      @required_status_checks << 'xcodebuild' if Dir.exist?('ci_scripts')
 
-      status_checks = @required_status_checks.map { |check| { context: check } }
+      puts('    Checking required status checks...')
+      unless current_protection['required_status_checks']['contexts'].length == (@required_status_checks.length + addition_check) && current_protection['required_status_checks']['checks'].length == (@required_status_checks.length + addition_check)
+        @required_status_checks.each { |job| puts("        Missing check #{job}!") unless current_protection['required_status_checks']['contexts'].include?(job) }
+
+        puts("        @required_status_checks.length : #{@required_status_checks.length}")
+        puts("        addition_check : #{addition_check}")
+        puts("        branch['required_status_checks']['checks'].length : #{current_protection['required_status_checks']['checks'].length}")
+        puts("        branch['required_status_checks']['contexts'].length : #{current_protection['required_status_checks']['contexts'].length}")
+        puts("        branch['required_status_checks']['checks'] : #{current_protection['required_status_checks']['checks']}")
+        puts("        branch['required_status_checks']['contexts'] : #{current_protection['required_status_checks']['contexts']}")
+
+        raise('Error: master branch missing checks!')
+      end
 
       # Preserve existing dismissal restrictions or use empty defaults
       dismissal_users = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'users')&.map { |u| u['login'] } || []
@@ -810,12 +825,15 @@ module GHB
       bypass_users = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'users')&.map { |u| u['login'] } || []
       bypass_teams = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'teams')&.map { |t| t['slug'] } || []
 
+      # Preserve existing status checks
+      existing_checks = current_protection.dig('required_status_checks', 'checks') || []
+
       # Set branch protection
       puts('    Setting branch protection...')
       branch_protection = {
         required_status_checks: {
           strict: false,
-          checks: status_checks
+          checks: existing_checks
         },
         enforce_admins: false,
         required_pull_request_reviews: {
