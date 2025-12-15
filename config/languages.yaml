@@ -218,7 +218,7 @@ proto:
     - name: go-architecture
       value:
     - name: xcode-version
-      value: 26.1.1
+      value: 26.2
   dependencies:
     - dependency_file: go.mod
       mongodb_dependency: mongodb
