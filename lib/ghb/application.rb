@@ -46,15 +46,16 @@ module GHB
       workflow_job_licenses_check
       workflow_job_detect_languages
 
+      workflow_name = @new_workflow.name || 'Build'
       @new_workflow.jobs.each_value do |job|
         if job&.strategy&.[](:matrix)
-          job.strategy[:matrix].each do |key, values|
+          job.strategy[:matrix].each_value do |values|
             values.each do |value|
-              @required_status_checks << "#{job.name} (#{key}: #{value})"
+              @required_status_checks << "#{workflow_name} / #{job.name} (#{value})"
             end
           end
         else
-          @required_status_checks << job.name
+          @required_status_checks << "#{workflow_name} / #{job.name}"
         end
       end
 
