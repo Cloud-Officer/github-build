@@ -218,6 +218,18 @@ protolint:
   config: ".protolint.yaml"
   path: "."
   pattern: ".*\\.(proto)$"
+semgrep:
+  short_name: Semgrep
+  long_name: Semgrep Security Scanner
+  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  uses: cloud-officer/ci-actions/linters/semgrep@master
+  config: ".semgrep.yml"
+  path: "."
+  pattern: ".*\\.(py|js|jsx|ts|tsx|go|rb|java|kt|php|c|cpp|cs|rs|swift|scala)$"
+  permissions:
+    actions: read
+    contents: read
+    security-events: write
 rubocop:
   short_name: Rubocop
   long_name: Ruby Linter
