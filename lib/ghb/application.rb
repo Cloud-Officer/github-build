@@ -51,11 +51,11 @@ module GHB
         if job&.strategy&.[](:matrix)
           job.strategy[:matrix].each_value do |values|
             values.each do |value|
-              @required_status_checks << "#{workflow_name} / #{job.name} (#{value})"
+              @required_status_checks << "#{workflow_name} / #{job.name} (#{value}, pull_request)"
             end
           end
         else
-          @required_status_checks << "#{workflow_name} / #{job.name}"
+          @required_status_checks << "#{workflow_name} / #{job.name} (pull_request)"
         end
       end
 
