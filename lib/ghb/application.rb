@@ -814,10 +814,15 @@ module GHB
         codeql_setup = JSON.parse(codeql_response.body)
 
         if codeql_setup['state'] == 'configured' && codeql_setup['languages'].is_a?(Array)
-          codeql_setup['languages'].each do |lang|
+          # Filter out redundant languages from API response
+          # The API returns 'javascript', 'javascript-typescript', and 'typescript' but
+          # only 'javascript' check actually runs (it covers both JS and TS)
+          languages = codeql_setup['languages'].reject { |lang| %w[javascript-typescript typescript].include?(lang) }
+
+          languages.each do |lang|
             code_scanning_checks << "Analyze (#{lang})"
           end
-          puts("    CodeQL languages detected: #{codeql_setup['languages'].join(', ')} (#{codeql_setup['languages'].length})")
+          puts("    CodeQL languages detected: #{languages.join(', ')} (#{languages.length})")
         end
       end
 
@@ -825,13 +830,8 @@ module GHB
       actual_contexts = current_protection['required_status_checks']['contexts']
       actual_analyze_checks = actual_contexts.grep(/^Analyze \(.+\)$/)
 
-      # If CodeQL is configured, filter out redundant languages
-      # (e.g., typescript is covered by javascript-typescript)
+      # Verify all expected CodeQL checks are in branch protection
       if code_scanning_checks.any?
-        # Remove typescript if javascript-typescript is present (it covers both)
-        code_scanning_checks.delete('Analyze (typescript)') if code_scanning_checks.include?('Analyze (javascript-typescript)')
-
-        # Verify all expected CodeQL checks are in branch protection
         missing_codeql = code_scanning_checks - actual_analyze_checks
         raise("Error: CodeQL checks missing from branch protection: #{missing_codeql.join(', ')}") if missing_codeql.any?
       end
