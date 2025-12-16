@@ -97,7 +97,8 @@ semgrep:
   long_name: Semgrep Security Scanner
   condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
   uses: cloud-officer/ci-actions/linters/semgrep@v1
-  config: ".semgrep.yml"
+  config: ".semgrepignore"
+  preserve_config: true
   path: "."
   pattern: ".*\\.(py|js|jsx|ts|tsx|go|rb|java|kt|php|c|cpp|cs|rs|swift|scala)$"
   permissions:

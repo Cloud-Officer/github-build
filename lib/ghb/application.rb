@@ -209,6 +209,8 @@ module GHB
         if linter[:config]
           if File.exist?("#{script_path}/linters/#{linter[:config]}") && linter[:config] != '.editorconfig'
             FileUtils.ln_s("#{script_path}/linters/#{linter[:config]}", linter[:config], force: true)
+          elsif linter[:preserve_config] && File.exist?(linter[:config]) && !File.symlink?(linter[:config])
+            puts("            Preserving existing #{linter[:config]} (project-specific config)")
           else
             File.delete(linter[:config]) if File.symlink?(linter[:config]) or File.exist?(linter[:config])
             FileUtils.cp("#{__dir__}/../../config/linters/#{linter[:config]}", linter[:config])
@@ -803,32 +805,116 @@ module GHB
       addition_check = Dir.exist?('ci_scripts') ? 1 : 0
       @required_status_checks << 'Vercel' if File.exist?('package.json') && File.read('package.json').include?('"next"')
 
-      # Get CodeQL languages count
+      # Get code scanning analyses (CodeQL, Semgrep, etc.)
+      code_scanning_checks = []
+
+      # Check for CodeQL default setup
       codeql_response = HTTParty.get("#{repo_url}/code-scanning/default-setup", headers)
-      codeql_languages_count = 0
 
       if codeql_response.code == 200
         codeql_setup = JSON.parse(codeql_response.body)
 
         if codeql_setup['state'] == 'configured' && codeql_setup['languages'].is_a?(Array)
-          codeql_languages_count = codeql_setup['languages'].length
-          puts("    CodeQL languages detected: #{codeql_setup['languages'].join(', ')} (#{codeql_languages_count})")
+          codeql_setup['languages'].each do |lang|
+            code_scanning_checks << "Analyze (#{lang})"
+          end
+          puts("    CodeQL languages detected: #{codeql_setup['languages'].join(', ')} (#{codeql_setup['languages'].length})")
         end
       end
 
-      addition_check += codeql_languages_count
+      # Also check for Analyze checks in actual branch protection (may come from Semgrep or other tools)
+      actual_contexts = current_protection['required_status_checks']['contexts']
+      actual_analyze_checks = actual_contexts.grep(/^Analyze \(.+\)$/)
+
+      # Use the actual Analyze checks if CodeQL didn't detect them (they might be from Semgrep)
+      if code_scanning_checks.empty? && actual_analyze_checks.any?
+        code_scanning_checks = actual_analyze_checks
+        puts("    Code scanning checks detected from branch protection: #{actual_analyze_checks.join(', ')} (#{actual_analyze_checks.length})")
+      elsif code_scanning_checks.any? && actual_analyze_checks.any?
+        # Merge both lists (in case some are from CodeQL, some from Semgrep)
+        code_scanning_checks = (code_scanning_checks + actual_analyze_checks).uniq
+        puts("    Total code scanning checks: #{code_scanning_checks.join(', ')} (#{code_scanning_checks.length})")
+      end
+
+      addition_check += code_scanning_checks.length
 
       puts('    Checking required status checks...')
-      unless current_protection['required_status_checks']['contexts'].length == (@required_status_checks.length + addition_check) && current_protection['required_status_checks']['checks'].length == (@required_status_checks.length + addition_check)
-        @required_status_checks.each { |job| puts("        Missing check #{job}!") unless current_protection['required_status_checks']['contexts'].include?(job) }
+      actual_contexts = current_protection['required_status_checks']['contexts']
+      expected_count = @required_status_checks.length + addition_check
+      actual_count = actual_contexts.length
 
-        puts("        @required_status_checks.length : #{@required_status_checks.length}")
-        puts("        addition_check : #{addition_check}")
-        puts("        branch['required_status_checks']['checks'].length : #{current_protection['required_status_checks']['checks'].length}")
-        puts("        branch['required_status_checks']['contexts'].length : #{current_protection['required_status_checks']['contexts'].length}")
-        puts("        branch['required_status_checks']['checks'] : #{current_protection['required_status_checks']['checks']}")
-        puts("        branch['required_status_checks']['contexts'] : #{current_protection['required_status_checks']['contexts']}")
+      # Helper to extract core check name (strips "Build / " prefix and " (pull_request)" or " (value, pull_request)" suffix)
+      normalize_check_name =
+        lambda do |name|
+          name.sub(%r{^[^/]+\s*/\s*}, '').sub(/\s*\([^)]*pull_request\)$/, '')
+        end
 
+      # Create normalized lookup sets
+      expected_normalized = @required_status_checks.map { |c| normalize_check_name.call(c) }
+
+      unless actual_count == expected_count && current_protection['required_status_checks']['checks'].length == expected_count
+        # Find truly missing checks (expected but not in GitHub, using normalized comparison)
+        missing_checks =
+          @required_status_checks.reject do |job|
+            normalized = normalize_check_name.call(job)
+            actual_contexts.include?(job) || actual_contexts.include?(normalized)
+          end
+
+        # Find truly extra checks (in GitHub but not expected, using normalized comparison)
+        # Also exclude code scanning checks (Analyze) since they're accounted for in addition_check
+        extra_checks =
+          actual_contexts.reject do |ctx|
+            @required_status_checks.include?(ctx) ||
+              expected_normalized.include?(ctx) ||
+              code_scanning_checks.include?(ctx)
+          end
+
+        # Find checks with format mismatch (same core name, different format)
+        format_mismatches =
+          @required_status_checks.select do |job|
+            normalized = normalize_check_name.call(job)
+            !actual_contexts.include?(job) && actual_contexts.include?(normalized)
+          end
+
+        puts('')
+        puts('        ┌─────────────────────────────────────────────────────────────────┐')
+        puts('        │                   STATUS CHECKS MISMATCH                        │')
+        puts('        ├─────────────────────────────────────────────────────────────────┤')
+        puts("        │  Expected: #{expected_count.to_s.ljust(4)} (#{@required_status_checks.length} from workflow + #{addition_check} additional)")
+        puts("        │  Actual:   #{actual_count.to_s.ljust(4)}")
+        puts('        └─────────────────────────────────────────────────────────────────┘')
+
+        if format_mismatches.any?
+          puts('')
+          puts('        FORMAT MISMATCHES (check exists but name format differs):')
+          format_mismatches.each do |check|
+            normalized = normalize_check_name.call(check)
+            puts("          ~ Expected: #{check}")
+            puts("            Actual:   #{normalized}")
+          end
+        end
+
+        if missing_checks.any?
+          puts('')
+          puts('        TRULY MISSING (not in branch protection at all):')
+          missing_checks.each { |check| puts("          ✗ #{check}") }
+        end
+
+        if extra_checks.any?
+          puts('')
+          puts('        EXTRA CHECKS (in branch protection but not expected):')
+          extra_checks.each { |check| puts("          + #{check}") }
+        end
+
+        if addition_check.positive? || code_scanning_checks.any?
+          puts('')
+          puts("        EXPECTED ADDITIONAL CHECKS: #{addition_check}")
+          puts('          • ci_scripts Xcode check') if Dir.exist?('ci_scripts')
+          puts('          • Vercel') if File.exist?('package.json') && File.read('package.json').include?('"next"')
+          code_scanning_checks.each { |check| puts("          • #{check} (code scanning)") }
+        end
+
+        puts('')
         raise('Error: master branch missing checks!')
       end
 
