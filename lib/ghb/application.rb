@@ -817,7 +817,8 @@ module GHB
           # Filter out redundant languages from API response
           # The API returns 'javascript', 'javascript-typescript', and 'typescript' but
           # only 'javascript' check actually runs (it covers both JS and TS)
-          languages = codeql_setup['languages'].reject { |lang| %w[javascript-typescript typescript].include?(lang) }
+          redundant_languages = %w[javascript-typescript typescript]
+          languages = codeql_setup['languages'].reject { |lang| redundant_languages.include?(lang) }
 
           languages.each do |lang|
             code_scanning_checks << "Analyze (#{lang})"
