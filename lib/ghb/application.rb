@@ -46,16 +46,15 @@ module GHB
       workflow_job_licenses_check
       workflow_job_detect_languages
 
-      workflow_name = @new_workflow.name || 'Build'
       @new_workflow.jobs.each_value do |job|
         if job&.strategy&.[](:matrix)
           job.strategy[:matrix].each_value do |values|
             values.each do |value|
-              @required_status_checks << "#{workflow_name} / #{job.name} (#{value}, pull_request)"
+              @required_status_checks << "#{job.name} (#{value})"
             end
           end
         else
-          @required_status_checks << "#{workflow_name} / #{job.name} (pull_request)"
+          @required_status_checks << job.name
         end
       end
 
@@ -822,18 +821,19 @@ module GHB
         end
       end
 
-      # Also check for Analyze checks in actual branch protection (may come from Semgrep or other tools)
+      # Check Analyze checks in branch protection
       actual_contexts = current_protection['required_status_checks']['contexts']
       actual_analyze_checks = actual_contexts.grep(/^Analyze \(.+\)$/)
 
-      # Use the actual Analyze checks if CodeQL didn't detect them (they might be from Semgrep)
-      if code_scanning_checks.empty? && actual_analyze_checks.any?
-        code_scanning_checks = actual_analyze_checks
-        puts("    Code scanning checks detected from branch protection: #{actual_analyze_checks.join(', ')} (#{actual_analyze_checks.length})")
-      elsif code_scanning_checks.any? && actual_analyze_checks.any?
-        # Merge both lists (in case some are from CodeQL, some from Semgrep)
-        code_scanning_checks = (code_scanning_checks + actual_analyze_checks).uniq
-        puts("    Total code scanning checks: #{code_scanning_checks.join(', ')} (#{code_scanning_checks.length})")
+      # If CodeQL is configured, filter out redundant languages
+      # (e.g., typescript is covered by javascript-typescript)
+      if code_scanning_checks.any?
+        # Remove typescript if javascript-typescript is present (it covers both)
+        code_scanning_checks.delete('Analyze (typescript)') if code_scanning_checks.include?('Analyze (javascript-typescript)')
+
+        # Verify all expected CodeQL checks are in branch protection
+        missing_codeql = code_scanning_checks - actual_analyze_checks
+        raise("Error: CodeQL checks missing from branch protection: #{missing_codeql.join(', ')}") if missing_codeql.any?
       end
 
       addition_check += code_scanning_checks.length
@@ -843,10 +843,10 @@ module GHB
       expected_count = @required_status_checks.length + addition_check
       actual_count = actual_contexts.length
 
-      # Helper to extract core check name (strips "Build / " prefix and " (pull_request)" or " (value, pull_request)" suffix)
+      # Helper to extract core check name (strips matrix value suffix like " (macos-latest)")
       normalize_check_name =
         lambda do |name|
-          name.sub(%r{^[^/]+\s*/\s*}, '').sub(/\s*\([^)]*pull_request\)$/, '')
+          name.sub(/\s*\([^)]+\)$/, '')
         end
 
       # Create normalized lookup sets
