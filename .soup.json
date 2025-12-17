@@ -290,7 +290,7 @@
   "psych": {
     "language": "Ruby",
     "package": "psych",
-    "version": "5.3.0",
+    "version": "5.3.1",
     "license": "MIT",
     "description": "Psych is a YAML parser and emitter",
     "website": "https://github.com/ruby/psych",
@@ -338,7 +338,7 @@
   "rubocop": {
     "language": "Ruby",
     "package": "rubocop",
-    "version": "1.81.7",
+    "version": "1.82.0",
     "license": "MIT",
     "description": "RuboCop is a Ruby code style checking and code formatting tool.",
     "website": "https://rubocop.org/",
@@ -458,7 +458,7 @@
   "stringio": {
     "language": "Ruby",
     "package": "stringio",
-    "version": "3.1.9",
+    "version": "3.2.0",
     "license": "Ruby",
     "description": "Pseudo `IO` class from/to `String`.",
     "website": "https://github.com/ruby/stringio",
