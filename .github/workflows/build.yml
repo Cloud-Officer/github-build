@@ -19,7 +19,7 @@ permissions:
   pull-requests: read
 env:
   RUBY-BUNDLER-CACHE: true
-  RUBY-VERSION: 3.4.7
+  RUBY-VERSION: 3.4.8
 jobs:
   variables:
     name: Prepare Variables
