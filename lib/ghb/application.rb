@@ -800,8 +800,7 @@ module GHB
 
       current_protection = JSON.parse(response.body)
 
-      # Verify status checks count (don't set them via API due to naming complexity)
-      addition_check = Dir.exist?('ci_scripts') ? 1 : 0
+      # Add Vercel check if Next.js project
       @required_status_checks << 'Vercel' if File.exist?('package.json') && File.read('package.json').include?('"next"')
 
       # Get code scanning analyses (CodeQL, Semgrep, etc.)
@@ -827,96 +826,33 @@ module GHB
         end
       end
 
-      # Check Analyze checks in branch protection
-      actual_contexts = current_protection['required_status_checks']['contexts']
-      actual_analyze_checks = actual_contexts.grep(/^Analyze \(.+\)$/)
+      # Build complete list of expected checks
+      # Note: CodeQL checks are NOT included because they use "smart mode" which only runs
+      # when relevant files change. CodeQL still blocks PRs through code scanning alerts.
+      expected_checks = @required_status_checks.dup
+      expected_checks << 'Xcode' if Dir.exist?('ci_scripts')
 
-      # Verify all expected CodeQL checks are in branch protection
-      if code_scanning_checks.any?
-        missing_codeql = code_scanning_checks - actual_analyze_checks
-        raise("Error: CodeQL checks missing from branch protection: #{missing_codeql.join(', ')}") if missing_codeql.any?
-      end
-
-      addition_check += code_scanning_checks.length
+      # Get actual checks from branch protection
+      actual_checks = current_protection['required_status_checks']['contexts']
 
       puts('    Checking required status checks...')
-      actual_contexts = current_protection['required_status_checks']['contexts']
-      expected_count = @required_status_checks.length + addition_check
-      actual_count = actual_contexts.length
 
-      # Helper to extract core check name (strips matrix value suffix like " (macos-latest)")
-      normalize_check_name =
-        lambda do |name|
-          name.sub(/\s*\([^)]+\)$/, '')
-        end
+      # Compare expected vs actual
+      missing_checks = expected_checks - actual_checks
+      extra_checks = actual_checks - expected_checks
 
-      # Create normalized lookup sets
-      expected_normalized = @required_status_checks.map { |c| normalize_check_name.call(c) }
-
-      unless actual_count == expected_count && current_protection['required_status_checks']['checks'].length == expected_count
-        # Find truly missing checks (expected but not in GitHub, using normalized comparison)
-        missing_checks =
-          @required_status_checks.reject do |job|
-            normalized = normalize_check_name.call(job)
-            actual_contexts.include?(job) || actual_contexts.include?(normalized)
-          end
-
-        # Find truly extra checks (in GitHub but not expected, using normalized comparison)
-        # Also exclude code scanning checks (Analyze) since they're accounted for in addition_check
-        extra_checks =
-          actual_contexts.reject do |ctx|
-            @required_status_checks.include?(ctx) ||
-              expected_normalized.include?(ctx) ||
-              code_scanning_checks.include?(ctx)
-          end
-
-        # Find checks with format mismatch (same core name, different format)
-        format_mismatches =
-          @required_status_checks.select do |job|
-            normalized = normalize_check_name.call(job)
-            !actual_contexts.include?(job) && actual_contexts.include?(normalized)
-          end
-
-        puts('')
-        puts('        ┌─────────────────────────────────────────────────────────────────┐')
-        puts('        │                   STATUS CHECKS MISMATCH                        │')
-        puts('        ├─────────────────────────────────────────────────────────────────┤')
-        puts("        │  Expected: #{expected_count.to_s.ljust(4)} (#{@required_status_checks.length} from workflow + #{addition_check} additional)")
-        puts("        │  Actual:   #{actual_count.to_s.ljust(4)}")
-        puts('        └─────────────────────────────────────────────────────────────────┘')
-
-        if format_mismatches.any?
-          puts('')
-          puts('        FORMAT MISMATCHES (check exists but name format differs):')
-          format_mismatches.each do |check|
-            normalized = normalize_check_name.call(check)
-            puts("          ~ Expected: #{check}")
-            puts("            Actual:   #{normalized}")
-          end
-        end
-
+      if missing_checks.any? || extra_checks.any?
         if missing_checks.any?
-          puts('')
-          puts('        TRULY MISSING (not in branch protection at all):')
+          puts('        MISSING (expected but not in branch protection):')
           missing_checks.each { |check| puts("          ✗ #{check}") }
         end
 
         if extra_checks.any?
-          puts('')
-          puts('        EXTRA CHECKS (in branch protection but not expected):')
+          puts('        EXTRA (in branch protection but not expected):')
           extra_checks.each { |check| puts("          + #{check}") }
         end
 
-        if addition_check.positive? || code_scanning_checks.any?
-          puts('')
-          puts("        EXPECTED ADDITIONAL CHECKS: #{addition_check}")
-          puts('          • ci_scripts Xcode check') if Dir.exist?('ci_scripts')
-          puts('          • Vercel') if File.exist?('package.json') && File.read('package.json').include?('"next"')
-          code_scanning_checks.each { |check| puts("          • #{check} (code scanning)") }
-        end
-
-        puts('')
-        raise('Error: master branch missing checks!')
+        raise('Error: branch protection checks mismatch!')
       end
 
       # Preserve existing dismissal restrictions or use empty defaults
