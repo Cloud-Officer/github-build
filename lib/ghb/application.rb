@@ -533,7 +533,7 @@ module GHB
                 'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
                 'aws-region': '${{secrets.AWS_DEFAULT_REGION}}',
                 source: 'deployment',
-                target: 's3://${{secrets.CODEDEPLOY_BUCKET}}/${GITHUB_REPOSITORY}'
+                target: 's3://${{secrets.CODEDEPLOY_BUCKET}}/${{GITHUB_REPOSITORY}}'
               }
             )
           end
@@ -561,7 +561,7 @@ module GHB
                   'application-name': @options.application_name,
                   'deployment-group-name': environment,
                   's3-bucket': '${{secrets.CODEDEPLOY_BUCKET}}',
-                  's3-key': '${GITHUB_REPOSITORY}/${{needs.variables.outputs.BUILD_NAME}}.zip'
+                  's3-key': '${{GITHUB_REPOSITORY}}/${{needs.variables.outputs.BUILD_NAME}}.zip'
                 }
               )
             end
