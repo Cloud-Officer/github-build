@@ -1,0 +1,1155 @@
+---
+# Gitignore.io templates configuration
+# Detection is based on SOURCE files, not build artifacts
+
+# Custom patterns for tools not available on gitignore.io
+# These are appended directly to .gitignore when detected
+custom_patterns:
+  claudecode:
+    directories:
+      - .claude
+    patterns:
+      - "# Claude Code"
+      - ".claude/"
+  cursor:
+    directories:
+      - .cursor
+    patterns:
+      - "# Cursor"
+      - ".cursor/"
+  copilot:
+    directories:
+      - .github/copilot
+    files:
+      - .copilot-codereviews.yml
+    patterns:
+      - "# GitHub Copilot"
+      - ".copilot/"
+  openaicodex:
+    directories:
+      - .codex
+    patterns:
+      - "# OpenAI Codex"
+      - ".codex/"
+  aider:
+    files:
+      - .aider.conf.yml
+      - .aiderignore
+    patterns:
+      - "# Aider"
+      - ".aider*"
+      - "!.aider.conf.yml"
+      - "!.aiderignore"
+  windsurf:
+    directories:
+      - .windsurf
+    patterns:
+      - "# Windsurf"
+      - ".windsurf/"
+
+# Templates that are always enabled (no detection needed)
+always_enabled:
+  # Operating Systems
+  - linux
+  - macos
+  - windows
+  # Generic IDEs/Editors (language-agnostic)
+  - eclipse
+  - emacs
+  - jetbrains
+  - netbeans
+  - nova
+  - sublimetext
+  - vim
+  - visualstudiocode
+
+# Templates detected by file extensions (source files)
+extension_detection:
+  1c:
+    extensions:
+      - bsl
+      - os
+  actionscript:
+    extensions:
+      - as
+  ada:
+    extensions:
+      - adb
+      - ads
+  agda:
+    extensions:
+      - agda
+  al:
+    extensions:
+      - al
+  ansible:
+    files:
+      - ansible.cfg
+      - playbook.yml
+      - playbook.yaml
+    directories:
+      - roles
+      - playbooks
+  applescript:
+    extensions:
+      - applescript
+      - scpt
+  assemblylanguage:
+    extensions:
+      - asm
+      - s
+  astro:
+    extensions:
+      - astro
+    files:
+      - astro.config.mjs
+      - astro.config.js
+  autohotkey:
+    extensions:
+      - ahk
+  ballerina:
+    extensions:
+      - bal
+    files:
+      - Ballerina.toml
+  batch:
+    extensions:
+      - bat
+      - cmd
+  c:
+    extensions:
+      - c
+      - h
+  c++:
+    extensions:
+      - cpp
+      - cxx
+      - cc
+      - hpp
+      - hxx
+      - hh
+  clojure:
+    extensions:
+      - clj
+      - cljs
+      - cljc
+      - edn
+    files:
+      - project.clj
+      - deps.edn
+  cmake:
+    files:
+      - CMakeLists.txt
+    extensions:
+      - cmake
+  cobol:
+    extensions:
+      - cob
+      - cbl
+      - cpy
+  coffeescript:
+    extensions:
+      - coffee
+  commonlisp:
+    extensions:
+      - lisp
+      - lsp
+      - cl
+  coq:
+    extensions:
+      - v
+  crystal:
+    extensions:
+      - cr
+    files:
+      - shard.yml
+  csharp:
+    extensions:
+      - cs
+      - csx
+  css:
+    extensions:
+      - css
+  cuda:
+    extensions:
+      - cu
+      - cuh
+  d:
+    extensions:
+      - d
+  dart:
+    extensions:
+      - dart
+    files:
+      - pubspec.yaml
+  delphi:
+    extensions:
+      - pas
+      - dpr
+      - dpk
+  django:
+    files:
+      - manage.py
+      - settings.py
+    directories:
+      - templates
+  dm:
+    extensions:
+      - dm
+      - dme
+  docker:
+    files:
+      - Dockerfile
+      - docker-compose.yml
+      - docker-compose.yaml
+      - compose.yml
+      - compose.yaml
+    extensions:
+      - dockerfile
+  dotenv:
+    files:
+      - .env
+      - .env.example
+      - .env.local
+  dotnetcore:
+    extensions:
+      - csproj
+      - fsproj
+      - vbproj
+      - sln
+  drupal:
+    files:
+      - sites/default/settings.php
+    extensions:
+      - module
+      - install
+      - theme
+  eagle:
+    extensions:
+      - brd
+      - sch
+  eiffel:
+    extensions:
+      - e
+  elisp:
+    extensions:
+      - el
+  elixir:
+    extensions:
+      - ex
+      - exs
+    files:
+      - mix.exs
+  elm:
+    extensions:
+      - elm
+    files:
+      - elm.json
+  ember:
+    files:
+      - ember-cli-build.js
+      - .ember-cli
+  erlang:
+    extensions:
+      - erl
+      - hrl
+    files:
+      - rebar.config
+  executable:
+    # Only enable if makefile exists (indicating compiled executables)
+    files:
+      - Makefile
+      - makefile
+      - GNUmakefile
+  expressionengine:
+    directories:
+      - system/expressionengine
+  factor:
+    extensions:
+      - factor
+  flask:
+    directories:
+      - templates
+      - static
+    files:
+      - flask_app.py
+      - run.py
+  flutter:
+    files:
+      - pubspec.yaml
+      - flutter_test_config.dart
+  fortran:
+    extensions:
+      - f
+      - for
+      - f90
+      - f95
+      - f03
+      - f08
+  fsharp:
+    extensions:
+      - fs
+      - fsi
+      - fsx
+  gatsby:
+    files:
+      - gatsby-config.js
+      - gatsby-config.ts
+      - gatsby-node.js
+  gcov:
+    # Enable when C/C++ detected
+    extensions:
+      - gcov
+  go:
+    extensions:
+      - go
+    files:
+      - go.mod
+      - go.sum
+  godot:
+    extensions:
+      - gd
+      - tscn
+      - tres
+    files:
+      - project.godot
+  gradle:
+    files:
+      - build.gradle
+      - build.gradle.kts
+      - settings.gradle
+      - settings.gradle.kts
+      - gradlew
+  grails:
+    files:
+      - grails-app
+    directories:
+      - grails-app
+  graphql:
+    extensions:
+      - graphql
+      - gql
+  groovy:
+    extensions:
+      - groovy
+      - gvy
+      - gy
+      - gsh
+  gwt:
+    extensions:
+      - gwt.xml
+  haskell:
+    extensions:
+      - hs
+      - lhs
+    files:
+      - stack.yaml
+      - cabal.project
+  helm:
+    files:
+      - Chart.yaml
+      - values.yaml
+    directories:
+      - charts
+      - templates
+  hexo:
+    directories:
+      - scaffolds
+      - themes
+    files:
+      - _config.landscape.yml
+  html:
+    extensions:
+      - html
+      - htm
+  hugo:
+    files:
+      - hugo.toml
+      - hugo.yaml
+      - hugo.json
+    directories:
+      - archetypes
+      - layouts/partials
+  idris:
+    extensions:
+      - idr
+  java:
+    extensions:
+      - java
+    files:
+      - pom.xml
+      - build.gradle
+  jekyll:
+    directories:
+      - _posts
+      - _layouts
+      - _includes
+      - _sass
+  jenkins:
+    files:
+      - Jenkinsfile
+  joomla:
+    files:
+      - configuration.php
+    directories:
+      - administrator
+      - components
+      - modules
+  jsonnet:
+    extensions:
+      - jsonnet
+      - libsonnet
+  julia:
+    extensions:
+      - jl
+    files:
+      - Project.toml
+      - Manifest.toml
+  jupyternotebooks:
+    extensions:
+      - ipynb
+  kicad:
+    extensions:
+      - kicad_pcb
+      - kicad_sch
+      - kicad_mod
+  kotlin:
+    extensions:
+      - kt
+      - kts
+  labview:
+    extensions:
+      - vi
+      - lvproj
+      - lvlib
+  laravel:
+    files:
+      - artisan
+  latex:
+    extensions:
+      - tex
+      - sty
+      - cls
+      - bib
+  less:
+    extensions:
+      - less
+  lilypond:
+    extensions:
+      - ly
+  lithium:
+    directories:
+      - libraries/lithium
+  lua:
+    extensions:
+      - lua
+  magento:
+    directories:
+      - app/code
+      - app/design
+  matlab:
+    extensions:
+      - m
+      - mat
+      - fig
+      - mlx
+  maven:
+    files:
+      - pom.xml
+      - mvnw
+  mdbook:
+    files:
+      - book.toml
+    directories:
+      - src
+  mercury:
+    extensions:
+      - m
+      - moo
+  meson:
+    files:
+      - meson.build
+      - meson_options.txt
+  metalsmith:
+    files:
+      - metalsmith.json
+  meteor:
+    files:
+      - .meteor
+    directories:
+      - .meteor
+  nim:
+    extensions:
+      - nim
+      - nims
+    files:
+      - nimble
+  ninja:
+    files:
+      - build.ninja
+  node:
+    files:
+      - package.json
+      - package-lock.json
+      - yarn.lock
+      - pnpm-lock.yaml
+      - .nvmrc
+      - .node-version
+  nuxtjs:
+    files:
+      - nuxt.config.js
+      - nuxt.config.ts
+  objective-c:
+    extensions:
+      - m
+      - mm
+  ocaml:
+    extensions:
+      - ml
+      - mli
+    files:
+      - dune
+      - dune-project
+      - _oasis
+  octave:
+    extensions:
+      - m
+  opencart:
+    directories:
+      - catalog
+      - admin
+      - system
+  opencv:
+    # Detected via cmake or specific files
+    files:
+      - opencv.cmake
+  openframeworks:
+    files:
+      - addons.make
+      - config.make
+  opa:
+    extensions:
+      - rego
+  pascal:
+    extensions:
+      - pas
+      - pp
+      - inc
+  perl:
+    extensions:
+      - pl
+      - pm
+      - t
+    files:
+      - Makefile.PL
+      - cpanfile
+  phalcon:
+    directories:
+      - app/config
+      - app/controllers
+      - app/models
+  phoenix:
+    files:
+      - config/dev.exs
+      - config/prod.exs
+      - config/runtime.exs
+    directories:
+      - priv/static
+      - priv/repo
+  php:
+    extensions:
+      - php
+      - phtml
+    files:
+      - composer.json
+      - composer.lock
+  playframework:
+    files:
+      - build.sbt
+      - conf/application.conf
+  plone:
+    files:
+      - buildout.cfg
+  polymer:
+    files:
+      - polymer.json
+  powershell:
+    extensions:
+      - ps1
+      - psm1
+      - psd1
+  premake:
+    files:
+      - premake5.lua
+      - premake4.lua
+  prestashop:
+    directories:
+      - modules
+      - themes
+      - controllers
+  processing:
+    extensions:
+      - pde
+  prolog:
+    extensions:
+      - pl
+      - pro
+  protobuf:
+    extensions:
+      - proto
+  puppet:
+    extensions:
+      - pp
+    files:
+      - Puppetfile
+      - metadata.json
+  purescript:
+    extensions:
+      - purs
+    files:
+      - spago.dhall
+      - bower.json
+  python:
+    extensions:
+      - py
+      - pyw
+      - pyx
+      - pxd
+    files:
+      - requirements.txt
+      - setup.py
+      - pyproject.toml
+      - Pipfile
+      - tox.ini
+  qml:
+    extensions:
+      - qml
+      - qmldir
+  qt:
+    extensions:
+      - pro
+      - pri
+      - ui
+  r:
+    extensions:
+      - r
+      - R
+      - Rmd
+    files:
+      - DESCRIPTION
+      - NAMESPACE
+      - .Rproj
+  racket:
+    extensions:
+      - rkt
+      - rktl
+  rails:
+    files:
+      - config/application.rb
+      - config/environment.rb
+      - bin/rails
+  react:
+    extensions:
+      - jsx
+      - tsx
+  reactnative:
+    files:
+      - app.json
+      - metro.config.js
+    directories:
+      - android
+      - ios
+  reason:
+    extensions:
+      - re
+      - rei
+  redis:
+    files:
+      - redis.conf
+  remix:
+    files:
+      - remix.config.js
+      - remix.config.ts
+  renpy:
+    extensions:
+      - rpy
+      - rpym
+  root:
+    extensions:
+      - C
+      - root
+  ros:
+    files:
+      - package.xml
+      - CMakeLists.txt
+    directories:
+      - msg
+      - srv
+      - launch
+  ruby:
+    extensions:
+      - rb
+      - rake
+      - gemspec
+    files:
+      - Gemfile
+      - Rakefile
+      - .ruby-version
+  rust:
+    extensions:
+      - rs
+    files:
+      - Cargo.toml
+      - Cargo.lock
+  sass:
+    extensions:
+      - sass
+      - scss
+  sbt:
+    files:
+      - build.sbt
+    directories:
+      - project
+  scala:
+    extensions:
+      - scala
+      - sc
+    files:
+      - build.sbt
+  scheme:
+    extensions:
+      - scm
+      - ss
+  scons:
+    files:
+      - SConstruct
+      - SConscript
+  sdcc:
+    extensions:
+      - c
+      - h
+    # Only for embedded development, hard to detect
+  serverless:
+    files:
+      - serverless.yml
+      - serverless.yaml
+      - serverless.json
+  shopware:
+    directories:
+      - custom/plugins
+      - src
+  silverstripe:
+    files:
+      - _config.php
+    directories:
+      - mysite
+  sketchup:
+    extensions:
+      - skp
+  smalltalk:
+    extensions:
+      - st
+  solidity:
+    extensions:
+      - sol
+  soliditytruffle:
+    files:
+      - truffle-config.js
+      - truffle.js
+  spark:
+    # Detected via scala or python files
+    files:
+      - spark-defaults.conf
+  splunk:
+    files:
+      - default/app.conf
+      - local/app.conf
+  standardml:
+    extensions:
+      - sml
+      - sig
+  stata:
+    extensions:
+      - do
+      - ado
+      - dta
+  strapi:
+    files:
+      - strapi.config.js
+      - config/server.js
+      - config/database.js
+  stylus:
+    extensions:
+      - styl
+  svelte:
+    extensions:
+      - svelte
+    files:
+      - svelte.config.js
+  svg:
+    extensions:
+      - svg
+  swift:
+    extensions:
+      - swift
+    files:
+      - Package.swift
+      - Podfile
+      - Cartfile
+  symfony:
+    files:
+      - symfony.lock
+      - config/bundles.php
+  tailwindcss:
+    files:
+      - tailwind.config.js
+      - tailwind.config.ts
+  terraform:
+    extensions:
+      - tf
+      - tfvars
+    files:
+      - main.tf
+      - variables.tf
+      - terraform.tfstate
+  tex:
+    extensions:
+      - tex
+      - sty
+      - cls
+  textpattern:
+    directories:
+      - textpattern
+  theos-tweak:
+    files:
+      - Makefile
+      - Tweak.xm
+      - control
+  toit:
+    extensions:
+      - toit
+  turbogears2:
+    files:
+      - development.ini
+      - production.ini
+    directories:
+      - tg2env
+  twig:
+    extensions:
+      - twig
+  typescript:
+    extensions:
+      - ts
+      - tsx
+    files:
+      - tsconfig.json
+  typo3:
+    directories:
+      - typo3conf
+      - fileadmin
+  unity:
+    directories:
+      - Assets
+      - ProjectSettings
+      - Library
+    extensions:
+      - unity
+      - prefab
+      - meta
+  unrealengine:
+    extensions:
+      - uproject
+      - uasset
+      - umap
+  v:
+    extensions:
+      - v
+  vagrant:
+    files:
+      - Vagrantfile
+  vala:
+    extensions:
+      - vala
+      - vapi
+  vapor:
+    files:
+      - Sources/App/configure.swift
+      - Sources/App/routes.swift
+    directories:
+      - Sources/App
+      - Resources/Views
+  vcpkg:
+    files:
+      - vcpkg.json
+  vhdl:
+    extensions:
+      - vhd
+      - vhdl
+  video:
+    extensions:
+      - mp4
+      - avi
+      - mkv
+      - mov
+      - wmv
+  virtualenv:
+    directories:
+      - venv
+      - .venv
+      - env
+      - .env
+    files:
+      - pyvenv.cfg
+  visualstudio:
+    extensions:
+      - sln
+      - vcxproj
+      - csproj
+  vue:
+    extensions:
+      - vue
+    files:
+      - vue.config.js
+      - vite.config.js
+      - vite.config.ts
+  vuejs:
+    extensions:
+      - vue
+    files:
+      - vue.config.js
+  vvvv:
+    extensions:
+      - v4p
+      - vl
+  waf:
+    files:
+      - wscript
+  web:
+    extensions:
+      - html
+      - css
+      - js
+  webassembly:
+    extensions:
+      - wat
+      - wasm
+  webpack:
+    files:
+      - webpack.config.js
+      - webpack.config.ts
+  wordpress:
+    files:
+      - wp-config.php
+    directories:
+      - wp-content
+      - wp-includes
+      - wp-admin
+  xcode:
+    extensions:
+      - xcodeproj
+      - xcworkspace
+      - pbxproj
+    files:
+      - Podfile
+      - Cartfile
+  xamarin:
+    extensions:
+      - csproj
+    directories:
+      - Droid
+      - iOS
+  xilinx:
+    extensions:
+      - xpr
+      - xci
+      - bd
+  xilinxise:
+    extensions:
+      - xise
+      - ngc
+  xojo:
+    extensions:
+      - xojo_project
+      - xojo_binary_project
+  yeoman:
+    files:
+      - .yo-rc.json
+  yii:
+    files:
+      - yii
+    directories:
+      - components
+      - controllers
+      - models
+      - views
+  zendframework:
+    files:
+      - config/autoload/global.php
+      - config/autoload/local.php
+    directories:
+      - module
+  zephir:
+    extensions:
+      - zep
+  zig:
+    extensions:
+      - zig
+    files:
+      - build.zig
+  # CocoaPods - for iOS/macOS projects
+  cocoapods:
+    files:
+      - Podfile
+      - Podfile.lock
+  # Carthage - for iOS/macOS projects
+  carthage:
+    files:
+      - Cartfile
+      - Cartfile.resolved
+  # SwiftPM - Swift Package Manager
+  swiftpm:
+    files:
+      - Package.swift
+      - Package.resolved
+  # Bazel build system
+  bazel:
+    files:
+      - WORKSPACE
+      - BUILD
+      - BUILD.bazel
+    extensions:
+      - bazel
+      - bzl
+  # Buck build system
+  buck:
+    files:
+      - .buckconfig
+      - BUCK
+  # Pants build system
+  pants:
+    files:
+      - pants.toml
+      - BUILD
+  # Pulumi infrastructure
+  pulumi:
+    files:
+      - Pulumi.yaml
+      - Pulumi.yml
+  # AWS SAM
+  sam:
+    files:
+      - template.yaml
+      - template.yml
+      - samconfig.toml
+  # AWS CDK
+  awscdk:
+    files:
+      - cdk.json
+    directories:
+      - cdk.out
+  # Nx monorepo
+  nx:
+    files:
+      - nx.json
+      - workspace.json
+  # Lerna monorepo
+  lerna:
+    files:
+      - lerna.json
+  # Turborepo
+  turborepo:
+    files:
+      - turbo.json
+  # pnpm
+  pnpm:
+    files:
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+  # Yarn
+  yarn:
+    files:
+      - yarn.lock
+      - .yarnrc.yml
+      - .yarnrc
+  # Bun
+  bun:
+    files:
+      - bun.lockb
+      - bunfig.toml
+  # Deno
+  deno:
+    files:
+      - deno.json
+      - deno.jsonc
+      - deno.lock
+    extensions:
+      - ts
+  # Next.js
+  nextjs:
+    files:
+      - next.config.js
+      - next.config.mjs
+      - next.config.ts
+  # Specialized IDE detection (language-specific)
+  androidstudio:
+    extensions:
+      - kt
+      - kts
+    files:
+      - build.gradle
+      - build.gradle.kts
+    directories:
+      - android
+  clion:
+    extensions:
+      - c
+      - cpp
+      - cxx
+      - cc
+      - h
+      - hpp
+    files:
+      - CMakeLists.txt
+  goland:
+    extensions:
+      - go
+    files:
+      - go.mod
+  intellij:
+    extensions:
+      - java
+      - kt
+      - kts
+    files:
+      - pom.xml
+      - build.gradle
+  phpstorm:
+    extensions:
+      - php
+    files:
+      - composer.json
+  pycharm:
+    extensions:
+      - py
+    files:
+      - requirements.txt
+      - pyproject.toml
+  rider:
+    extensions:
+      - cs
+      - csproj
+      - sln
+      - fsproj
+  rubymine:
+    extensions:
+      - rb
+    files:
+      - Gemfile
+  webstorm:
+    extensions:
+      - js
+      - ts
+      - jsx
+      - tsx
+    files:
+      - package.json
