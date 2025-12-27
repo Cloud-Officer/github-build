@@ -358,10 +358,6 @@ extension_detection:
       - themes
     files:
       - _config.landscape.yml
-  html:
-    extensions:
-      - html
-      - htm
   hugo:
     files:
       - hugo.toml
@@ -391,10 +387,6 @@ extension_detection:
   joomla:
     files:
       - configuration.php
-    directories:
-      - administrator
-      - components
-      - modules
   jsonnet:
     extensions:
       - jsonnet
@@ -583,10 +575,9 @@ extension_detection:
       - premake5.lua
       - premake4.lua
   prestashop:
-    directories:
-      - modules
-      - themes
-      - controllers
+    files:
+      - config/defines.inc.php
+      - config/settings.inc.php
   processing:
     extensions:
       - pde
@@ -837,12 +828,6 @@ extension_detection:
   twig:
     extensions:
       - twig
-  typescript:
-    extensions:
-      - ts
-      - tsx
-    files:
-      - tsconfig.json
   typo3:
     directories:
       - typo3conf
@@ -924,11 +909,6 @@ extension_detection:
   waf:
     files:
       - wscript
-  web:
-    extensions:
-      - html
-      - css
-      - js
   webassembly:
     extensions:
       - wat
@@ -1082,8 +1062,6 @@ extension_detection:
       - deno.json
       - deno.jsonc
       - deno.lock
-    extensions:
-      - ts
   # Next.js
   nextjs:
     files:
