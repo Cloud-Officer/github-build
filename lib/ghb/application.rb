@@ -8,6 +8,7 @@ require 'json'
 require 'open3'
 require 'psych'
 require 'rbconfig'
+require 'set'
 
 require_relative 'options'
 require_relative 'status'
@@ -641,7 +642,7 @@ module GHB
     end
 
     def workflow_write
-      @new_workflow.write(@options.build_file)
+      @new_workflow.write(@options.build_file, header: @options.args_comment)
     end
 
     def save_dependabot_config
@@ -1001,20 +1002,30 @@ module GHB
 
     def update_gitignore
       return if @options.skip_gitignore
+      return unless File.exist?('.gitignore')
 
       puts('Updating .gitignore...')
       git_ignore = File.read('.gitignore').strip
 
-      return unless git_ignore.lines.first&.include?('# Created by ') or git_ignore.lines.first&.include?('# Edit at ')
+      # Load gitignore templates config
+      config_path = "#{__dir__}/../../#{@options.gitignore_config_file}"
+      gitignore_config = Psych.safe_load(File.read(config_path))&.deep_symbolize_keys
 
-      first_line = git_ignore.lines.first
-      split_line = first_line&.split&.[](3)
-      api_url = split_line&.gsub('?templates=', '/api/')
+      # Detect templates based on project files
+      detected_templates = detect_gitignore_templates(gitignore_config)
+
+      # Build API URL with detected templates
+      templates_param = detected_templates.join(',')
+      api_url = "https://www.toptal.com/developers/gitignore/api/#{templates_param}"
+
+      puts("    Detected templates: #{detected_templates.join(', ')}")
       response = HTTParty.get(api_url)
 
       raise(response.message) unless response.code == 200
 
       new_git_ignore = response.body.split("\n", 2).last
+
+      # Preserve custom entries after "# End of" section from original gitignore
       found = false
 
       git_ignore.each_line do |line|
@@ -1028,7 +1039,7 @@ module GHB
 
       new_git_ignore += "\n"
 
-      # Uncomment specific lines if present:
+      # Uncomment specific lines if present (for JetBrains IDE compatibility):
       patterns = %w[*.iml modules.xml .idea/misc.xml *.ipr auto-import. .idea/artifacts .idea/compiler.xml .idea/jarRepositories.xml .idea/modules.xml .idea/*.iml .idea/modules]
 
       patterns.each do |pattern|
@@ -1036,7 +1047,96 @@ module GHB
         new_git_ignore.gsub!(regex, '\\1')
       end
 
+      # Detect and append custom patterns for AI assistants and tools not on gitignore.io
+      custom_patterns = detect_custom_patterns(gitignore_config)
+
+      unless custom_patterns.empty?
+        new_git_ignore += "\n# AI Assistants\n"
+        new_git_ignore += custom_patterns.join("\n")
+        new_git_ignore += "\n"
+        tool_names = custom_patterns.filter_map { |p| p.sub('# ', '') if p.start_with?('#') }
+        puts("    Custom patterns: #{tool_names.join(', ')}")
+      end
+
       File.write('.gitignore', new_git_ignore.gsub(/\n{3,16}/, "\n").gsub('/bin/*', '#/bin/*').gsub('# Pods/', 'Pods/'))
+    end
+
+    def detect_gitignore_templates(config)
+      templates = Set.new
+
+      # Add always-enabled templates
+      config[:always_enabled]&.each do |template|
+        templates.add(template)
+      end
+
+      # Detect templates based on file extensions, specific files, and directories
+      config[:extension_detection]&.each do |template_name, detection_config|
+        detected = false
+
+        # Check for file extensions
+        detection_config[:extensions]&.each do |ext|
+          break if detected
+
+          # Use find to check for files with this extension
+          case RbConfig::CONFIG['host_os']
+          when /linux/
+            _stdout_str, _stderr_str, status = Open3.capture3("find . -maxdepth 5 -type f -name '*.#{ext}' #{@submodules} 2>/dev/null | head -1 | grep -qE '.*'")
+          else
+            _stdout_str, _stderr_str, status = Open3.capture3("find -E . -maxdepth 5 -type f -name '*.#{ext}' #{@submodules} 2>/dev/null | head -1 | grep -qE '.*'")
+          end
+
+          detected = status.success?
+        end
+
+        # Check for specific files
+        detection_config[:files]&.each do |file|
+          break if detected
+
+          detected = File.exist?(file)
+        end
+
+        # Check for directories
+        detection_config[:directories]&.each do |dir|
+          break if detected
+
+          detected = Dir.exist?(dir)
+        end
+
+        templates.add(template_name.to_s) if detected
+      end
+
+      templates.to_a.sort
+    end
+
+    def detect_custom_patterns(config)
+      patterns = []
+
+      config[:custom_patterns]&.each_value do |tool_config|
+        detected = false
+
+        # Check for specific files
+        tool_config[:files]&.each do |file|
+          break if detected
+
+          detected = File.exist?(file)
+        end
+
+        # Check for directories
+        tool_config[:directories]&.each do |dir|
+          break if detected
+
+          detected = Dir.exist?(dir)
+        end
+
+        # Add patterns if tool is detected
+        next unless detected
+
+        tool_config[:patterns]&.each do |pattern|
+          patterns << pattern
+        end
+      end
+
+      patterns
     end
   end
 end

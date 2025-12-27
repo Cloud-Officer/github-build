@@ -7,12 +7,17 @@ require_relative 'status'
 
 module GHB
   class Options
+    ARGS_COMMENT_PREFIX = '# github-build'
+    private_constant :ARGS_COMMENT_PREFIX
+
     def initialize(argv = [])
       @application_name = Dir.pwd.split('/').last.split('-').last
-      @argv = argv
+      @argv = argv.empty? ? args_from_file(DEFAULT_BUILD_FILE) : argv.dup
+      @original_argv = @argv.dup
       @build_file = DEFAULT_BUILD_FILE
       @excluded_folders = []
       @force_codedeploy_setup = false
+      @gitignore_config_file = DEFAULT_GITIGNORE_CONFIG_FILE
       @ignored_linters = {}
       @languages_config_file = DEFAULT_LANGUAGES_CONFIG_FILE
       @linters_config_file = DEFAULT_LINTERS_CONFIG_FILE
@@ -35,7 +40,7 @@ module GHB
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :ignored_linters, :languages_config_file, :linters_config_file, :only_dependabot, :options_config_file_apt, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :skip_codeql, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check
+    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :only_dependabot, :options_config_file_apt, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :original_argv, :skip_codeql, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check
 
     def parse
       @parser.parse!(@argv)
@@ -43,7 +48,26 @@ module GHB
       self
     end
 
+    def args_comment
+      return '' if @original_argv.empty?
+
+      "#{ARGS_COMMENT_PREFIX} #{@original_argv.join(' ')}\n"
+    end
+
     private
+
+    def args_from_file(file)
+      return [] unless File.exist?(file)
+
+      first_line = File.open(file, &:readline).strip
+      return [] unless first_line.start_with?(ARGS_COMMENT_PREFIX)
+
+      args_string = first_line.sub(ARGS_COMMENT_PREFIX, '').strip
+      require('shellwords')
+      Shellwords.split(args_string)
+    rescue EOFError
+      []
+    end
 
     def setup_parser
       @parser.banner = 'Usage: github-build options'
@@ -64,6 +88,10 @@ module GHB
 
       @parser.on('', '--force_codedeploy_setup', 'Force executing the setup step in CodeDeploy even if not technically required') do
         @force_codedeploy_setup = true
+      end
+
+      @parser.on('', '--gitignore_config_file file', 'Path to gitignore config file') do |file|
+        @gitignore_config_file = file
       end
 
       @parser.on('', '--ignored_linters ignored_linters', 'Ignore linter keys in linter config file') do |ignored_linters|

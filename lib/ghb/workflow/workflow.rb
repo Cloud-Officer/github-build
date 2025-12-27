@@ -106,9 +106,10 @@ module GHB
       end
     end
 
-    def write(file)
+    def write(file, header: '')
       FileUtils.mkdir_p(File.dirname(file))
-      File.write(file, to_h.deep_stringify_keys.to_yaml({ line_width: -1 }))
+      content = header + to_h.deep_stringify_keys.to_yaml({ line_width: -1 })
+      File.write(file, content)
     end
 
     def to_h

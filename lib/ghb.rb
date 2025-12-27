@@ -2,6 +2,7 @@
 
 module GHB
   DEFAULT_BUILD_FILE = '.github/workflows/build.yml'
+  DEFAULT_GITIGNORE_CONFIG_FILE = 'config/gitignore.yaml'
   DEFAULT_LANGUAGES_CONFIG_FILE = 'config/languages.yaml'
   DEFAULT_LINTERS_CONFIG_FILE = 'config/linters.yaml'
   OPTIONS_APT_CONFIG_FILE = 'config/options/apt.yaml'
@@ -13,6 +14,7 @@ module GHB
   DEFAULT_JOB_TIMEOUT_MINUTES = 30
 
   private_constant :DEFAULT_BUILD_FILE
+  private_constant :DEFAULT_GITIGNORE_CONFIG_FILE
   private_constant :DEFAULT_LANGUAGES_CONFIG_FILE
   private_constant :DEFAULT_LINTERS_CONFIG_FILE
   private_constant :OPTIONS_APT_CONFIG_FILE
