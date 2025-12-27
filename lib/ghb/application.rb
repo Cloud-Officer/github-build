@@ -1069,6 +1069,11 @@ module GHB
         templates.add(template)
       end
 
+      # Exclude common dependency/build folders from search
+      dependency_excludes = %w[node_modules vendor .git .hg .svn venv .venv env __pycache__ .pytest_cache .bundle target build dist out Pods Carthage .build DerivedData packages .nuget .npm .yarn .pnpm bower_components jspm_packages]
+                            .map { |d| "-not -path './#{d}/*'" }
+                            .join(' ')
+
       # Detect templates based on file extensions, specific files, and directories
       config[:extension_detection]&.each do |template_name, detection_config|
         detected = false
@@ -1077,12 +1082,12 @@ module GHB
         detection_config[:extensions]&.each do |ext|
           break if detected
 
-          # Use find to check for files with this extension
+          # Use find to check for files with this extension, excluding dependency folders
           case RbConfig::CONFIG['host_os']
           when /linux/
-            _stdout_str, _stderr_str, status = Open3.capture3("find . -maxdepth 5 -type f -name '*.#{ext}' #{@submodules} 2>/dev/null | head -1 | grep -qE '.*'")
+            _stdout_str, _stderr_str, status = Open3.capture3("find . #{dependency_excludes} -maxdepth 5 -type f -name '*.#{ext}' #{@submodules} 2>/dev/null | head -1 | grep -qE '.*'")
           else
-            _stdout_str, _stderr_str, status = Open3.capture3("find -E . -maxdepth 5 -type f -name '*.#{ext}' #{@submodules} 2>/dev/null | head -1 | grep -qE '.*'")
+            _stdout_str, _stderr_str, status = Open3.capture3("find -E . #{dependency_excludes} -maxdepth 5 -type f -name '*.#{ext}' #{@submodules} 2>/dev/null | head -1 | grep -qE '.*'")
           end
 
           detected = status.success?
