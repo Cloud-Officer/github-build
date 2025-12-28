@@ -468,10 +468,10 @@ extension_detection:
       - Makefile.PL
       - cpanfile
   phalcon:
-    directories:
-      - app/config
-      - app/controllers
-      - app/models
+    files:
+      - app/config/config.php
+      - app/config/services.php
+      - .htrouter.php
   phoenix:
     files:
       - config/dev.exs
