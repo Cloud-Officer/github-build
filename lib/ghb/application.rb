@@ -1055,20 +1055,6 @@ module GHB
 
       new_git_ignore = response.body.split("\n", 2).last
 
-      # Preserve custom entries after "# End of" section from original gitignore
-      found = false
-
-      git_ignore.each_line do |line|
-        if line.include?('# End of ')
-          found = true
-          next
-        end
-
-        new_git_ignore += line if found
-      end
-
-      new_git_ignore += "\n"
-
       # Uncomment specific lines if present (for JetBrains IDE compatibility):
       patterns = %w[*.iml modules.xml .idea/misc.xml *.ipr auto-import. .idea/artifacts .idea/compiler.xml .idea/jarRepositories.xml .idea/modules.xml .idea/*.iml .idea/modules]
 
@@ -1077,18 +1063,47 @@ module GHB
         new_git_ignore.gsub!(regex, '\\1')
       end
 
-      # Detect and append custom patterns for AI assistants and tools not on gitignore.io
+      # Add AI Assistants section right after gitignore.io content
       custom_patterns = detect_custom_patterns(gitignore_config)
 
       unless custom_patterns.empty?
-        new_git_ignore += "\n# AI Assistants\n"
-        new_git_ignore += custom_patterns.join("\n")
-        new_git_ignore += "\n"
+        new_git_ignore += "\n# BEGIN AI Assistants\n\n"
+        # Group patterns into pairs (comment + pattern) and join with blank lines between sections
+        grouped_patterns = custom_patterns.each_slice(2).map { |group| group.join("\n") }
+        new_git_ignore += grouped_patterns.join("\n\n")
+        new_git_ignore += "\n\n# END AI Assistants\n"
         tool_names = custom_patterns.filter_map { |p| p.sub('# ', '') if p.start_with?('#') }
         puts("    Custom patterns: #{tool_names.join(', ')}")
       end
 
-      File.write('.gitignore', new_git_ignore.gsub(/\n{3,16}/, "\n").gsub('/bin/*', '#/bin/*').gsub('# Pods/', 'Pods/'))
+      # Preserve custom entries after "# End of" section from original gitignore
+      # but skip the AI Assistants section (it was regenerated above)
+      found = false
+      in_ai_section = false
+
+      git_ignore.each_line do |line|
+        if line.include?('# End of ')
+          found = true
+          next
+        end
+
+        if line.include?('# BEGIN AI Assistants') || line.include?('# AI Assistants')
+          in_ai_section = true
+          next
+        end
+
+        if line.include?('# END AI Assistants')
+          in_ai_section = false
+          next
+        end
+
+        # Skip individual AI tool patterns when in old-style AI section (no END marker)
+        next if in_ai_section && custom_patterns.any? { |pattern| line.start_with?(pattern) }
+
+        new_git_ignore += line if found && !in_ai_section
+      end
+
+      File.write('.gitignore', new_git_ignore.gsub(/\n{3,16}/, "\n\n").gsub('/bin/*', '#/bin/*').gsub('# Pods/', 'Pods/'))
     end
 
     def detect_gitignore_templates(config)
@@ -1146,26 +1161,9 @@ module GHB
     def detect_custom_patterns(config)
       patterns = []
 
+      # Always include all custom patterns to prevent accidental commits
+      # even if the tool isn't detected (developer may start using it later)
       config[:custom_patterns]&.each_value do |tool_config|
-        detected = false
-
-        # Check for specific files
-        tool_config[:files]&.each do |file|
-          break if detected
-
-          detected = File.exist?(file)
-        end
-
-        # Check for directories
-        tool_config[:directories]&.each do |dir|
-          break if detected
-
-          detected = Dir.exist?(dir)
-        end
-
-        # Add patterns if tool is detected
-        next unless detected
-
         tool_config[:patterns]&.each do |pattern|
           patterns << pattern
         end
