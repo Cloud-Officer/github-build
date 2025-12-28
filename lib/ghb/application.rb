@@ -182,7 +182,6 @@ module GHB
       linters&.each do |short_name, linter|
         next if @options.ignored_linters[short_name]
 
-        next if linter[:short_name].include?('CodeQL') and @options.skip_codeql
         next if linter[:short_name].include?('Semgrep') and @options.skip_semgrep
 
         find_command = "find #{linter[:path]}"

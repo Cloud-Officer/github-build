@@ -28,7 +28,6 @@ module GHB
       @options_config_file_redis = OPTIONS_REDIS_CONFIG_FILE
       @organization = Dir.pwd.split('/')[-2]
       @parser = OptionParser.new
-      @skip_codeql = false
       @skip_dependabot = false
       @skip_semgrep = false
       @skip_gitignore = false
@@ -40,7 +39,7 @@ module GHB
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :only_dependabot, :options_config_file_apt, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :original_argv, :skip_codeql, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check
+    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :only_dependabot, :options_config_file_apt, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :original_argv, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check
 
     def parse
       @parser.parse!(@argv)
@@ -130,10 +129,6 @@ module GHB
 
       @parser.on('', '--organization organization', 'GitHub organization') do |organization|
         @organization = organization
-      end
-
-      @parser.on('', '--skip_codeql', 'Skip CodeQL') do
-        @skip_codeql = true
       end
 
       @parser.on('', '--skip_semgrep', 'Skip Semgrep') do
