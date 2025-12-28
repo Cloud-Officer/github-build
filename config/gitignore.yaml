@@ -3,49 +3,24 @@
 # Detection is based on SOURCE files, not build artifacts
 
 # Custom patterns for tools not available on gitignore.io
-# These are appended directly to .gitignore when detected
+# These are always appended to .gitignore to prevent accidental commits
 custom_patterns:
   claudecode:
-    directories:
-      - .claude
     patterns:
       - "# Claude Code"
       - ".claude/"
   cursor:
-    directories:
-      - .cursor
     patterns:
       - "# Cursor"
       - ".cursor/"
   copilot:
-    directories:
-      - .github/copilot
-    files:
-      - .copilot-codereviews.yml
     patterns:
       - "# GitHub Copilot"
       - ".copilot/"
   openaicodex:
-    directories:
-      - .codex
     patterns:
       - "# OpenAI Codex"
       - ".codex/"
-  aider:
-    files:
-      - .aider.conf.yml
-      - .aiderignore
-    patterns:
-      - "# Aider"
-      - ".aider*"
-      - "!.aider.conf.yml"
-      - "!.aiderignore"
-  windsurf:
-    directories:
-      - .windsurf
-    patterns:
-      - "# Windsurf"
-      - ".windsurf/"
 
 # Templates that are always enabled (no detection needed)
 always_enabled:
