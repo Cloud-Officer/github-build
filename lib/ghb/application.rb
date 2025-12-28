@@ -1102,7 +1102,8 @@ module GHB
         new_git_ignore += line if found && !in_ai_section
       end
 
-      File.write('.gitignore', new_git_ignore.gsub(/\n{3,16}/, "\n\n").gsub('/bin/*', '#/bin/*').gsub('# Pods/', 'Pods/'))
+      content = new_git_ignore.gsub(/\n{3,16}/, "\n\n").gsub('/bin/*', '#/bin/*').gsub('# Pods/', 'Pods/')
+      File.write('.gitignore', "#{content.chomp}\n")
     end
 
     def detect_gitignore_templates(config)
