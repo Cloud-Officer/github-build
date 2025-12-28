@@ -214,7 +214,7 @@ module GHB
           else
             File.delete(linter[:config]) if File.symlink?(linter[:config]) or File.exist?(linter[:config])
             FileUtils.cp("#{__dir__}/../../config/linters/#{linter[:config]}", linter[:config])
-            File.write(linter[:config], File.read(linter[:config]).gsub('# ', '')) if linter[:config] == '.rubocop.yml' and File.exist?('Gemfile') and File.read('Gemfile').include?('rails')
+            File.write(linter[:config], File.read(linter[:config]).gsub(/^(\s*)# /, '\1')) if linter[:config] == '.rubocop.yml' and File.exist?('Gemfile') and File.read('Gemfile').include?('rails')
           end
         end
 
@@ -794,6 +794,13 @@ module GHB
             }
         }
 
+      # Get repository info to check visibility
+      response = HTTParty.get(repo_url, headers)
+      raise(response.message) unless response.code == 200
+
+      repo_info = JSON.parse(response.body)
+      is_private = repo_info['private'] == true
+
       # Get current branch protection to preserve settings
       response = HTTParty.get("#{repo_url}/branches/master/protection", headers)
 
@@ -935,66 +942,89 @@ module GHB
       response = HTTParty.patch(repo_url, headers.merge(body: repo_settings.to_json))
       raise("Error: cannot configure repository settings! #{response.message}") unless response.code == 200
 
-      # Enable Advanced Security features (free for public repos)
-      puts('    Enabling Advanced Security features...')
-      security_settings = {
-        security_and_analysis: {
-          secret_scanning: { status: 'enabled' },
-          secret_scanning_push_protection: { status: 'enabled' },
-          secret_scanning_validity_checks: { status: 'enabled' },
-          secret_scanning_non_provider_patterns: { status: 'enabled' },
-          secret_scanning_ai_detection: { status: 'enabled' }
-        }
-      }
-
-      response = HTTParty.patch(repo_url, headers.merge(body: security_settings.to_json))
-      # Don't fail if this doesn't work (might be private repo without GHAS license)
-      if response.code == 200
-        puts('        Secret scanning enabled')
-        puts('        Secret scanning push protection enabled')
-        puts('        Secret scanning validity checks enabled')
-        puts('        Secret scanning non-provider patterns enabled')
-        puts('        Secret scanning AI detection (generic passwords) enabled')
-      else
-        puts("        Warning: could not enable security features (#{response.code})")
-      end
-
-      # Enable code scanning default setup (CodeQL)
-      puts('    Enabling CodeQL default setup...')
-
-      # First check current status
-      response = HTTParty.get("#{repo_url}/code-scanning/default-setup", headers)
-
-      if response.code == 200
-        current_setup = JSON.parse(response.body)
-
-        if current_setup['state'] == 'configured'
-          puts('        CodeQL default setup already configured')
-        else
-          code_scanning_config = {
-            state: 'configured',
-            query_suite: 'default'
+      # Advanced Security features - disable for private repos (GHAS incurs charges)
+      if is_private
+        puts('    Disabling Advanced Security features (private repository - GHAS incurs charges)...')
+        security_settings = {
+          security_and_analysis: {
+            secret_scanning: { status: 'disabled' },
+            secret_scanning_push_protection: { status: 'disabled' },
+            secret_scanning_validity_checks: { status: 'disabled' },
+            secret_scanning_non_provider_patterns: { status: 'disabled' },
+            secret_scanning_ai_detection: { status: 'disabled' }
           }
+        }
 
-          response = HTTParty.patch(
-            "#{repo_url}/code-scanning/default-setup",
-            headers.merge(body: code_scanning_config.to_json)
-          )
+        response = HTTParty.patch(repo_url, headers.merge(body: security_settings.to_json))
 
-          if [200, 202].include?(response.code)
-            puts('        CodeQL default setup enabled')
-          else
-            error_body =
-              begin
-                JSON.parse(response.body)
-              rescue JSON::ParserError
-                {}
-              end
-            puts("        Warning: could not enable CodeQL default setup (#{response.code}): #{error_body['message'] || 'unknown error'}")
-          end
+        if response.code == 200
+          puts('        Secret scanning disabled')
+          puts('        Secret scanning push protection disabled')
+          puts('        Secret scanning validity checks disabled')
+          puts('        Secret scanning non-provider patterns disabled')
+          puts('        Secret scanning AI detection disabled')
         end
       else
-        puts("        Warning: could not check CodeQL status (#{response.code}) - may require GitHub Advanced Security")
+        puts('    Enabling Advanced Security features...')
+        security_settings = {
+          security_and_analysis: {
+            secret_scanning: { status: 'enabled' },
+            secret_scanning_push_protection: { status: 'enabled' },
+            secret_scanning_validity_checks: { status: 'enabled' },
+            secret_scanning_non_provider_patterns: { status: 'enabled' },
+            secret_scanning_ai_detection: { status: 'enabled' }
+          }
+        }
+
+        response = HTTParty.patch(repo_url, headers.merge(body: security_settings.to_json))
+
+        if response.code == 200
+          puts('        Secret scanning enabled')
+          puts('        Secret scanning push protection enabled')
+          puts('        Secret scanning validity checks enabled')
+          puts('        Secret scanning non-provider patterns enabled')
+          puts('        Secret scanning AI detection (generic passwords) enabled')
+        end
+      end
+
+      # CodeQL - disable for private repos (GHAS incurs charges)
+      if is_private
+        puts('    Disabling CodeQL default setup (private repository - GHAS incurs charges)...')
+        code_scanning_config = {
+          state: 'not-configured'
+        }
+
+        response = HTTParty.patch(
+          "#{repo_url}/code-scanning/default-setup",
+          headers.merge(body: code_scanning_config.to_json)
+        )
+
+        puts('        CodeQL default setup disabled') if [200, 202].include?(response.code)
+      else
+        puts('    Enabling CodeQL default setup...')
+
+        # First check current status
+        response = HTTParty.get("#{repo_url}/code-scanning/default-setup", headers)
+
+        if response.code == 200
+          current_setup = JSON.parse(response.body)
+
+          if current_setup['state'] == 'configured'
+            puts('        CodeQL default setup already configured')
+          else
+            code_scanning_config = {
+              state: 'configured',
+              query_suite: 'default'
+            }
+
+            response = HTTParty.patch(
+              "#{repo_url}/code-scanning/default-setup",
+              headers.merge(body: code_scanning_config.to_json)
+            )
+
+            puts('        CodeQL default setup enabled') if [200, 202].include?(response.code)
+          end
+        end
       end
 
       puts('    Repository settings configured successfully!')
