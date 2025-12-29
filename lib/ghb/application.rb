@@ -533,7 +533,7 @@ module GHB
                 'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
                 'aws-region': '${{secrets.AWS_DEFAULT_REGION}}',
                 source: 'deployment',
-                target: 's3://${{secrets.CODEDEPLOY_BUCKET}}/${{GITHUB_REPOSITORY}}'
+                target: 's3://${{secrets.CODEDEPLOY_BUCKET}}/${{github.repository}}'
               }
             )
           end
@@ -561,7 +561,7 @@ module GHB
                   'application-name': @options.application_name,
                   'deployment-group-name': environment,
                   's3-bucket': '${{secrets.CODEDEPLOY_BUCKET}}',
-                  's3-key': '${{GITHUB_REPOSITORY}}/${{needs.variables.outputs.BUILD_NAME}}.zip'
+                  's3-key': '${{github.repository}}/${{needs.variables.outputs.BUILD_NAME}}.zip'
                 }
               )
             end
@@ -1119,7 +1119,7 @@ module GHB
                             .map { |d| "-not -path './#{d}/*'" }
                             .join(' ')
 
-      # Detect templates based on file extensions, specific files, and directories
+      # Detect templates based on file extensions, specific files, and packages
       config[:extension_detection]&.each do |template_name, detection_config|
         detected = false
 
@@ -1145,11 +1145,17 @@ module GHB
           detected = File.exist?(file)
         end
 
-        # Check for directories
-        detection_config[:directories]&.each do |dir|
+        # Check for packages in package manager files (regex grep)
+        detection_config[:packages]&.each do |pm_file, packages|
           break if detected
+          next unless File.exist?(pm_file.to_s)
 
-          detected = Dir.exist?(dir)
+          packages.each do |pkg|
+            break if detected
+
+            _stdout_str, _stderr_str, status = Open3.capture3("grep -qE '#{pkg}' '#{pm_file}'")
+            detected = status.success?
+          end
         end
 
         templates.add(template_name.to_s) if detected

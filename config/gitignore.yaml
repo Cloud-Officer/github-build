@@ -40,45 +40,14 @@ always_enabled:
 
 # Templates detected by file extensions (source files)
 extension_detection:
-  1c:
-    extensions:
-      - bsl
-      - os
-  actionscript:
-    extensions:
-      - as
-  ada:
-    extensions:
-      - adb
-      - ads
-  agda:
-    extensions:
-      - agda
-  al:
-    extensions:
-      - al
   ansible:
     files:
       - ansible.cfg
       - playbook.yml
       - playbook.yaml
-    directories:
-      - roles
-      - playbooks
   astro:
     extensions:
       - astro
-    files:
-      - astro.config.mjs
-      - astro.config.js
-  autohotkey:
-    extensions:
-      - ahk
-  ballerina:
-    extensions:
-      - bal
-    files:
-      - Ballerina.toml
   batch:
     extensions:
       - bat
@@ -109,17 +78,6 @@ extension_detection:
       - CMakeLists.txt
     extensions:
       - cmake
-  coffeescript:
-    extensions:
-      - coffee
-  commonlisp:
-    extensions:
-      - lisp
-      - lsp
-      - cl
-  coq:
-    extensions:
-      - v
   crystal:
     extensions:
       - cr
@@ -133,29 +91,17 @@ extension_detection:
     extensions:
       - cu
       - cuh
-  d:
-    extensions:
-      - d
   dart:
     extensions:
       - dart
     files:
       - pubspec.yaml
-  delphi:
-    extensions:
-      - pas
-      - dpr
-      - dpk
   django:
-    files:
-      - manage.py
-      - settings.py
-    directories:
-      - templates
-  dm:
-    extensions:
-      - dm
-      - dme
+    packages:
+      requirements.txt:
+        - "^[Dd]jango[=~<>![]"
+      pyproject.toml:
+        - '"[Dd]jango"'
   dotenv:
     files:
       - .env
@@ -167,17 +113,6 @@ extension_detection:
       - fsproj
       - vbproj
       - sln
-  drupal:
-    files:
-      - sites/default/settings.php
-    extensions:
-      - module
-      - install
-      - theme
-  eagle:
-    extensions:
-      - brd
-      - sch
   elisp:
     extensions:
       - el
@@ -192,54 +127,31 @@ extension_detection:
       - elm
     files:
       - elm.json
-  ember:
-    files:
-      - ember-cli-build.js
-      - .ember-cli
   erlang:
     extensions:
       - erl
       - hrl
     files:
       - rebar.config
-  executable:
-    # Only enable if makefile exists (indicating compiled executables)
-    files:
-      - Makefile
-      - makefile
-      - GNUmakefile
-  expressionengine:
-    directories:
-      - system/expressionengine
   flask:
-    directories:
-      - templates
-      - static
-    files:
-      - flask_app.py
-      - run.py
+    packages:
+      requirements.txt:
+        - "^[Ff]lask[=~<>![]"
+      pyproject.toml:
+        - '"[Ff]lask"'
   flutter:
-    files:
-      - pubspec.yaml
-      - flutter_test_config.dart
-  fortran:
-    extensions:
-      - f
-      - for
-      - f90
-      - f95
-      - f03
-      - f08
+    packages:
+      pubspec.yaml:
+        - "flutter:"
   fsharp:
     extensions:
       - fs
       - fsi
       - fsx
   gatsby:
-    files:
-      - gatsby-config.js
-      - gatsby-config.ts
-      - gatsby-node.js
+    packages:
+      package.json:
+        - '"gatsby"'
   gcov:
     # Enable when C/C++ detected
     extensions:
@@ -264,20 +176,12 @@ extension_detection:
       - settings.gradle
       - settings.gradle.kts
       - gradlew
-  grails:
-    files:
-      - grails-app
-    directories:
-      - grails-app
   groovy:
     extensions:
       - groovy
       - gvy
       - gy
       - gsh
-  gwt:
-    extensions:
-      - gwt.xml
   haskell:
     extensions:
       - hs
@@ -289,26 +193,11 @@ extension_detection:
     files:
       - Chart.yaml
       - values.yaml
-    directories:
-      - charts
-      - templates
-  hexo:
-    directories:
-      - scaffolds
-      - themes
-    files:
-      - _config.landscape.yml
   hugo:
     files:
       - hugo.toml
       - hugo.yaml
       - hugo.json
-    directories:
-      - archetypes
-      - layouts/partials
-  idris:
-    extensions:
-      - idr
   java:
     extensions:
       - java
@@ -316,14 +205,9 @@ extension_detection:
       - pom.xml
       - build.gradle
   jekyll:
-    directories:
-      - _posts
-      - _layouts
-      - _includes
-      - _sass
-  joomla:
-    files:
-      - configuration.php
+    packages:
+      Gemfile:
+        - "gem ['\"]jekyll['\"]"
   jsonnet:
     extensions:
       - jsonnet
@@ -337,23 +221,14 @@ extension_detection:
   jupyternotebooks:
     extensions:
       - ipynb
-  kicad:
-    extensions:
-      - kicad_pcb
-      - kicad_sch
-      - kicad_mod
   kotlin:
     extensions:
       - kt
       - kts
-  labview:
-    extensions:
-      - vi
-      - lvproj
-      - lvlib
   laravel:
-    files:
-      - artisan
+    packages:
+      composer.json:
+        - '"laravel/framework"'
   latex:
     extensions:
       - tex
@@ -363,19 +238,9 @@ extension_detection:
   less:
     extensions:
       - less
-  lilypond:
-    extensions:
-      - ly
-  lithium:
-    directories:
-      - libraries/lithium
   lua:
     extensions:
       - lua
-  magento:
-    directories:
-      - app/code
-      - app/design
   matlab:
     extensions:
       - m
@@ -389,30 +254,10 @@ extension_detection:
   mdbook:
     files:
       - book.toml
-    directories:
-      - src
-  mercury:
-    extensions:
-      - m
-      - moo
   meson:
     files:
       - meson.build
       - meson_options.txt
-  metalsmith:
-    files:
-      - metalsmith.json
-  meteor:
-    files:
-      - .meteor
-    directories:
-      - .meteor
-  nim:
-    extensions:
-      - nim
-      - nims
-    files:
-      - nimble
   ninja:
     files:
       - build.ninja
@@ -425,9 +270,9 @@ extension_detection:
       - .nvmrc
       - .node-version
   nuxtjs:
-    files:
-      - nuxt.config.js
-      - nuxt.config.ts
+    packages:
+      package.json:
+        - '"nuxt"'
   objective-c:
     extensions:
       - m
@@ -443,19 +288,10 @@ extension_detection:
   octave:
     extensions:
       - m
-  opencart:
-    directories:
-      - catalog
-      - admin
-      - system
   opencv:
     # Detected via cmake or specific files
     files:
       - opencv.cmake
-  openframeworks:
-    files:
-      - addons.make
-      - config.make
   opa:
     extensions:
       - rego
@@ -467,53 +303,21 @@ extension_detection:
     files:
       - Makefile.PL
       - cpanfile
-  phalcon:
-    files:
-      - app/config/config.php
-      - app/config/services.php
-      - .htrouter.php
   phoenix:
-    files:
-      - config/dev.exs
-      - config/prod.exs
-      - config/runtime.exs
-    directories:
-      - priv/static
-      - priv/repo
-  playframework:
-    files:
-      - build.sbt
-      - conf/application.conf
-  plone:
-    files:
-      - buildout.cfg
-  polymer:
-    files:
-      - polymer.json
+    packages:
+      mix.exs:
+        - ":phoenix"
   powershell:
     extensions:
       - ps1
       - psm1
       - psd1
-  prestashop:
-    files:
-      - config/defines.inc.php
-      - config/settings.inc.php
-  processing:
-    extensions:
-      - pde
   puppet:
     extensions:
       - pp
     files:
       - Puppetfile
       - metadata.json
-  purescript:
-    extensions:
-      - purs
-    files:
-      - spago.dhall
-      - bower.json
   python:
     extensions:
       - py
@@ -544,49 +348,25 @@ extension_detection:
       - DESCRIPTION
       - NAMESPACE
       - .Rproj
-  racket:
-    extensions:
-      - rkt
-      - rktl
   rails:
-    files:
-      - config/application.rb
-      - config/environment.rb
-      - bin/rails
+    packages:
+      Gemfile:
+        - "gem ['\"]rails['\"]"
   react:
     extensions:
       - jsx
       - tsx
   reactnative:
-    files:
-      - app.json
-      - metro.config.js
-    directories:
-      - android
-      - ios
+    packages:
+      package.json:
+        - '"react-native"'
   redis:
     files:
       - redis.conf
   remix:
-    files:
-      - remix.config.js
-      - remix.config.ts
-  renpy:
-    extensions:
-      - rpy
-      - rpym
-  root:
-    extensions:
-      - C
-      - root
-  ros:
-    files:
-      - package.xml
-      - CMakeLists.txt
-    directories:
-      - msg
-      - srv
-      - launch
+    packages:
+      package.json:
+        - "@remix-run/react"
   ruby:
     extensions:
       - rb
@@ -609,22 +389,12 @@ extension_detection:
   sbt:
     files:
       - build.sbt
-    directories:
-      - project
   scala:
     extensions:
       - scala
       - sc
     files:
       - build.sbt
-  scheme:
-    extensions:
-      - scm
-      - ss
-  scons:
-    files:
-      - SConstruct
-      - SConscript
   sdcc:
     extensions:
       - c
@@ -635,21 +405,6 @@ extension_detection:
       - serverless.yml
       - serverless.yaml
       - serverless.json
-  shopware:
-    directories:
-      - custom/plugins
-      - src
-  silverstripe:
-    files:
-      - _config.php
-    directories:
-      - mysite
-  sketchup:
-    extensions:
-      - skp
-  smalltalk:
-    extensions:
-      - st
   solidity:
     extensions:
       - sol
@@ -657,36 +412,9 @@ extension_detection:
     files:
       - truffle-config.js
       - truffle.js
-  spark:
-    # Detected via scala or python files
-    files:
-      - spark-defaults.conf
-  splunk:
-    files:
-      - default/app.conf
-      - local/app.conf
-  standardml:
-    extensions:
-      - sml
-      - sig
-  stata:
-    extensions:
-      - do
-      - ado
-      - dta
-  strapi:
-    files:
-      - strapi.config.js
-      - config/server.js
-      - config/database.js
-  stylus:
-    extensions:
-      - styl
   svelte:
     extensions:
       - svelte
-    files:
-      - svelte.config.js
   swift:
     extensions:
       - swift
@@ -695,9 +423,9 @@ extension_detection:
       - Podfile
       - Cartfile
   symfony:
-    files:
-      - symfony.lock
-      - config/bundles.php
+    packages:
+      composer.json:
+        - '"symfony/framework-bundle"'
   terraform:
     extensions:
       - tf
@@ -711,32 +439,7 @@ extension_detection:
       - tex
       - sty
       - cls
-  textpattern:
-    directories:
-      - textpattern
-  theos-tweak:
-    files:
-      - Makefile
-      - Tweak.xm
-      - control
-  toit:
-    extensions:
-      - toit
-  turbogears2:
-    files:
-      - development.ini
-      - production.ini
-    directories:
-      - tg2env
-  typo3:
-    directories:
-      - typo3conf
-      - fileadmin
   unity:
-    directories:
-      - Assets
-      - ProjectSettings
-      - Library
     extensions:
       - unity
       - prefab
@@ -749,29 +452,10 @@ extension_detection:
   vagrant:
     files:
       - Vagrantfile
-  vapor:
-    files:
-      - Sources/App/configure.swift
-      - Sources/App/routes.swift
-    directories:
-      - Sources/App
-      - Resources/Views
   vcpkg:
     files:
       - vcpkg.json
-  video:
-    extensions:
-      - mp4
-      - avi
-      - mkv
-      - mov
-      - wmv
   virtualenv:
-    directories:
-      - venv
-      - .venv
-      - env
-      - .env
     files:
       - pyvenv.cfg
   visualstudio:
@@ -782,29 +466,9 @@ extension_detection:
   vue:
     extensions:
       - vue
-    files:
-      - vue.config.js
-      - vite.config.js
-      - vite.config.ts
-  vuejs:
-    extensions:
-      - vue
-    files:
-      - vue.config.js
-  vvvv:
-    extensions:
-      - v4p
-      - vl
-  waf:
-    files:
-      - wscript
   wordpress:
     files:
       - wp-config.php
-    directories:
-      - wp-content
-      - wp-includes
-      - wp-admin
   xcode:
     extensions:
       - xcodeproj
@@ -813,39 +477,6 @@ extension_detection:
     files:
       - Podfile
       - Cartfile
-  xilinx:
-    extensions:
-      - xpr
-      - xci
-      - bd
-  xilinxise:
-    extensions:
-      - xise
-      - ngc
-  xojo:
-    extensions:
-      - xojo_project
-      - xojo_binary_project
-  yeoman:
-    files:
-      - .yo-rc.json
-  yii:
-    files:
-      - yii
-    directories:
-      - components
-      - controllers
-      - models
-      - views
-  zendframework:
-    files:
-      - config/autoload/global.php
-      - config/autoload/local.php
-    directories:
-      - module
-  zephir:
-    extensions:
-      - zep
   zig:
     extensions:
       - zig
@@ -910,10 +541,9 @@ extension_detection:
       - deno.lock
   # Next.js
   nextjs:
-    files:
-      - next.config.js
-      - next.config.mjs
-      - next.config.ts
+    packages:
+      package.json:
+        - '"next"'
   # Specialized IDE detection (language-specific)
   androidstudio:
     extensions:
@@ -922,8 +552,6 @@ extension_detection:
     files:
       - build.gradle
       - build.gradle.kts
-    directories:
-      - android
   clion:
     extensions:
       - c
