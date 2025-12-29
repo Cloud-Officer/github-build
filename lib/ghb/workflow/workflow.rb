@@ -109,6 +109,13 @@ module GHB
     def write(file, header: '')
       FileUtils.mkdir_p(File.dirname(file))
       content = header + to_h.deep_stringify_keys.to_yaml({ line_width: -1 })
+
+      # Convert old-style ${GITHUB_*} patterns to new-style ${{github.*}}
+      content.gsub!(/\$\{GITHUB_([A-Z_]+)\}/) do |_match|
+        var_name = ::Regexp.last_match(1).downcase
+        "${{github.#{var_name}}}"
+      end
+
       File.write(file, content)
     end
 
