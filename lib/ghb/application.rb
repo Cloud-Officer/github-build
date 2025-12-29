@@ -1153,7 +1153,7 @@ module GHB
           packages.each do |pkg|
             break if detected
 
-            _stdout_str, _stderr_str, status = Open3.capture3("grep -qE '#{pkg}' '#{pm_file}'")
+            _stdout_str, _stderr_str, status = Open3.capture3('grep', '-qE', pkg, pm_file.to_s)
             detected = status.success?
           end
         end
