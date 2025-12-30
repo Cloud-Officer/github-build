@@ -116,6 +116,9 @@ module GHB
         "${{github.#{var_name}}}"
       end
 
+      # Convert secrets.GITHUB_TOKEN to secrets.GH_PAT for higher rate limits
+      content.gsub!('${{secrets.GITHUB_TOKEN}}', '${{secrets.GH_PAT}}')
+
       File.write(file, content)
     end
 
