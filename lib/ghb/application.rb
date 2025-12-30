@@ -31,9 +31,9 @@ module GHB
       @unit_tests_conditions = nil
       @dependencies_commands =
         <<~BASH
-          git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
-          git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf https://github.com/
-          git config --global --add url."https://${{secrets.SOUP_DEPENDENCIES_UPDATE}}:x-oauth-basic@github.com/".insteadOf git@github.com:
+          git config --global --add url."https://${{secrets.GH_PAT}}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
+          git config --global --add url."https://${{secrets.GH_PAT}}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{secrets.GH_PAT}}:x-oauth-basic@github.com/".insteadOf git@github.com:
 
         BASH
     end
@@ -239,7 +239,7 @@ module GHB
                 {
                   linters: '${{needs.variables.outputs.LINTERS}}',
                   'ssh-key': '${{secrets.SSH_KEY}}',
-                  github_token: '${{secrets.GITHUB_TOKEN}}'
+                  github_token: '${{secrets.GH_PAT}}'
                 }
 
               default_with.merge!(linter[:options]) if linter[:options]
@@ -279,7 +279,7 @@ module GHB
               do_with(
                 {
                   'ssh-key': '${{secrets.SSH_KEY}}',
-                  'github-token': '${{secrets.GITHUB_TOKEN}}',
+                  'github-token': '${{secrets.GH_PAT}}',
                   parameters: '--no_prompt'
                 }
               )
@@ -425,7 +425,7 @@ module GHB
                 do_with(
                   {
                     'ssh-key': '${{secrets.SSH_KEY}}',
-                    'github-token': '${{secrets.GITHUB_TOKEN}}',
+                    'github-token': '${{secrets.GH_PAT}}',
                     parameters: '--no_prompt'
                   }
                 )
@@ -706,14 +706,14 @@ module GHB
               do_with(
                 {
                   'ssh-key': '${{secrets.SSH_KEY}}',
-                  'github-token': '${{secrets.SOUP_DEPENDENCIES_UPDATE}}',
+                  'github-token': '${{secrets.GH_PAT}}',
                   parameters: '--no_prompt',
                   'skip-checkout': 'true'
                 }
               )
             end
 
-            with['github-token'] = '${{secrets.SOUP_DEPENDENCIES_UPDATE}}'
+            with['github-token'] = '${{secrets.GH_PAT}}'
             with['skip-checkout'] = 'true'
           end
 
@@ -728,7 +728,7 @@ module GHB
               }
             )
 
-            with['token'] = '${{secrets.SOUP_DEPENDENCIES_UPDATE}}'
+            with['token'] = '${{secrets.GH_PAT}}'
           end
         end
 
