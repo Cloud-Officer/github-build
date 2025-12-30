@@ -57,7 +57,12 @@ module GHB
     end
 
     def read(file)
-      workflow_data = Psych.safe_load(File.read(file))&.deep_symbolize_keys
+      content = File.read(file)
+
+      # Convert github_token to github-token on load for consistency
+      content.gsub!('github_token:', 'github-token:')
+
+      workflow_data = Psych.safe_load(content)&.deep_symbolize_keys
       @name = workflow_data[:name]
       @run_name = workflow_data[:'run-name']
       @on = workflow_data[:on] || []

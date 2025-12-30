@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module GHB
+  CI_ACTIONS_VERSION = 'v2'
   DEFAULT_BUILD_FILE = '.github/workflows/build.yml'
   DEFAULT_GITIGNORE_CONFIG_FILE = 'config/gitignore.yaml'
   DEFAULT_LANGUAGES_CONFIG_FILE = 'config/languages.yaml'
@@ -13,6 +14,7 @@ module GHB
   DEFAULT_MACOS_VERSION = 'macos-latest'
   DEFAULT_JOB_TIMEOUT_MINUTES = 30
 
+  private_constant :CI_ACTIONS_VERSION
   private_constant :DEFAULT_BUILD_FILE
   private_constant :DEFAULT_GITIGNORE_CONFIG_FILE
   private_constant :DEFAULT_LANGUAGES_CONFIG_FILE
