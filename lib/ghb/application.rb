@@ -147,10 +147,11 @@ module GHB
 
         do_step('Prepare variables') do
           do_id('variables')
-          do_uses('cloud-officer/ci-actions/variables@master')
+          do_uses("cloud-officer/ci-actions/variables@#{CI_ACTIONS_VERSION}")
           do_with(
             {
-              'ssh-key': '${{secrets.SSH_KEY}}'
+              'ssh-key': '${{secrets.SSH_KEY}}',
+              'github-token': '${{secrets.GH_PAT}}'
             }
           )
         end
@@ -232,20 +233,22 @@ module GHB
 
           do_step(linter[:short_name]) do
             copy_properties(find_step(old_workflow.jobs[short_name]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-            do_uses(linter[:uses])
+            do_uses("#{linter[:uses]}@#{CI_ACTIONS_VERSION}")
 
             if with.empty?
               default_with =
                 {
                   linters: '${{needs.variables.outputs.LINTERS}}',
                   'ssh-key': '${{secrets.SSH_KEY}}',
-                  github_token: '${{secrets.GH_PAT}}'
+                  'github-token': '${{secrets.GH_PAT}}'
                 }
 
               default_with.merge!(linter[:options]) if linter[:options]
 
               do_with(default_with)
             end
+
+            with[:'github-token'] = '${{secrets.GH_PAT}}'
           end
         end
       end
@@ -273,7 +276,7 @@ module GHB
 
           do_step('Licenses') do
             copy_properties(find_step(old_workflow.jobs[:licenses]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-            do_uses('cloud-officer/ci-actions/soup@master')
+            do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
 
             if with.empty?
               do_with(
@@ -375,18 +378,21 @@ module GHB
 
           do_step('Setup') do
             copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-            do_uses('cloud-officer/ci-actions/setup@master')
+            do_uses("cloud-officer/ci-actions/setup@#{CI_ACTIONS_VERSION}")
 
             if with.empty?
               do_with(
                 {
                   'ssh-key': '${{secrets.SSH_KEY}}',
+                  'github-token': '${{secrets.GH_PAT}}',
                   'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
                   'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
                   'aws-region': '${{secrets.AWS_DEFAULT_REGION}}'
                 }.merge(setup_options)
               )
             end
+
+            with[:'github-token'] = '${{secrets.GH_PAT}}'
 
             code_deploy_pre_steps << duplicate(self) if language[:short_name] == 'go' or language[:short_name] == 'php' or force_codedeploy_setup
             dependencies_steps << duplicate(self)
@@ -403,6 +409,7 @@ module GHB
               copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
               do_shell('bash')
               do_run(dependency[:package_manager_default]) if run.nil?
+              env['GITHUB_TOKEN'] = '${{secrets.GH_PAT}}'
               code_deploy_pre_steps << duplicate(self) if language[:short_name] == 'go' or language[:short_name] == 'php' or force_codedeploy_setup
               dependencies_commands += "#{dependency[:package_manager_update]}\n" if dependency[:package_manager_update]
             end
@@ -414,12 +421,13 @@ module GHB
             copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
             do_shell('bash')
             do_run(language[:unit_test_framework_default]) if run.nil?
+            env['GITHUB_TOKEN'] = '${{secrets.GH_PAT}}'
           end
 
           if File.exist?('Podfile.lock') and skip_license_check == false
             do_step('Licenses') do
               copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-              do_uses('cloud-officer/ci-actions/soup@master')
+              do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
 
               if with.empty?
                 do_with(
@@ -498,8 +506,8 @@ module GHB
         if code_deploy_pre_steps.empty?
           do_step('Checkout') do
             copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-            do_uses('cloud-officer/ci-actions/codedeploy/checkout@master')
-            do_with({ 'ssh-key': '${{secrets.SSH_KEY}}' }) if with.empty?
+            do_uses("cloud-officer/ci-actions/codedeploy/checkout@#{CI_ACTIONS_VERSION}")
+            do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'github-token': '${{secrets.GH_PAT}}' }) if with.empty?
           end
         else
           code_deploy_pre_steps.each do |step|
@@ -524,7 +532,7 @@ module GHB
 
         do_step('S3Copy') do
           copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-          do_uses('cloud-officer/ci-actions/codedeploy/s3copy@master')
+          do_uses("cloud-officer/ci-actions/codedeploy/s3copy@#{CI_ACTIONS_VERSION}")
 
           if with.empty?
             do_with(
@@ -550,7 +558,7 @@ module GHB
 
           do_step("#{environment.capitalize} Deploy") do
             copy_properties(find_step(old_workflow.jobs[:"#{environment}_deploy"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-            do_uses('cloud-officer/ci-actions/codedeploy/deploy@master')
+            do_uses("cloud-officer/ci-actions/codedeploy/deploy@#{CI_ACTIONS_VERSION}")
 
             if with.empty?
               do_with(
@@ -593,12 +601,13 @@ module GHB
 
         do_step('AWS Commands') do
           copy_properties(find_step(old_workflow.jobs[:aws]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-          do_uses('cloud-officer/ci-actions/aws@master')
+          do_uses("cloud-officer/ci-actions/aws@#{CI_ACTIONS_VERSION}")
 
           if with.empty?
             do_with(
               {
                 'ssh-key': '${{secrets.SSH_KEY}}',
+                'github-token': '${{secrets.GH_PAT}}',
                 'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
                 'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
                 'aws-region': '${{secrets.AWS_DEFAULT_REGION}}',
@@ -626,7 +635,7 @@ module GHB
 
         do_step('Publish Statuses') do
           copy_properties(find_step(old_workflow.jobs[:slack]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-          do_uses('cloud-officer/ci-actions/slack@master')
+          do_uses("cloud-officer/ci-actions/slack@#{CI_ACTIONS_VERSION}")
 
           if with.empty?
             do_with(
@@ -700,7 +709,7 @@ module GHB
 
           do_step('Licenses') do
             copy_properties(new_workflow.jobs[:licenses]&.steps&.first, %i[id if uses run shell with env continue_on_error timeout_minutes])
-            do_uses('cloud-officer/ci-actions/soup@master')
+            do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
 
             if with.empty?
               do_with(
@@ -713,7 +722,7 @@ module GHB
               )
             end
 
-            with['github-token'] = '${{secrets.GH_PAT}}'
+            with[:'github-token'] = '${{secrets.GH_PAT}}'
             with['skip-checkout'] = 'true'
           end
 
@@ -764,7 +773,7 @@ module GHB
         )
 
         do_step('Publish Docker image') do
-          do_uses('cloud-officer/ci-actions/docker@master')
+          do_uses("cloud-officer/ci-actions/docker@#{CI_ACTIONS_VERSION}")
           do_with(
             {
               username: '${{secrets.DOCKER_USERNAME}}',

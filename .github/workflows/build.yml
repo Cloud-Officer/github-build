@@ -45,9 +45,10 @@ jobs:
     steps:
     - name: Prepare variables
       id: variables
-      uses: cloud-officer/ci-actions/variables@master
+      uses: cloud-officer/ci-actions/variables@v2
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{secrets.GH_PAT}}"
   actionlint:
     name: Github Actions Linter
     runs-on: ubuntu-latest
@@ -57,11 +58,11 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Actionlint
-      uses: cloud-officer/ci-actions/linters/actionlint@v1
+      uses: cloud-officer/ci-actions/linters/actionlint@v2
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
-        github_token: "${{secrets.GH_PAT}}"
+        github-token: "${{secrets.GH_PAT}}"
   markdownlint:
     name: Markdown Linter
     runs-on: ubuntu-latest
@@ -71,11 +72,11 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Markdownlint
-      uses: cloud-officer/ci-actions/linters/markdownlint@v1
+      uses: cloud-officer/ci-actions/linters/markdownlint@v2
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
-        github_token: "${{secrets.GH_PAT}}"
+        github-token: "${{secrets.GH_PAT}}"
   semgrep:
     name: Semgrep Security Scanner
     permissions:
@@ -89,11 +90,11 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Semgrep
-      uses: cloud-officer/ci-actions/linters/semgrep@v1
+      uses: cloud-officer/ci-actions/linters/semgrep@v2
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
-        github_token: "${{secrets.GH_PAT}}"
+        github-token: "${{secrets.GH_PAT}}"
   rubocop:
     name: Ruby Linter
     runs-on: ubuntu-latest
@@ -103,11 +104,11 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Rubocop
-      uses: cloud-officer/ci-actions/linters/rubocop@v1
+      uses: cloud-officer/ci-actions/linters/rubocop@v2
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
-        github_token: "${{secrets.GH_PAT}}"
+        github-token: "${{secrets.GH_PAT}}"
   shellcheck:
     name: Shell Scripts Linter
     runs-on: ubuntu-latest
@@ -117,11 +118,11 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: ShellCheck
-      uses: cloud-officer/ci-actions/linters/shellcheck@v1
+      uses: cloud-officer/ci-actions/linters/shellcheck@v2
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
-        github_token: "${{secrets.GH_PAT}}"
+        github-token: "${{secrets.GH_PAT}}"
   yamllint:
     name: YAML Linter
     runs-on: ubuntu-latest
@@ -131,11 +132,11 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Yamllint
-      uses: cloud-officer/ci-actions/linters/yamllint@v1
+      uses: cloud-officer/ci-actions/linters/yamllint@v2
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
-        github_token: "${{secrets.GH_PAT}}"
+        github-token: "${{secrets.GH_PAT}}"
   licenses:
     name: Licenses Check
     runs-on: ubuntu-latest
@@ -145,7 +146,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Licenses
-      uses: cloud-officer/ci-actions/soup@master
+      uses: cloud-officer/ci-actions/soup@v2
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{secrets.GH_PAT}}"
@@ -164,7 +165,7 @@ jobs:
         - ubuntu-latest
     steps:
     - name: Setup
-      uses: cloud-officer/ci-actions/setup@master
+      uses: cloud-officer/ci-actions/setup@v2
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         aws-access-key-id: "${{secrets.AWS_ACCESS_KEY_ID}}"
@@ -172,9 +173,14 @@ jobs:
         aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
         ruby-version: "${{env.RUBY-VERSION}}"
         ruby-bundler-cache: "${{env.RUBY-BUNDLER-CACHE}}"
+        github-token: "${{secrets.GH_PAT}}"
     - name: Bundler
       shell: bash
       run: bundle install
+      env:
+        GITHUB_TOKEN: "${{secrets.GH_PAT}}"
     - name: RSpec
       shell: bash
       run: bundle exec ./bin/github-build.rb --skip_dependabot --skip_repository_settings --skip_slack
+      env:
+        GITHUB_TOKEN: "${{secrets.GH_PAT}}"
