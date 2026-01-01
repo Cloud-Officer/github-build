@@ -2,7 +2,6 @@
 
 require 'active_support/core_ext/hash/keys'
 require 'fileutils'
-require 'pathname'
 require 'psych'
 
 require_relative 'job'

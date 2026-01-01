@@ -3,6 +3,8 @@ go:
   short_name: go
   long_name: Go
   file_extension: go
+  version_files:
+    - .go-version
   setup_options:
     - name: go-version
       value: 1.25.5
@@ -34,6 +36,9 @@ js:
   short_name: js
   long_name: JavaScript
   file_extension: js
+  version_files:
+    - .node-version
+    - .nvmrc
   setup_options:
     - name: node-version
       value: 25.2.1
@@ -80,6 +85,8 @@ kotlin:
   short_name: kotlin
   long_name: Kotlin
   file_extension: kt
+  version_files:
+    - .java-version
   setup_options:
     - name: java-version
       value: 24.0.2
@@ -162,6 +169,8 @@ php:
   short_name: php
   long_name: PHP
   file_extension: php
+  version_files:
+    - .php-version
   setup_options:
     - name: php-version
       value: 8.5.1
@@ -202,6 +211,8 @@ proto:
   short_name: proto
   long_name: Protocol Buffer
   file_extension: proto
+  version_files:
+    - .go-version
   setup_options:
     - name: go-version
       value: 1.25.5
@@ -236,6 +247,8 @@ python:
   short_name: python
   long_name: Python
   file_extension: py
+  version_files:
+    - .python-version
   setup_options:
     - name: python-version
       value: 3.14.2
@@ -281,6 +294,8 @@ ruby:
   short_name: ruby
   long_name: Ruby
   file_extension: rb
+  version_files:
+    - .ruby-version
   setup_options:
     - name: ruby-version
       value: 4.0.0
