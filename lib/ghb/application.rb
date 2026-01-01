@@ -8,7 +8,6 @@ require 'json'
 require 'open3'
 require 'psych'
 require 'rbconfig'
-require 'set'
 
 require_relative 'options'
 require_relative 'status'
@@ -353,7 +352,8 @@ module GHB
         next unless language_detected
 
         puts("        Enabling #{language[:long_name]}...")
-        add_setup_options(setup_options, language[:setup_options])
+        version_file = language[:version_files]&.find { |f| File.exist?(f) }
+        add_setup_options(setup_options, language[:setup_options], version_file)
         add_setup_options(setup_options, options_apt)
         add_setup_options(setup_options, options_mongodb) if mongodb
         add_setup_options(setup_options, options_mysql) if mysql
@@ -448,8 +448,50 @@ module GHB
       @dependencies_commands = dependencies_commands
     end
 
-    def add_setup_options(setup_options, options)
-      options.each do |option|
+    def add_setup_options(setup_options, options, version_file = nil)
+      # Derive the version option name from the version file (e.g., .ruby-version -> ruby-version)
+      # Special case for .nvmrc -> node-version
+      version_option_name = nil
+
+      if version_file
+        version_option_name = version_file == '.nvmrc' ? 'node-version' : version_file.delete_prefix('.')
+      end
+
+      options&.each do |option|
+        # If a version file exists and this option matches the version file,
+        # skip setting it so the ci-actions setup will use the version file instead
+        if version_option_name && option[:name] == version_option_name
+          option_value = option[:value]
+
+          if option_value
+            file_version = File.read(version_file).strip
+
+            if file_version != option_value.to_s
+              puts("\e[31m\n#{'*' * 80}")
+
+              if @options.strict_version_check
+                puts("ERROR: Value mismatch for #{option[:name].upcase}")
+                puts("Version file (#{version_file}): #{file_version}")
+                puts("Recommended value: #{option_value}")
+                puts('Strict version check is enabled. Exiting with error.')
+                puts("#{'*' * 80}\n\e[0m")
+                exit(Status::ERROR_EXIT_CODE)
+              else
+                puts("WARNING: Value mismatch for #{option[:name].upcase}")
+                puts("Version file (#{version_file}): #{file_version}")
+                puts("Recommended value: #{option_value}")
+                puts('Using version file.')
+                puts("#{'*' * 80}\n\e[0m")
+              end
+            end
+          end
+
+          @new_workflow.env.delete(option[:name].upcase.to_sym)
+          puts("            Using version file #{version_file} for #{option[:name]}")
+          next
+        end
+
+        # Original logic preserved exactly for all other options
         existing_value = @new_workflow.env[option[:name].upcase.to_sym]
         option_value = option[:value]
         value = existing_value || option_value
