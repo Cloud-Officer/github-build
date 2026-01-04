@@ -64,8 +64,8 @@ module GHB
       workflow_write
       save_dependabot_config
       save_dockerhub_config
-      check_repository_settings
       update_gitignore
+      check_repository_settings
       @exit_code
     end
 
@@ -380,6 +380,12 @@ module GHB
             copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
             do_uses("cloud-officer/ci-actions/setup@#{CI_ACTIONS_VERSION}")
 
+            # Remove version parameter from with if version file exists (version file takes precedence)
+            if version_file
+              version_option_key = (version_file == '.nvmrc' ? 'node-version' : version_file.delete_prefix('.')).to_sym
+              with.delete(version_option_key)
+            end
+
             if with.empty?
               do_with(
                 {
@@ -487,7 +493,6 @@ module GHB
           end
 
           @new_workflow.env.delete(option[:name].upcase.to_sym)
-          puts("            Using version file #{version_file} for #{option[:name]}")
           next
         end
 
