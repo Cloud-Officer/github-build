@@ -856,12 +856,13 @@ module GHB
       repo_info = JSON.parse(response.body)
       is_private = repo_info['private'] == true
 
-      # Get current branch protection to preserve settings
+      # Get current branch protection to preserve settings (404 means no protection configured yet)
       response = HTTParty.get("#{repo_url}/branches/master/protection", headers)
 
-      raise(response.message) unless response.code == 200
+      raise(response.message) unless [200, 404].include?(response.code)
 
-      current_protection = JSON.parse(response.body)
+      protection_exists = response.code == 200
+      current_protection = protection_exists ? JSON.parse(response.body) : {}
 
       # Add Vercel check if Next.js project
       @required_status_checks << 'Vercel' if File.exist?('package.json') && File.read('package.json').include?('"next"')
@@ -896,26 +897,31 @@ module GHB
       expected_checks << 'Xcode' if Dir.exist?('ci_scripts')
 
       # Get actual checks from branch protection
-      actual_checks = current_protection['required_status_checks']['contexts']
+      actual_checks = current_protection.dig('required_status_checks', 'contexts') || []
 
       puts('    Checking required status checks...')
 
-      # Compare expected vs actual
-      missing_checks = expected_checks - actual_checks
-      extra_checks = actual_checks - expected_checks
+      # Only validate mismatch if protection already exists (skip for new repos)
+      if protection_exists
+        # Compare expected vs actual
+        missing_checks = expected_checks - actual_checks
+        extra_checks = actual_checks - expected_checks
 
-      if missing_checks.any? || extra_checks.any?
-        if missing_checks.any?
-          puts('        MISSING (expected but not in branch protection):')
-          missing_checks.each { |check| puts("          ✗ #{check}") }
+        if missing_checks.any? || extra_checks.any?
+          if missing_checks.any?
+            puts('        MISSING (expected but not in branch protection):')
+            missing_checks.each { |check| puts("          ✗ #{check}") }
+          end
+
+          if extra_checks.any?
+            puts('        EXTRA (in branch protection but not expected):')
+            extra_checks.each { |check| puts("          + #{check}") }
+          end
+
+          raise('Error: branch protection checks mismatch!')
         end
-
-        if extra_checks.any?
-          puts('        EXTRA (in branch protection but not expected):')
-          extra_checks.each { |check| puts("          + #{check}") }
-        end
-
-        raise('Error: branch protection checks mismatch!')
+      else
+        puts('        No existing branch protection, will create with expected checks')
       end
 
       # Preserve existing dismissal restrictions or use empty defaults
@@ -926,15 +932,20 @@ module GHB
       bypass_users = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'users')&.map { |u| u['login'] } || []
       bypass_teams = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'teams')&.map { |t| t['slug'] } || []
 
-      # Preserve existing status checks
-      existing_checks = current_protection.dig('required_status_checks', 'checks') || []
+      # Use existing checks if protection exists, otherwise build from expected checks
+      status_checks =
+        if protection_exists
+          current_protection.dig('required_status_checks', 'checks') || []
+        else
+          expected_checks.map { |check| { context: check, app_id: nil } }
+        end
 
       # Set branch protection
       puts('    Setting branch protection...')
       branch_protection = {
         required_status_checks: {
           strict: false,
-          checks: existing_checks
+          checks: status_checks
         },
         enforce_admins: false,
         required_pull_request_reviews: {
@@ -1087,10 +1098,14 @@ module GHB
 
     def update_gitignore
       return if @options.skip_gitignore
-      return unless File.exist?('.gitignore')
 
-      puts('Updating .gitignore...')
-      git_ignore = File.read('.gitignore').strip
+      if File.exist?('.gitignore')
+        puts('Updating .gitignore...')
+        git_ignore = File.read('.gitignore').strip
+      else
+        puts('Creating .gitignore...')
+        git_ignore = ''
+      end
 
       # Load gitignore templates config
       config_path = "#{__dir__}/../../#{@options.gitignore_config_file}"
@@ -1116,6 +1131,11 @@ module GHB
       patterns.each do |pattern|
         regex = Regexp.new("^\\s*#\\s*(#{Regexp.escape(pattern)})")
         new_git_ignore.gsub!(regex, '\\1')
+      end
+
+      # Comment out specific directory patterns that conflict with common project directories
+      %w[bin/ lib/ var/].each do |dir_pattern|
+        new_git_ignore.gsub!(/^#{Regexp.escape(dir_pattern)}$/, "# #{dir_pattern}")
       end
 
       # Add AI Assistants section right after gitignore.io content
