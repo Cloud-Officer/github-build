@@ -23,7 +23,7 @@ GEM
     date (3.5.1)
     drb (2.2.3)
     duplicate (1.1.1)
-    httparty (0.24.0)
+    httparty (0.24.2)
       csv
       mini_mime (>= 1.0.0)
       multi_xml (>= 0.5.2)
@@ -41,7 +41,7 @@ GEM
     open3 (0.2.1)
     optparse (0.8.1)
     parallel (1.27.0)
-    parser (3.3.10.0)
+    parser (3.3.10.1)
       ast (~> 2.4.1)
       racc
     prism (1.8.0)
@@ -118,4 +118,4 @@ DEPENDENCIES
   rubocop-thread_safety (>= 0.5.1)
 
 BUNDLED WITH
-  4.0.3
+  4.0.4

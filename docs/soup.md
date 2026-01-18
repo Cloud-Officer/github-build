@@ -12,7 +12,7 @@
 | Ruby | date | 3.5.1 | Ruby | The official date library for Ruby. | <https://github.com/ruby/date> | 2024-12-02 | Low | Dependency | Dependency |
 | Ruby | drb | 2.2.3 | Ruby | Distributed object system for Ruby | <https://github.com/ruby/drb> | 2023-10-16 | Low | Dependency | Dependency |
 | Ruby | duplicate | 1.1.1 | Apache License Version 2.0 | Originally extracted from rack-app project | <http://www.rack-app.com> | 2023-06-12 | Low | Handle deep clone | Most popular gem on rubygems |
-| Ruby | httparty | 0.24.0 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2023-06-12 | Low | HTTP access library | Most popular gem on rubygems |
+| Ruby | httparty | 0.24.2 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2023-06-12 | Low | HTTP access library | Most popular gem on rubygems |
 | Ruby | i18n | 1.14.8 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | json | 2.18.0 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | language_server-protocol | 3.17.0.5 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2023-06-29 | Low | Dependency | Dependency |
@@ -24,7 +24,7 @@
 | Ruby | open3 | 0.2.1 | Ruby | Popen, but with stderr, too | <https://github.com/ruby/open3> | 2023-06-12 | Low | System calls | Most popular gem on rubygems |
 | Ruby | optparse | 0.8.1 | Ruby | OptionParser is a class for command-line option analysis | <https://github.com/ruby/optparse> | 2023-06-12 | Low | Command line argument parser | Most popular gem on rubygems |
 | Ruby | parallel | 1.27.0 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2023-06-12 | Low | Dependency | Dependency |
-| Ruby | parser | 3.3.10.0 | MIT | A Ruby parser written in pure Ruby. | <https://github.com/whitequark/parser> | 2023-06-12 | Low | Dependency | Dependency |
+| Ruby | parser | 3.3.10.1 | MIT | A Ruby parser written in pure Ruby. | <https://github.com/whitequark/parser> | 2023-06-12 | Low | Dependency | Dependency |
 | Ruby | prism | 1.8.0 | MIT | Prism Ruby parser | <https://github.com/ruby/prism> | 2025-03-31 | Low | Dependency | Dependency |
 | Ruby | psych | 5.3.1 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2023-06-12 | Low | Yaml parser | Most popular gem on rubygems |
 | Ruby | racc | 1.8.1 | Ruby | Racc is an LALR(1) parser generator. | <https://github.com/ruby/racc> | 2023-06-12 | Low | Dependency | Dependency |
