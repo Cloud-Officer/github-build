@@ -41,20 +41,13 @@
 
 ### System Overview
 
-github-build is a Ruby CLI tool that automatically generates and updates GitHub Actions
-workflow files. It analyzes a repository to detect programming languages, linters, and
-dependencies, then generates appropriate CI/CD configuration files.
+github-build is a Ruby CLI tool that automatically generates and updates GitHub Actions workflow files. It analyzes a repository to detect programming languages, linters, and dependencies, then generates appropriate CI/CD configuration files.
 
 ### Component Interactions
 
 1. The CLI entry point (`bin/github-build.rb`) instantiates `GHB::Application`
 2. `Application` parses command-line options via `GHB::Options`
-3. `Application` orchestrates workflow generation by:
-   - Reading existing workflow files
-   - Detecting linters based on file patterns
-   - Detecting languages based on file extensions and dependency files
-   - Generating workflow jobs and steps
-   - Writing output files
+3. `Application` orchestrates workflow generation by reading existing workflow files, detecting linters based on file patterns, detecting languages based on file extensions and dependency files, generating workflow jobs and steps, and writing output files
 4. `Workflow`, `Job`, and `Step` classes model GitHub Actions structure
 5. External API calls configure repository settings via GitHub REST API
 
@@ -76,8 +69,8 @@ dependencies, then generates appropriate CI/CD configuration files.
 
 ### GHB::Application
 
-**Purpose:** Main application class that orchestrates workflow generation, linter detection,
-language detection, and repository configuration.
+**Purpose:
+** Main application class that orchestrates workflow generation, linter detection, language detection, and repository configuration.
 
 **Location:** `lib/ghb/application.rb`
 
@@ -218,67 +211,67 @@ language detection, and repository configuration.
 
 ## Software of Unknown Provenance
 
-| Package | Version | License | Purpose |
-|---------|---------|---------|---------|
-| activesupport | 8.1.2 | MIT | Hash deep symbolize/stringify methods |
-| ast | 2.4.3 | MIT | Abstract Syntax Tree library (dependency) |
-| base64 | 0.3.0 | Ruby | Base64 encoding/decoding (dependency) |
-| bigdecimal | 4.0.1 | Ruby | Arbitrary-precision decimal numbers (dependency) |
-| concurrent-ruby | 1.3.6 | MIT | Concurrency utilities (dependency) |
-| connection_pool | 3.0.2 | MIT | Connection pool management (dependency) |
-| csv | 3.3.5 | Ruby | CSV file handling (dependency) |
-| date | 3.5.1 | Ruby | Date library (dependency) |
-| drb | 2.2.3 | Ruby | Distributed Ruby (dependency) |
-| duplicate | 1.1.1 | Apache-2.0 | Deep clone functionality |
-| httparty | 0.24.2 | MIT | HTTP client for GitHub API calls |
-| i18n | 1.14.8 | MIT | Internationalization (dependency) |
-| json | 2.18.0 | Ruby | JSON parsing (dependency) |
-| language_server-protocol | 3.17.0.5 | MIT | LSP SDK (dependency) |
-| lint_roller | 1.1.0 | MIT | Linter plugin specification (dependency) |
-| logger | 1.7.0 | Ruby | Logging utility (dependency) |
-| mini_mime | 1.1.5 | MIT | MIME type library (dependency) |
-| minitest | 6.0.1 | MIT | Testing framework (dependency) |
-| multi_xml | 0.8.1 | MIT | XML parsing (dependency) |
-| open3 | 0.2.1 | Ruby | Process execution with stderr capture |
-| optparse | 0.8.1 | Ruby | Command-line argument parsing |
-| parallel | 1.27.0 | MIT | Parallel processing (dependency) |
-| parser | 3.3.10.1 | MIT | Ruby parser (dependency) |
-| prism | 1.8.0 | MIT | Ruby parser (dependency) |
-| psych | 5.3.1 | MIT | YAML parser and emitter |
-| racc | 1.8.1 | Ruby | LALR parser generator (dependency) |
-| rainbow | 3.1.1 | MIT | Terminal text colorization (dependency) |
-| regexp_parser | 2.11.3 | MIT | Regular expression parser (dependency) |
-| rubocop | 1.82.1 | MIT | Ruby code linter (development) |
-| rubocop-ast | 1.49.0 | MIT | RuboCop AST utilities (dependency) |
-| rubocop-capybara | 2.22.1 | MIT | Capybara linting rules (development) |
-| rubocop-graphql | 1.5.6 | MIT | GraphQL linting rules (development) |
-| rubocop-minitest | 0.38.2 | MIT | Minitest linting rules (development) |
-| rubocop-performance | 1.26.1 | MIT | Performance linting rules (development) |
-| rubocop-rspec | 3.9.0 | MIT | RSpec linting rules (development) |
-| rubocop-thread_safety | 0.7.3 | MIT | Thread safety checks (development) |
-| ruby-progressbar | 1.13.0 | MIT | Progress bar display (dependency) |
-| securerandom | 0.4.1 | Ruby | Secure random number generation (dependency) |
-| stringio | 3.2.0 | Ruby | String IO operations (dependency) |
-| tzinfo | 2.0.6 | MIT | Timezone data (dependency) |
-| unicode-display_width | 3.2.0 | MIT | Unicode display width calculation (dependency) |
-| unicode-emoji | 4.2.0 | MIT | Unicode emoji data (dependency) |
-| uri | 1.1.1 | Ruby | URI handling (dependency) |
+| Package                  | Version  | License    | Purpose                                          |
+|--------------------------|----------|------------|--------------------------------------------------|
+| activesupport            | 8.1.2    | MIT        | Hash deep symbolize/stringify methods            |
+| ast                      | 2.4.3    | MIT        | Abstract Syntax Tree library (dependency)        |
+| base64                   | 0.3.0    | Ruby       | Base64 encoding/decoding (dependency)            |
+| bigdecimal               | 4.0.1    | Ruby       | Arbitrary-precision decimal numbers (dependency) |
+| concurrent-ruby          | 1.3.6    | MIT        | Concurrency utilities (dependency)               |
+| connection_pool          | 3.0.2    | MIT        | Connection pool management (dependency)          |
+| csv                      | 3.3.5    | Ruby       | CSV file handling (dependency)                   |
+| date                     | 3.5.1    | Ruby       | Date library (dependency)                        |
+| drb                      | 2.2.3    | Ruby       | Distributed Ruby (dependency)                    |
+| duplicate                | 1.1.1    | Apache-2.0 | Deep clone functionality                         |
+| httparty                 | 0.24.2   | MIT        | HTTP client for GitHub API calls                 |
+| i18n                     | 1.14.8   | MIT        | Internationalization (dependency)                |
+| json                     | 2.18.0   | Ruby       | JSON parsing (dependency)                        |
+| language_server-protocol | 3.17.0.5 | MIT        | LSP SDK (dependency)                             |
+| lint_roller              | 1.1.0    | MIT        | Linter plugin specification (dependency)         |
+| logger                   | 1.7.0    | Ruby       | Logging utility (dependency)                     |
+| mini_mime                | 1.1.5    | MIT        | MIME type library (dependency)                   |
+| minitest                 | 6.0.1    | MIT        | Testing framework (dependency)                   |
+| multi_xml                | 0.8.1    | MIT        | XML parsing (dependency)                         |
+| open3                    | 0.2.1    | Ruby       | Process execution with stderr capture            |
+| optparse                 | 0.8.1    | Ruby       | Command-line argument parsing                    |
+| parallel                 | 1.27.0   | MIT        | Parallel processing (dependency)                 |
+| parser                   | 3.3.10.1 | MIT        | Ruby parser (dependency)                         |
+| prism                    | 1.8.0    | MIT        | Ruby parser (dependency)                         |
+| psych                    | 5.3.1    | MIT        | YAML parser and emitter                          |
+| racc                     | 1.8.1    | Ruby       | LALR parser generator (dependency)               |
+| rainbow                  | 3.1.1    | MIT        | Terminal text colorization (dependency)          |
+| regexp_parser            | 2.11.3   | MIT        | Regular expression parser (dependency)           |
+| rubocop                  | 1.82.1   | MIT        | Ruby code linter (development)                   |
+| rubocop-ast              | 1.49.0   | MIT        | RuboCop AST utilities (dependency)               |
+| rubocop-capybara         | 2.22.1   | MIT        | Capybara linting rules (development)             |
+| rubocop-graphql          | 1.5.6    | MIT        | GraphQL linting rules (development)              |
+| rubocop-minitest         | 0.38.2   | MIT        | Minitest linting rules (development)             |
+| rubocop-performance      | 1.26.1   | MIT        | Performance linting rules (development)          |
+| rubocop-rspec            | 3.9.0    | MIT        | RSpec linting rules (development)                |
+| rubocop-thread_safety    | 0.7.3    | MIT        | Thread safety checks (development)               |
+| ruby-progressbar         | 1.13.0   | MIT        | Progress bar display (dependency)                |
+| securerandom             | 0.4.1    | Ruby       | Secure random number generation (dependency)     |
+| stringio                 | 3.2.0    | Ruby       | String IO operations (dependency)                |
+| tzinfo                   | 2.0.6    | MIT        | Timezone data (dependency)                       |
+| unicode-display_width    | 3.2.0    | MIT        | Unicode display width calculation (dependency)   |
+| unicode-emoji            | 4.2.0    | MIT        | Unicode emoji data (dependency)                  |
+| uri                      | 1.1.1    | Ruby       | URI handling (dependency)                        |
 
 ### Critical Dependencies
 
-| Package | Role |
-|---------|------|
+| Package       | Role                                       |
+|---------------|--------------------------------------------|
 | activesupport | Core hash manipulation for YAML processing |
-| httparty | GitHub API communication |
-| psych | YAML parsing and generation |
-| optparse | CLI argument handling |
-| open3 | External command execution |
+| httparty      | GitHub API communication                   |
+| psych         | YAML parsing and generation                |
+| optparse      | CLI argument handling                      |
+| open3         | External command execution                 |
 
 ### Development Dependencies
 
-| Package | Role |
-|---------|------|
-| rubocop | Code style enforcement |
+| Package   | Role                   |
+|-----------|------------------------|
+| rubocop   | Code style enforcement |
 | rubocop-* | Extended linting rules |
 
 ## Critical algorithms
@@ -328,11 +321,7 @@ language detection, and repository configuration.
 1. Retrieves current repository info and branch protection via GitHub API
 2. Collects required status checks from generated workflow jobs
 3. Validates existing checks match expected checks
-4. Configures branch protection with:
-   - Required status checks
-   - Pull request reviews
-   - Signed commits
-   - Conversation resolution
+4. Configures branch protection with required status checks, pull request reviews, signed commits, and conversation resolution
 5. Enables security features (vulnerability alerts, secret scanning, CodeQL)
 6. Disables GHAS features for private repos (cost avoidance)
 
@@ -351,10 +340,7 @@ language detection, and repository configuration.
 **Implementation:**
 
 1. Loads detection rules from `config/gitignore.yaml`
-2. For each template, checks:
-   - File extensions present in repository
-   - Specific files that indicate the technology
-   - Package dependencies in manifest files
+2. For each template, checks file extensions present in repository, specific files that indicate the technology, and package dependencies in manifest files
 3. Fetches templates from gitignore.io API
 4. Applies project-specific modifications (uncomment JetBrains patterns, etc.)
 5. Appends AI assistant ignore patterns
@@ -403,11 +389,11 @@ language detection, and repository configuration.
 
 ### Failure Modes
 
-| Failure Mode | Impact | Mitigation |
-|--------------|--------|------------|
-| GitHub API unavailable | Cannot configure repository | Exit with error, manual configuration possible |
-| Invalid configuration YAML | Application crash | Validate YAML structure, use safe_load |
-| Missing linter config files | Linter step may fail | Copy default configs, symlink to scripts submodule |
-| File permission errors | Cannot write output | Check permissions, exit with error |
-| Network timeout | API calls fail | HTTParty handles timeouts, user can retry |
-| Version mismatch detected | Warning or error | Configurable strict mode for version checking |
+| Failure Mode                | Impact                      | Mitigation                                         |
+|-----------------------------|-----------------------------|----------------------------------------------------|
+| GitHub API unavailable      | Cannot configure repository | Exit with error, manual configuration possible     |
+| Invalid configuration YAML  | Application crash           | Validate YAML structure, use safe_load             |
+| Missing linter config files | Linter step may fail        | Copy default configs, symlink to scripts submodule |
+| File permission errors      | Cannot write output         | Check permissions, exit with error                 |
+| Network timeout             | API calls fail              | HTTParty handles timeouts, user can retry          |
+| Version mismatch detected   | Warning or error            | Configurable strict mode for version checking      |
