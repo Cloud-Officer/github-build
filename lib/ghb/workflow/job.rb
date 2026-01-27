@@ -4,7 +4,7 @@ require_relative '../../ghb'
 require_relative 'step'
 
 module GHB
-  # noinspection RubyTooManyInstanceVariablesInspection
+  # Data model for GitHub Actions job - instance variables map to YAML schema
   class Job
     def initialize(id)
       @id = id

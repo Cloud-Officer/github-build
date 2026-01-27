@@ -2,31 +2,50 @@
 name: Bug report
 about: Create a report to help us improve
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 
 ---
 
-**Description:**
+## Description
 
-A short description
+A concise description of the bug.
 
-**Actual Behavior:**
+## Environment
 
-Describe in detail what actually happened
+- **Environment:** (e.g., Test, Production)
+- **App Version:**
+- **Browser/OS:**
+- **Affected Component:**
 
-**Expected Behavior:**
+## Actual Behaviour
 
-Describe in detail what was supposed to happen
+Detailed description of what actually happened. Include any error messages, logs, or screenshots.
 
-**Steps to Reproduce:**
+## Expected Behaviour
 
-Step-by-step instructions on how to reproduce the bug
+Detailed explanation of what should have happened.
 
-**Troubleshooting:**
+## Steps to Reproduce
 
-Any steps to fix it
+1. Step one
+2. Step two
+3. Step three
 
-**Workaround:**
+**Reproducibility:** (Always, Sometimes, Rarely)
 
-Any temporary workaround for the bug
+## Impact & Severity
+
+- **Impact:** Describe the impact on users or business operations
+- **Severity:** (Critical, Major, Minor)
+
+## Troubleshooting & Workaround
+
+- Steps already taken to diagnose or fix the issue
+- Temporary workaround available (if any)
+
+## Additional Information
+
+- Screenshots, videos, or additional logs
+- Related bugs or tickets
+- Potential fixes or areas to investigate (optional)

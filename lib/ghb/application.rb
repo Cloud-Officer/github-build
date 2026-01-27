@@ -5,9 +5,7 @@ require 'duplicate'
 require 'find'
 require 'httparty'
 require 'json'
-require 'open3'
 require 'psych'
-require 'rbconfig'
 
 require_relative 'options'
 require_relative 'status'
@@ -20,13 +18,14 @@ module GHB
       @code_deploy_pre_steps = []
       @exit_code = Status::SUCCESS_EXIT_CODE
       @dependencies_steps = []
+      @file_cache = {}
       @cron_workflow = Workflow.new('Cron Dependencies')
       @dockerhub_workflow = Workflow.new('Publish Docker image')
       @new_workflow = Workflow.new('Build')
       @old_workflow = Workflow.new('Build')
       @options = configure_options(argv)
       @required_status_checks = []
-      @submodules = ''
+      @submodules = []
       @unit_tests_conditions = nil
       @dependencies_commands =
         <<~BASH
@@ -38,6 +37,7 @@ module GHB
     end
 
     def execute
+      validate_config!
       puts('Generating build file...')
       workflow_read
       workflow_set_defaults
@@ -76,6 +76,37 @@ module GHB
     rescue OptionParser::InvalidOption => e
       puts("Error: #{e}")
       exit(Status::ERROR_EXIT_CODE)
+    end
+
+    def cached_file_read(path)
+      @file_cache[path] ||= File.read(path)
+    end
+
+    # Validates that all required config files exist and have valid YAML syntax (CFG-001)
+    # @raise [ConfigError] if any config file is missing or malformed
+    def validate_config!
+      config_files = {
+        linters_config: @options.linters_config_file,
+        languages_config: @options.languages_config_file,
+        apt_options: @options.options_config_file_apt,
+        mongodb_options: @options.options_config_file_mongodb,
+        mysql_options: @options.options_config_file_mysql,
+        redis_options: @options.options_config_file_redis,
+        gitignore_config: @options.gitignore_config_file
+      }
+
+      config_files.each do |name, relative_path|
+        full_path = "#{__dir__}/../../#{relative_path}"
+        display_name = name.to_s.tr('_', ' ')
+
+        raise(ConfigError, "Missing required #{display_name} file: #{relative_path}") unless File.exist?(full_path)
+
+        begin
+          Psych.safe_load(cached_file_read(full_path), permitted_classes: [Symbol])
+        rescue Psych::SyntaxError => e
+          raise(ConfigError, "Invalid YAML in #{display_name} file (#{relative_path}): #{e.message}")
+        end
+      end
     end
 
     def workflow_read
@@ -161,21 +192,16 @@ module GHB
       return if @options.only_dependabot
 
       puts('    Detecting linters...')
-      linters = Psych.safe_load(File.read("#{__dir__}/../../#{@options.linters_config_file}"))&.deep_symbolize_keys
-      excluded_folders = ''
-
-      @options.excluded_folders.each do |folder|
-        excluded_folders += " -not -path '*#{folder}*'"
-      end
-
+      linters = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.linters_config_file}"))&.deep_symbolize_keys
       script_path = nil
 
       if File.exist?('.gitmodules')
         File.read('.gitmodules').each_line do |line|
-          if line.include?('path = ')
-            @submodules += " -not -path '*#{line.split('=').last&.strip}*'"
-            script_path = line.split('=').last&.strip if line.include?('scripts')
-          end
+          next unless line.include?('path = ')
+
+          submodule_path = line.split('=').last&.strip
+          @submodules << submodule_path if submodule_path
+          script_path = submodule_path if line.include?('scripts')
         end
       end
 
@@ -184,17 +210,14 @@ module GHB
 
         next if linter[:short_name].include?('Semgrep') and @options.skip_semgrep
 
-        find_command = "find #{linter[:path]}"
-        find_command += excluded_folders unless excluded_folders.empty?
-        find_command += @submodules unless @submodules.empty?
-        find_command += " | grep -v /node_modules/ | grep -v linters | grep -v vendor | grep -E '#{linter[:pattern]}'"
-        stdout_str, _stderr_str, status = Open3.capture3(find_command)
+        # Pure Ruby file finding - avoids shell injection (SEC-001)
+        excluded_paths = @options.excluded_folders + @submodules
+        pattern = Regexp.new(linter[:pattern])
+        matches = find_files_matching(linter[:path], pattern, excluded_paths)
 
-        next unless status.success?
+        next if matches.empty?
 
-        result = stdout_str.strip
-
-        next if result.empty?
+        result = matches.join("\n")
 
         puts("        Enabling #{linter[:short_name]}...")
         puts('            Found:')
@@ -211,9 +234,15 @@ module GHB
           elsif linter[:preserve_config] && File.exist?(linter[:config]) && !File.symlink?(linter[:config])
             puts("            Preserving existing #{linter[:config]} (project-specific config)")
           else
-            File.delete(linter[:config]) if File.symlink?(linter[:config]) or File.exist?(linter[:config])
-            FileUtils.cp("#{__dir__}/../../config/linters/#{linter[:config]}", linter[:config])
-            File.write(linter[:config], File.read(linter[:config]).gsub(/^(\s*)# /, '\1')) if linter[:config] == '.rubocop.yml' and File.exist?('Gemfile') and File.read('Gemfile').include?('rails')
+            # Use atomic file operation to prevent data loss if copy fails
+            atomic_copy_config("#{__dir__}/../../config/linters/#{linter[:config]}", linter[:config]) do |content|
+              # Uncomment Rails-specific rules if this is a Rails project
+              if linter[:config] == '.rubocop.yml' && File.exist?('Gemfile') && File.read('Gemfile').include?('rails')
+                content.gsub(/^(\s*)# /, '\1')
+              else
+                content
+              end
+            end
           end
         end
 
@@ -295,22 +324,18 @@ module GHB
       return if @options.only_dependabot
 
       puts('    Detecting languages...')
-      languages = Psych.safe_load(File.read("#{__dir__}/../../#{@options.languages_config_file}"))&.deep_symbolize_keys
-      options_apt = Psych.safe_load(File.read("#{__dir__}/../../#{@options.options_config_file_apt}"))&.deep_symbolize_keys&.[](:options)
-      options_mongodb = Psych.safe_load(File.read("#{__dir__}/../../#{@options.options_config_file_mongodb}"))&.deep_symbolize_keys&.[](:options)
-      options_mysql = Psych.safe_load(File.read("#{__dir__}/../../#{@options.options_config_file_mysql}"))&.deep_symbolize_keys&.[](:options)
-      options_redis = Psych.safe_load(File.read("#{__dir__}/../../#{@options.options_config_file_redis}"))&.deep_symbolize_keys&.[](:options)
+      languages = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.languages_config_file}"))&.deep_symbolize_keys
+      options_apt = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_apt}"))&.deep_symbolize_keys&.[](:options)
+      options_mongodb = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_mongodb}"))&.deep_symbolize_keys&.[](:options)
+      options_mysql = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_mysql}"))&.deep_symbolize_keys&.[](:options)
+      options_redis = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_redis}"))&.deep_symbolize_keys&.[](:options)
 
       old_workflow = @old_workflow
       unit_tests_conditions = @unit_tests_conditions
       code_deploy_pre_steps = @code_deploy_pre_steps
       dependencies_steps = @dependencies_steps
-      dependencies_commands = @dependencies_commands
-      excluded_folders = ''
-
-      @options.excluded_folders.each do |folder|
-        excluded_folders += " -not -path '*#{folder}*'"
-      end
+      dependencies_commands_base = @dependencies_commands
+      dependencies_commands_additions = []
 
       languages&.each_value do |language|
         next if language[:file_extension].nil?
@@ -321,14 +346,12 @@ module GHB
         redis = false
         setup_options = {}
 
-        case RbConfig::CONFIG['host_os']
-        when /linux/
-          _stdout_str, _stderr_str, status = Open3.capture3("find . #{excluded_folders} -regextype posix-extended -regex '.*\\.(#{language[:file_extension]})' #{@submodules} | grep -qE '.*'")
-        else
-          _stdout_str, _stderr_str, status = Open3.capture3("find -E . #{excluded_folders} -regex '.*\\.(#{language[:file_extension]})' #{@submodules} | grep -qE '.*'")
-        end
+        # Pure Ruby file finding - avoids shell injection (SEC-002)
+        excluded_paths = @options.excluded_folders + @submodules
+        pattern = Regexp.new(".*\\.(#{language[:file_extension]})$")
+        matches = find_files_matching('.', pattern, excluded_paths)
 
-        if status.success?
+        if matches.any?
           dependency_detected = false
 
           language[:dependencies].each do |dependency|
@@ -339,13 +362,12 @@ module GHB
 
           language_detected = true
 
+          # Pure Ruby dependency checking - avoids shell injection (SEC-002)
           language[:dependencies].each do |dependency|
-            _stdout_str, _stderr_str, status = Open3.capture3("grep -q #{dependency[:mongodb_dependency]} #{dependency[:dependency_file]}")
-            mongodb = true if status.success?
-            _stdout_str, _stderr_str, status = Open3.capture3("grep -q #{dependency[:mysql_dependency]} #{dependency[:dependency_file]}")
-            mysql = true if status.success?
-            _stdout_str, _stderr_str, status = Open3.capture3("grep -q #{dependency[:redis_dependency]} #{dependency[:dependency_file]}")
-            redis = true if status.success?
+            dep_file = dependency[:dependency_file]
+            mongodb = true if dependency[:mongodb_dependency] && file_contains?(dep_file, dependency[:mongodb_dependency])
+            mysql = true if dependency[:mysql_dependency] && file_contains?(dep_file, dependency[:mysql_dependency])
+            redis = true if dependency[:redis_dependency] && file_contains?(dep_file, dependency[:redis_dependency])
           end
         end
 
@@ -417,7 +439,7 @@ module GHB
               do_run(dependency[:package_manager_default]) if run.nil?
               env['GITHUB_TOKEN'] = '${{secrets.GH_PAT}}'
               code_deploy_pre_steps << duplicate(self) if language[:short_name] == 'go' or language[:short_name] == 'php' or force_codedeploy_setup
-              dependencies_commands += "#{dependency[:package_manager_update]}\n" if dependency[:package_manager_update]
+              dependencies_commands_additions << dependency[:package_manager_update] if dependency[:package_manager_update]
             end
           end
 
@@ -451,7 +473,9 @@ module GHB
 
       @code_deploy_pre_steps = code_deploy_pre_steps
       @dependencies_steps = dependencies_steps
-      @dependencies_commands = dependencies_commands
+      @dependencies_commands = dependencies_commands_base + dependencies_commands_additions
+                               .map { |cmd| "#{cmd}\n" }
+                               .join
     end
 
     def add_setup_options(setup_options, options, version_file = nil)
@@ -535,13 +559,11 @@ module GHB
 
       puts('    Adding codedeploy...')
       needs = @new_workflow.jobs.keys.map(&:to_s)
-      if_statement = "always() && (needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
+      base_condition = "always() && (needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
+      job_conditions = @new_workflow.jobs.keys.map { |job_name| "needs.#{job_name}.result != 'failure'" }
+      if_statement = ([base_condition] + job_conditions).join(' && ')
       code_deploy_pre_steps = @code_deploy_pre_steps
       old_workflow = @old_workflow
-
-      @new_workflow.jobs.each_key do |job_name|
-        if_statement += " && needs.#{job_name}.result != 'failure'"
-      end
 
       @new_workflow.do_job(:codedeploy) do
         copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
@@ -632,12 +654,10 @@ module GHB
 
       puts('    Adding aws commands...')
       needs = @new_workflow.jobs.keys.map(&:to_s)
-      if_statement = "always() && (needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
+      base_condition = "always() && (needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
+      job_conditions = @new_workflow.jobs.keys.map { |job_name| "needs.#{job_name}.result != 'failure'" }
+      if_statement = ([base_condition] + job_conditions).join(' && ')
       old_workflow = @old_workflow
-
-      @new_workflow.jobs.each_key do |job_name|
-        if_statement += " && needs.#{job_name}.result != 'failure'"
-      end
 
       @new_workflow.do_job(:aws) do
         copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
@@ -836,6 +856,10 @@ module GHB
     def check_repository_settings
       return if @options.skip_repository_settings
 
+      # Validate GITHUB_TOKEN is present (SEC-003)
+      github_token = ENV.fetch('GITHUB_TOKEN', nil)
+      raise(ConfigError, 'GITHUB_TOKEN environment variable is required for repository settings') if github_token.nil? || github_token.empty?
+
       puts('Configuring repository settings...')
       repository = Dir.pwd.split('/').last
       repo_url = "https://api.github.com/repos/#{@options.organization}/#{repository}"
@@ -844,14 +868,14 @@ module GHB
         {
           headers:
             {
-              Authorization: "token #{ENV.fetch('GITHUB_TOKEN', '')}",
+              Authorization: "token #{github_token}",
               Accept: 'application/vnd.github.v3+json'
             }
         }
 
       # Get repository info to check visibility
       response = HTTParty.get(repo_url, headers)
-      raise(response.message) unless response.code == 200
+      raise("Cannot get repository info: #{response.message}") unless response.code == 200
 
       repo_info = JSON.parse(response.body)
       is_private = repo_info['private'] == true
@@ -859,7 +883,7 @@ module GHB
       # Get current branch protection to preserve settings (404 means no protection configured yet)
       response = HTTParty.get("#{repo_url}/branches/master/protection", headers)
 
-      raise(response.message) unless [200, 404].include?(response.code)
+      raise("Cannot get branch protection: #{response.message}") unless [200, 404].include?(response.code)
 
       protection_exists = response.code == 200
       current_protection = protection_exists ? JSON.parse(response.body) : {}
@@ -974,7 +998,7 @@ module GHB
         "#{repo_url}/branches/master/protection",
         headers.merge(body: branch_protection.to_json)
       )
-      raise("Error: cannot set branch protection! #{response.message}") unless response.code == 200
+      raise("Cannot set branch protection: #{response.message}") unless response.code == 200
 
       # Enable required signatures (separate endpoint)
       puts('    Enabling required signatures...')
@@ -982,17 +1006,17 @@ module GHB
         "#{repo_url}/branches/master/protection/required_signatures",
         headers.merge(headers: headers[:headers].merge(Accept: 'application/vnd.github.zzzax-preview+json'))
       )
-      raise("Error: cannot enable required signatures! #{response.message}") unless [200, 204].include?(response.code)
+      raise("Cannot enable required signatures: #{response.message}") unless [200, 204].include?(response.code)
 
       # Enable vulnerability alerts
       puts('    Enabling vulnerability alerts...')
       response = HTTParty.put("#{repo_url}/vulnerability-alerts", headers)
-      raise("Error: cannot enable vulnerability alerts! #{response.message}") unless [200, 204].include?(response.code)
+      raise("Cannot enable vulnerability alerts: #{response.message}") unless [200, 204].include?(response.code)
 
       # Enable automated security fixes
       puts('    Enabling automated security fixes...')
       response = HTTParty.put("#{repo_url}/automated-security-fixes", headers)
-      raise("Error: cannot enable automated security fixes! #{response.message}") unless [200, 204].include?(response.code)
+      raise("Cannot enable automated security fixes: #{response.message}") unless [200, 204].include?(response.code)
 
       # Configure repository settings
       puts('    Configuring repository options...')
@@ -1006,7 +1030,7 @@ module GHB
       }
 
       response = HTTParty.patch(repo_url, headers.merge(body: repo_settings.to_json))
-      raise("Error: cannot configure repository settings! #{response.message}") unless response.code == 200
+      raise("Cannot configure repository settings: #{response.message}") unless response.code == 200
 
       # Advanced Security features - disable for private repos (GHAS incurs charges)
       if is_private
@@ -1043,14 +1067,13 @@ module GHB
         }
 
         response = HTTParty.patch(repo_url, headers.merge(body: security_settings.to_json))
+        raise("Cannot enable Advanced Security features: #{response.message}") unless response.code == 200
 
-        if response.code == 200
-          puts('        Secret scanning enabled')
-          puts('        Secret scanning push protection enabled')
-          puts('        Secret scanning validity checks enabled')
-          puts('        Secret scanning non-provider patterns enabled')
-          puts('        Secret scanning AI detection (generic passwords) enabled')
-        end
+        puts('        Secret scanning enabled')
+        puts('        Secret scanning push protection enabled')
+        puts('        Secret scanning validity checks enabled')
+        puts('        Secret scanning non-provider patterns enabled')
+        puts('        Secret scanning AI detection (generic passwords) enabled')
       end
 
       # CodeQL - disable for private repos (GHAS incurs charges)
@@ -1071,25 +1094,25 @@ module GHB
 
         # First check current status
         response = HTTParty.get("#{repo_url}/code-scanning/default-setup", headers)
+        raise("Cannot get CodeQL default setup status: #{response.message}") unless response.code == 200
 
-        if response.code == 200
-          current_setup = JSON.parse(response.body)
+        current_setup = JSON.parse(response.body)
 
-          if current_setup['state'] == 'configured'
-            puts('        CodeQL default setup already configured')
-          else
-            code_scanning_config = {
-              state: 'configured',
-              query_suite: 'default'
-            }
+        if current_setup['state'] == 'configured'
+          puts('        CodeQL default setup already configured')
+        else
+          code_scanning_config = {
+            state: 'configured',
+            query_suite: 'default'
+          }
 
-            response = HTTParty.patch(
-              "#{repo_url}/code-scanning/default-setup",
-              headers.merge(body: code_scanning_config.to_json)
-            )
+          response = HTTParty.patch(
+            "#{repo_url}/code-scanning/default-setup",
+            headers.merge(body: code_scanning_config.to_json)
+          )
+          raise("Cannot enable CodeQL default setup: #{response.message}") unless [200, 202].include?(response.code)
 
-            puts('        CodeQL default setup enabled') if [200, 202].include?(response.code)
-          end
+          puts('        CodeQL default setup enabled')
         end
       end
 
@@ -1109,7 +1132,7 @@ module GHB
 
       # Load gitignore templates config
       config_path = "#{__dir__}/../../#{@options.gitignore_config_file}"
-      gitignore_config = Psych.safe_load(File.read(config_path))&.deep_symbolize_keys
+      gitignore_config = Psych.safe_load(cached_file_read(config_path))&.deep_symbolize_keys
 
       # Detect templates based on project files
       detected_templates = detect_gitignore_templates(gitignore_config)
@@ -1121,9 +1144,10 @@ module GHB
       puts("    Detected templates: #{detected_templates.join(', ')}")
       response = HTTParty.get(api_url)
 
-      raise(response.message) unless response.code == 200
+      raise("Cannot fetch gitignore templates: #{response.message}") unless response.code == 200
 
-      new_git_ignore = response.body.split("\n", 2).last
+      # Skip the first line (gitignore.io header comment), default to empty string if response is empty
+      new_git_ignore = response.body.to_s.split("\n", 2).last || ''
 
       # Uncomment specific lines if present (for JetBrains IDE compatibility):
       patterns = %w[*.iml modules.xml .idea/misc.xml *.ipr auto-import. .idea/artifacts .idea/compiler.xml .idea/jarRepositories.xml .idea/modules.xml .idea/*.iml .idea/modules]
@@ -1142,11 +1166,10 @@ module GHB
       custom_patterns = detect_custom_patterns(gitignore_config)
 
       unless custom_patterns.empty?
-        new_git_ignore += "\n# BEGIN AI Assistants\n\n"
         # Group patterns into pairs (comment + pattern) and join with blank lines between sections
         grouped_patterns = custom_patterns.each_slice(2).map { |group| group.join("\n") }
-        new_git_ignore += grouped_patterns.join("\n\n")
-        new_git_ignore += "\n\n# END AI Assistants\n"
+        ai_section = "\n# BEGIN AI Assistants\n\n#{grouped_patterns.join("\n\n")}\n\n# END AI Assistants\n"
+        new_git_ignore = "#{new_git_ignore}#{ai_section}"
         tool_names = custom_patterns.filter_map { |p| p.sub('# ', '') if p.start_with?('#') }
         puts("    Custom patterns: #{tool_names.join(', ')}")
       end
@@ -1155,6 +1178,7 @@ module GHB
       # but skip the AI Assistants section (it was regenerated above)
       found = false
       in_ai_section = false
+      custom_lines = []
 
       git_ignore.each_line do |line|
         if line.include?('# End of ')
@@ -1175,10 +1199,10 @@ module GHB
         # Skip individual AI tool patterns when in old-style AI section (no END marker)
         next if in_ai_section && custom_patterns.any? { |pattern| line.start_with?(pattern) }
 
-        new_git_ignore += line if found && !in_ai_section
+        custom_lines << line if found && !in_ai_section
       end
 
-      content = new_git_ignore.gsub(/\n{3,16}/, "\n\n").gsub('/bin/*', '#/bin/*').gsub('# Pods/', 'Pods/')
+      content = (new_git_ignore + custom_lines.join).gsub(/\n{3,16}/, "\n\n").gsub('/bin/*', '#/bin/*').gsub('# Pods/', 'Pods/')
       File.write('.gitignore', "#{content.chomp}\n")
     end
 
@@ -1190,28 +1214,21 @@ module GHB
         templates.add(template)
       end
 
-      # Exclude common dependency/build folders from search
+      # Exclude common dependency/build folders from search - pure Ruby approach (SEC-002)
       dependency_excludes = %w[node_modules vendor .git .hg .svn venv .venv env __pycache__ .pytest_cache .bundle target build dist out Pods Carthage .build DerivedData packages .nuget .npm .yarn .pnpm bower_components jspm_packages]
-                            .map { |d| "-not -path './#{d}/*'" }
-                            .join(' ')
+      excluded_paths = dependency_excludes + @submodules
 
       # Detect templates based on file extensions, specific files, and packages
       config[:extension_detection]&.each do |template_name, detection_config|
         detected = false
 
-        # Check for file extensions
+        # Check for file extensions - pure Ruby (SEC-002)
         detection_config[:extensions]&.each do |ext|
           break if detected
 
-          # Use find to check for files with this extension, excluding dependency folders
-          case RbConfig::CONFIG['host_os']
-          when /linux/
-            _stdout_str, _stderr_str, status = Open3.capture3("find . #{dependency_excludes} -maxdepth 5 -type f -name '*.#{ext}' #{@submodules} 2>/dev/null | head -1 | grep -qE '.*'")
-          else
-            _stdout_str, _stderr_str, status = Open3.capture3("find -E . #{dependency_excludes} -maxdepth 5 -type f -name '*.#{ext}' #{@submodules} 2>/dev/null | head -1 | grep -qE '.*'")
-          end
-
-          detected = status.success?
+          pattern = Regexp.new("\\.#{Regexp.escape(ext)}$")
+          matches = find_files_matching('.', pattern, excluded_paths, max_depth: 5)
+          detected = matches.any?
         end
 
         # Check for specific files
@@ -1221,16 +1238,16 @@ module GHB
           detected = File.exist?(file)
         end
 
-        # Check for packages in package manager files (regex grep)
+        # Check for packages in package manager files - pure Ruby regex (SEC-002)
         detection_config[:packages]&.each do |pm_file, packages|
           break if detected
           next unless File.exist?(pm_file.to_s)
 
+          file_content = File.read(pm_file.to_s)
           packages.each do |pkg|
             break if detected
 
-            _stdout_str, _stderr_str, status = Open3.capture3('grep', '-qE', pkg, pm_file.to_s)
-            detected = status.success?
+            detected = file_content.match?(Regexp.new(pkg))
           end
         end
 
@@ -1252,6 +1269,91 @@ module GHB
       end
 
       patterns
+    end
+
+    # Pure Ruby file finder - avoids shell command injection (SEC-001, SEC-002)
+    # @param path [String] starting directory path
+    # @param pattern [Regexp] file pattern to match
+    # @param excluded_paths [Array<String>] paths to exclude (partial matches)
+    # @param max_depth [Integer, nil] maximum directory depth (nil for unlimited)
+    # @return [Array<String>] list of matching file paths
+    def find_files_matching(path, pattern, excluded_paths = [], max_depth: nil)
+      matches = []
+      base_depth = path.count(File::SEPARATOR)
+
+      Find.find(path) do |file_path|
+        # Check max depth
+        if max_depth
+          current_depth = file_path.count(File::SEPARATOR) - base_depth
+          Find.prune if current_depth > max_depth
+        end
+
+        # Skip excluded paths (submodules, excluded_folders, common vendor dirs)
+        should_skip = excluded_paths.any? { |excluded| file_path.include?(excluded) } ||
+                      file_path.include?('/node_modules/') ||
+                      file_path.include?('/vendor/') ||
+                      file_path.include?('/linters/')
+
+        if should_skip
+          Find.prune
+          next
+        end
+
+        # Match files against pattern
+        matches << file_path if File.file?(file_path) && file_path.match?(pattern)
+      end
+
+      matches
+    rescue Errno::ENOENT, Errno::EACCES
+      # Path doesn't exist or permission denied - return empty
+      []
+    end
+
+    # Atomic file copy with optional transformation
+    # Copies source to a temp file, applies optional transformation, then renames atomically
+    # @param source [String] source file path
+    # @param target [String] target file path
+    # @yield [content] optional block to transform content before writing
+    # @yieldparam content [String] the file content
+    # @yieldreturn [String] the transformed content
+    def atomic_copy_config(source, target)
+      # Read source content
+      content = File.read(source)
+
+      # Apply transformation if block given
+      content = yield(content) if block_given?
+
+      # Write to temp file in same directory (ensures same filesystem for atomic rename)
+      temp_file = "#{target}.tmp.#{Process.pid}"
+
+      begin
+        File.write(temp_file, content)
+
+        # Remove existing file/symlink if present, then rename temp to target
+        # FileUtils.mv handles the replacement atomically on POSIX systems
+        File.delete(target) if File.symlink?(target)
+        FileUtils.mv(temp_file, target)
+      rescue StandardError
+        # Clean up temp file on failure
+        FileUtils.rm_f(temp_file)
+        raise
+      end
+    end
+
+    # Pure Ruby file content search
+    # @param file [String] file path to search
+    # @param pattern [String] pattern to search for (literal string match)
+    # @return [Boolean] true if pattern found in file
+    def file_contains?(file, pattern)
+      return false unless File.exist?(file) && File.file?(file)
+
+      File.foreach(file) do |line|
+        return true if line.include?(pattern)
+      end
+
+      false
+    rescue Errno::ENOENT, Errno::EACCES
+      false
     end
   end
 end

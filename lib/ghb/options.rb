@@ -58,14 +58,12 @@ module GHB
     def args_from_file(file)
       return [] unless File.exist?(file)
 
-      first_line = File.open(file, &:readline).strip
-      return [] unless first_line.start_with?(ARGS_COMMENT_PREFIX)
+      first_line = File.foreach(file).first&.strip
+      return [] if first_line.nil? || !first_line.start_with?(ARGS_COMMENT_PREFIX)
 
       args_string = first_line.sub(ARGS_COMMENT_PREFIX, '').strip
       require('shellwords')
       Shellwords.split(args_string)
-    rescue EOFError
-      []
     end
 
     def setup_parser
