@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module GHB
-  # noinspection RubyTooManyInstanceVariablesInspection
+  # Data model for GitHub Actions step - instance variables map to YAML schema
   class Step
     def initialize(name, options = {})
       @id = options[:id]

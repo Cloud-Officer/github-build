@@ -4,6 +4,9 @@
 
 * [Introduction](#introduction)
 * [Installation](#installation)
+  * [Prerequisites](#prerequisites)
+  * [Install via Homebrew (Recommended)](#install-via-homebrew-recommended)
+  * [Install from Source](#install-from-source)
 * [Usage](#usage)
   * [Examples](#examples)
 * [Contributing](#contributing)
@@ -24,8 +27,30 @@ and [soup](https://github.com/Cloud-Officer/soup).
 
 ## Installation
 
-You can run `bundle install` and then run the command `github-build` or you can install the latest via homebrew
-with `brew install cloud-officer/ci/githubbuild`.
+### Prerequisites
+
+* Ruby >= 4.0
+* Bundler
+
+### Install via Homebrew (Recommended)
+
+```bash
+brew install cloud-officer/ci/githubbuild
+```
+
+### Install from Source
+
+```bash
+git clone https://github.com/Cloud-Officer/github-build.git
+cd github-build
+bundle install
+```
+
+After installation, verify by running:
+
+```bash
+github-build --help
+```
 
 ## Usage
 
@@ -40,6 +65,8 @@ options
         --build_file file            Path to build file
         --excluded_folders excluded_folders
                                      Comma separated list of folders to ignore
+        --force_codedeploy_setup     Force executing the setup step in CodeDeploy even if not technically required
+        --gitignore_config_file file Path to gitignore config file
         --ignored_linters ignored_linters
                                      Ignore linter keys in linter config file
         --languages_config_file file Path to languages config file
@@ -50,11 +77,14 @@ options
         --options-mysql file         Path to MySQL options file
         --options-redis file         Path to Redis options file
         --organization organization  GitHub organization
+        --skip_semgrep               Skip Semgrep
         --skip_dependabot            Skip dependabot
         --skip_gitignore             Skip update of gitignore file
         --skip_license_check         Skip license check
         --skip_repository_settings   Skip check of repository settings
         --skip_slack                 Skip slack
+        --no_strict_version_check    Do not exit with error when VERSION options
+                                     do not match recommended defaults
     -h, --help                       Show this message
 ```
 
@@ -102,5 +132,5 @@ Pull requests are the best way to propose changes to the codebase. We actively w
 4. Make sure your code lints.
 5. Issue that pull request!
 
-When you submit code changes, your submissions are understood to be under the same [License](license) that covers the
+When you submit code changes, your submissions are understood to be under the same [License](LICENSE) that covers the
 project. Feel free to contact the maintainers if that's a concern.

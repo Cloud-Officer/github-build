@@ -11,16 +11,18 @@
 ## Architecture diagram
 
 ```text
-+-------------------+     +------------------+     +---------------------+
-|   CLI Interface   |     |   Configuration  |     |   External APIs     |
-|  bin/github-build |---->|      Files       |---->|    (GitHub, etc.)   |
-+-------------------+     +------------------+     +---------------------+
-         |                        |                         |
-         v                        v                         v
++----------------------+     +------------------+     +---------------------+
+|    CLI Interface     |     |   Configuration  |     |   External APIs     |
+|  bin/github-build.rb |---->|      Files       |---->|  (GitHub, gitignore |
++----------------------+     +------------------+     |   .io, etc.)        |
+         |                        |                    +---------------------+
+         v                        v                         |
 +------------------------------------------------------------------------+
 |                           GHB::Application                              |
 |  - Workflow generation    - Linter detection    - Language detection   |
 |  - Repository settings    - Gitignore updates   - Dependabot config    |
+|  - Licenses check         - AWS commands        - Slack notification   |
+|  - DockerHub workflow     - Cron workflow        - Config validation    |
 +------------------------------------------------------------------------+
          |                        |                         |
          v                        v                         v
@@ -34,6 +36,9 @@
 +-------------------+
 |   Output Files    |
 | .github/workflows |
+|   build.yml       |
+|   cron.yml        |
+|   dockerhub.yml   |
 | .gitignore        |
 | Linter configs    |
 +-------------------+
@@ -61,16 +66,23 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Key Components:**
 
+- `ConfigError`: Custom exception class for configuration validation failures
 - `CI_ACTIONS_VERSION`: Version tag for ci-actions references
 - `DEFAULT_BUILD_FILE`: Default path for workflow output
-- `DEFAULT_*_CONFIG_FILE`: Paths to configuration files
-- `DEFAULT_UBUNTU_VERSION`: Default runner OS
+- `DEFAULT_GITIGNORE_CONFIG_FILE`: Path to gitignore configuration
+- `DEFAULT_LANGUAGES_CONFIG_FILE`: Path to languages configuration
+- `DEFAULT_LINTERS_CONFIG_FILE`: Path to linters configuration
+- `OPTIONS_APT_CONFIG_FILE`: Path to APT options configuration
+- `OPTIONS_MONGODB_CONFIG_FILE`: Path to MongoDB options configuration
+- `OPTIONS_MYSQL_CONFIG_FILE`: Path to MySQL options configuration
+- `OPTIONS_REDIS_CONFIG_FILE`: Path to Redis options configuration
+- `DEFAULT_UBUNTU_VERSION`: Default Ubuntu runner OS
+- `DEFAULT_MACOS_VERSION`: Default macOS runner OS
 - `DEFAULT_JOB_TIMEOUT_MINUTES`: Default job timeout
 
 ### GHB::Application
 
-**Purpose:
-** Main application class that orchestrates workflow generation, linter detection, language detection, and repository configuration.
+**Purpose:** Main application class that orchestrates workflow generation, linter detection, language detection, and repository configuration.
 
 **Location:** `lib/ghb/application.rb`
 
@@ -78,11 +90,22 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `initialize(argv)`: Parses command-line arguments and initializes workflow objects
 - `execute`: Main entry point that runs all generation steps
+- `validate_config!`: Validates all YAML configuration files exist and have valid syntax
 - `workflow_job_detect_linters`: Scans codebase for linter configuration needs
 - `workflow_job_detect_languages`: Detects programming languages and their dependencies
+- `workflow_job_licenses_check`: Adds license checking job to workflow
 - `workflow_job_code_deploy`: Generates AWS CodeDeploy jobs if applicable
+- `workflow_job_aws_commands`: Creates AWS commands job
+- `workflow_job_publish_status`: Creates Slack notification job for build status
+- `save_dependabot_config`: Creates cron dependencies workflow
+- `save_dockerhub_config`: Creates Docker Hub publish workflow
 - `check_repository_settings`: Configures GitHub repository settings via API
 - `update_gitignore`: Updates .gitignore based on detected project types
+- `detect_gitignore_templates(config)`: Detects gitignore templates by file extensions, files, and packages
+- `detect_custom_patterns(config)`: Detects and appends AI assistant ignore patterns
+- `find_files_matching(path, pattern, excluded_paths, max_depth)`: Pure Ruby file finder avoiding shell injection
+- `atomic_copy_config(source, target)`: Atomic file copy with temp file and rename
+- `file_contains?(file, pattern)`: Pure Ruby content search using `File.foreach`
 
 **Internal Dependencies:**
 
@@ -94,9 +117,10 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `active_support/core_ext/hash/keys`
 - `duplicate`
+- `find`
 - `httparty`
+- `json`
 - `psych`
-- `open3`
 
 ### GHB::Options
 
@@ -116,8 +140,25 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `application_name`: CodeDeploy application name
 - `build_file`: Path to output workflow file
 - `excluded_folders`: Folders to ignore during detection
+- `force_codedeploy_setup`: Force CodeDeploy setup regardless of detection
+- `gitignore_config_file`: Path to gitignore config file
+- `ignored_linters`: Hash of linters to skip
+- `languages_config_file`: Path to languages config file
+- `linters_config_file`: Path to linters config file
+- `only_dependabot`: Only generate dependabot workflow
+- `options_config_file_apt`: Path to APT options config
+- `options_config_file_mongodb`: Path to MongoDB options config
+- `options_config_file_mysql`: Path to MySQL options config
+- `options_config_file_redis`: Path to Redis options config
 - `organization`: GitHub organization name
-- Various skip flags for optional features
+- `original_argv`: Original command-line arguments for reproducibility
+- `skip_dependabot`: Skip dependabot workflow generation
+- `skip_gitignore`: Skip gitignore updates
+- `skip_license_check`: Skip license checking job
+- `skip_repository_settings`: Skip GitHub repository settings configuration
+- `skip_semgrep`: Skip semgrep linter
+- `skip_slack`: Skip Slack notification job
+- `strict_version_check`: Exit with error on version mismatch (default: true)
 
 ### GHB::Status
 
@@ -194,7 +235,10 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `config/linters.yaml`: Linter definitions with patterns and configurations
 - `config/languages.yaml`: Language definitions with setup options and dependencies
 - `config/gitignore.yaml`: Gitignore template detection rules
-- `config/options/*.yaml`: Database and service version configurations
+- `config/options/apt.yaml`: APT package configuration
+- `config/options/mongodb.yaml`: MongoDB service version and settings
+- `config/options/mysql.yaml`: MySQL service version and settings
+- `config/options/redis.yaml`: Redis service version and settings
 
 ### bin/update_versions.sh
 
@@ -211,68 +255,14 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 ## Software of Unknown Provenance
 
-| Package                  | Version  | License    | Purpose                                          |
-|--------------------------|----------|------------|--------------------------------------------------|
-| activesupport            | 8.1.2    | MIT        | Hash deep symbolize/stringify methods            |
-| ast                      | 2.4.3    | MIT        | Abstract Syntax Tree library (dependency)        |
-| base64                   | 0.3.0    | Ruby       | Base64 encoding/decoding (dependency)            |
-| bigdecimal               | 4.0.1    | Ruby       | Arbitrary-precision decimal numbers (dependency) |
-| concurrent-ruby          | 1.3.6    | MIT        | Concurrency utilities (dependency)               |
-| connection_pool          | 3.0.2    | MIT        | Connection pool management (dependency)          |
-| csv                      | 3.3.5    | Ruby       | CSV file handling (dependency)                   |
-| date                     | 3.5.1    | Ruby       | Date library (dependency)                        |
-| drb                      | 2.2.3    | Ruby       | Distributed Ruby (dependency)                    |
-| duplicate                | 1.1.1    | Apache-2.0 | Deep clone functionality                         |
-| httparty                 | 0.24.2   | MIT        | HTTP client for GitHub API calls                 |
-| i18n                     | 1.14.8   | MIT        | Internationalization (dependency)                |
-| json                     | 2.18.0   | Ruby       | JSON parsing (dependency)                        |
-| language_server-protocol | 3.17.0.5 | MIT        | LSP SDK (dependency)                             |
-| lint_roller              | 1.1.0    | MIT        | Linter plugin specification (dependency)         |
-| logger                   | 1.7.0    | Ruby       | Logging utility (dependency)                     |
-| mini_mime                | 1.1.5    | MIT        | MIME type library (dependency)                   |
-| minitest                 | 6.0.1    | MIT        | Testing framework (dependency)                   |
-| multi_xml                | 0.8.1    | MIT        | XML parsing (dependency)                         |
-| open3                    | 0.2.1    | Ruby       | Process execution with stderr capture            |
-| optparse                 | 0.8.1    | Ruby       | Command-line argument parsing                    |
-| parallel                 | 1.27.0   | MIT        | Parallel processing (dependency)                 |
-| parser                   | 3.3.10.1 | MIT        | Ruby parser (dependency)                         |
-| prism                    | 1.8.0    | MIT        | Ruby parser (dependency)                         |
-| psych                    | 5.3.1    | MIT        | YAML parser and emitter                          |
-| racc                     | 1.8.1    | Ruby       | LALR parser generator (dependency)               |
-| rainbow                  | 3.1.1    | MIT        | Terminal text colorization (dependency)          |
-| regexp_parser            | 2.11.3   | MIT        | Regular expression parser (dependency)           |
-| rubocop                  | 1.82.1   | MIT        | Ruby code linter (development)                   |
-| rubocop-ast              | 1.49.0   | MIT        | RuboCop AST utilities (dependency)               |
-| rubocop-capybara         | 2.22.1   | MIT        | Capybara linting rules (development)             |
-| rubocop-graphql          | 1.5.6    | MIT        | GraphQL linting rules (development)              |
-| rubocop-minitest         | 0.38.2   | MIT        | Minitest linting rules (development)             |
-| rubocop-performance      | 1.26.1   | MIT        | Performance linting rules (development)          |
-| rubocop-rspec            | 3.9.0    | MIT        | RSpec linting rules (development)                |
-| rubocop-thread_safety    | 0.7.3    | MIT        | Thread safety checks (development)               |
-| ruby-progressbar         | 1.13.0   | MIT        | Progress bar display (dependency)                |
-| securerandom             | 0.4.1    | Ruby       | Secure random number generation (dependency)     |
-| stringio                 | 3.2.0    | Ruby       | String IO operations (dependency)                |
-| tzinfo                   | 2.0.6    | MIT        | Timezone data (dependency)                       |
-| unicode-display_width    | 3.2.0    | MIT        | Unicode display width calculation (dependency)   |
-| unicode-emoji            | 4.2.0    | MIT        | Unicode emoji data (dependency)                  |
-| uri                      | 1.1.1    | Ruby       | URI handling (dependency)                        |
+See [soup.md](soup.md) for the complete list of third-party dependencies.
 
-### Critical Dependencies
+This project uses Ruby gems for:
 
-| Package       | Role                                       |
-|---------------|--------------------------------------------|
-| activesupport | Core hash manipulation for YAML processing |
-| httparty      | GitHub API communication                   |
-| psych         | YAML parsing and generation                |
-| optparse      | CLI argument handling                      |
-| open3         | External command execution                 |
+- **Core functionality:** activesupport (hash manipulation), httparty (HTTP client), psych (YAML parsing), optparse (CLI arguments), duplicate (deep cloning)
+- **Development:** rubocop and extensions (code linting), rspec (testing), webmock (HTTP stubbing)
 
-### Development Dependencies
-
-| Package   | Role                   |
-|-----------|------------------------|
-| rubocop   | Code style enforcement |
-| rubocop-* | Extended linting rules |
+All dependencies are managed via Bundler with versions locked in `Gemfile.lock`. The soup.md file documents risk levels, requirements justification, and verification reasoning for each package.
 
 ## Critical algorithms
 
@@ -280,15 +270,15 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Purpose:** Automatically detects which linters should be enabled based on file patterns.
 
-**Location:** `lib/ghb/application.rb:160-253`
+**Location:** `lib/ghb/application.rb` in `GHB::Application#workflow_job_detect_linters`
 
 **Implementation:**
 
 1. Loads linter configuration from `config/linters.yaml`
-2. For each linter, constructs a find command with the linter's path and pattern
-3. Excludes specified folders and submodules from search
-4. Executes find command via `Open3.capture3`
-5. If matching files found, enables the linter and copies/links configuration files
+2. Parses `.gitmodules` for submodule paths to exclude
+3. For each linter, uses pure Ruby `find_files_matching` with regex pattern matching to search for files
+4. Excludes specified folders and submodules from search
+5. If matching files found, enables the linter and uses `atomic_copy_config` to safely copy/transform configuration files (e.g., uncommenting Rails rules in `.rubocop.yml`)
 6. Creates workflow job with appropriate steps for each enabled linter
 
 **Complexity:** O(n * m) where n = number of linters, m = files in repository
@@ -297,16 +287,17 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Purpose:** Detects programming languages and their dependencies to configure build jobs.
 
-**Location:** `lib/ghb/application.rb:294-455`
+**Location:** `lib/ghb/application.rb` in `GHB::Application#workflow_job_detect_languages`
 
 **Implementation:**
 
-1. Loads language configuration from `config/languages.yaml`
-2. For each language, searches for files matching the language's file extension
+1. Loads language and options configurations from YAML files
+2. For each language, uses pure Ruby `find_files_matching` to search for files matching the language's file extension
 3. Verifies dependency files exist (e.g., `go.mod`, `package.json`)
-4. Checks dependency files for database dependencies (MongoDB, MySQL, Redis)
-5. Configures setup options including version files (`.ruby-version`, etc.)
-6. Creates unit test workflow job with appropriate setup and test steps
+4. Checks dependency files for database dependencies (MongoDB, MySQL, Redis, Elasticsearch) using `file_contains?`
+5. Detects version files (`.ruby-version`, `.nvmrc`, etc.) and validates against recommended versions
+6. Merges setup options with version validation (strict mode exits on mismatch, non-strict warns)
+7. Creates unit test workflow job with appropriate setup, package manager, and test steps
 
 **Complexity:** O(n * m) where n = number of languages, m = files in repository
 
@@ -314,36 +305,44 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Purpose:** Configures GitHub repository settings including branch protection.
 
-**Location:** `lib/ghb/application.rb:836-1097`
+**Location:** `lib/ghb/application.rb` in `GHB::Application#check_repository_settings`
 
 **Implementation:**
 
-1. Retrieves current repository info and branch protection via GitHub API
-2. Collects required status checks from generated workflow jobs
-3. Validates existing checks match expected checks
-4. Configures branch protection with required status checks, pull request reviews, signed commits, and conversation resolution
-5. Enables security features (vulnerability alerts, secret scanning, CodeQL)
-6. Disables GHAS features for private repos (cost avoidance)
+1. Validates `GITHUB_TOKEN` environment variable is present
+2. Retrieves current repository info to check visibility (public/private)
+3. Gets current branch protection via GitHub API (handles 404 for new repos without protection)
+4. Detects CodeQL languages and filters redundant entries
+5. Collects required status checks from generated workflow jobs
+6. Validates existing checks match expected checks (only for existing protection)
+7. Preserves existing dismissal restrictions and bypass allowances
+8. Configures branch protection with required status checks, pull request reviews, signed commits, and conversation resolution
+9. Configures repository options (delete branch on merge, etc.) and checks for Vercel integration
+10. Enables security features (vulnerability alerts, secret scanning, CodeQL default setup)
+11. Disables GHAS features for private repos (cost avoidance)
 
 **Security Considerations:**
 
 - Uses GITHUB_TOKEN for API authentication
 - Validates branch protection before modification
 - Preserves existing dismissal restrictions and bypass allowances
+- Handles new repositories without existing branch protection gracefully
 
 ### Gitignore Template Detection
 
 **Purpose:** Detects project types to generate comprehensive .gitignore files.
 
-**Location:** `lib/ghb/application.rb:1099-1183` and `lib/ghb/application.rb:1185-1241`
+**Location:** `lib/ghb/application.rb` in `GHB::Application#update_gitignore`, `GHB::Application#detect_gitignore_templates`, and `GHB::Application#detect_custom_patterns`
 
 **Implementation:**
 
 1. Loads detection rules from `config/gitignore.yaml`
-2. For each template, checks file extensions present in repository, specific files that indicate the technology, and package dependencies in manifest files
-3. Fetches templates from gitignore.io API
-4. Applies project-specific modifications (uncomment JetBrains patterns, etc.)
-5. Appends AI assistant ignore patterns
+2. Adds always-enabled templates (OS, IDEs)
+3. For each extension detection entry, checks file extensions using `find_files_matching`, specific files that indicate the technology, and package dependencies in manifest files using pure Ruby regex
+4. Fetches templates from gitignore.io API
+5. Applies project-specific modifications (uncomment JetBrains patterns, comment out conflicting directory patterns like `bin/`, `lib/`, `var/`)
+6. Detects and appends AI assistant ignore patterns (Claude Code, Cursor, Copilot, OpenAI Codex) via `detect_custom_patterns`
+7. Preserves custom entries from existing .gitignore
 
 ## Risk controls
 
@@ -375,10 +374,11 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 ### Error Handling
 
-- `StandardError` caught at top level with backtrace output
-- Exit codes indicate success (0), error (1), or failure (2)
+- `GHB::ConfigError` raised for configuration validation failures (missing or malformed YAML)
+- `StandardError` caught at top level with backtrace output (DEBUG-only via `ENV['DEBUG']`)
+- Exit codes via `GHB::Status` indicate success (0), error (1), or failure (2)
 - API errors raise exceptions with descriptive messages
-- File operations checked for existence before access
+- File operations rescue `Errno::ENOENT` and `Errno::EACCES` for graceful degradation
 
 ### Logging and Monitoring
 
