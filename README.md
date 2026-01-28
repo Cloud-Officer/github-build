@@ -11,7 +11,7 @@
 ## Introduction
 
 This is a GitHub Action build file generator. It will detect and enable linters, enable license check, detect the
-languages including dependencies like mongodb, mysql and redis, enable the unit tests framework, enable CodeDeploy,
+languages including dependencies like mongodb, mysql, redis and elasticsearch, enable the unit tests framework, enable CodeDeploy,
 detect custom AWS deployment, enable Slack notification and enable Dependabot Jira integration.
 
 It will also update the `.gitignore` file and check the repository settings.
@@ -58,6 +58,7 @@ options
         --options-mongodb file       Path to MongoDB options file
         --options-mysql file         Path to MySQL options file
         --options-redis file         Path to Redis options file
+        --options-elasticsearch file Path to Elasticsearch options file
         --organization organization  GitHub organization
         --skip_semgrep               Skip Semgrep
         --skip_dependabot            Skip dependabot

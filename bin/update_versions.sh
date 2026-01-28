@@ -96,3 +96,14 @@ fi
 
 export latest_redis
 yq --indent=2 e '(.options[] | select(.name == "redis-version").value) = env(latest_redis)' -i "config/options/redis.yaml"
+
+# Elasticsearch (OpenSearch)
+
+latest_elasticsearch=$(aws opensearch list-versions --query 'Versions[*]' --output text 2>/dev/null | tr '\t' '\n' | grep -E '^Elasticsearch_[0-9]+\.[0-9]+$' | sed 's/Elasticsearch_//' | sort -V | tail -n1)
+
+if [ -z "${latest_elasticsearch}" ]; then
+    latest_elasticsearch=$(curl -s https://api.github.com/repos/elastic/elasticsearch/releases | jq -r '[.[] | select(.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name | ltrimstr("v")] | first')
+fi
+
+export latest_elasticsearch
+yq --indent=2 e '(.options[] | select(.name == "elasticsearch-version").value) = env(latest_elasticsearch)' -i "config/options/elasticsearch.yaml"

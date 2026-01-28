@@ -76,6 +76,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `OPTIONS_MONGODB_CONFIG_FILE`: Path to MongoDB options configuration
 - `OPTIONS_MYSQL_CONFIG_FILE`: Path to MySQL options configuration
 - `OPTIONS_REDIS_CONFIG_FILE`: Path to Redis options configuration
+- `OPTIONS_ELASTICSEARCH_CONFIG_FILE`: Path to Elasticsearch options configuration
 - `DEFAULT_UBUNTU_VERSION`: Default Ubuntu runner OS
 - `DEFAULT_MACOS_VERSION`: Default macOS runner OS
 - `DEFAULT_JOB_TIMEOUT_MINUTES`: Default job timeout
@@ -150,6 +151,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `options_config_file_mongodb`: Path to MongoDB options config
 - `options_config_file_mysql`: Path to MySQL options config
 - `options_config_file_redis`: Path to Redis options config
+- `options_config_file_elasticsearch`: Path to Elasticsearch options config
 - `organization`: GitHub organization name
 - `original_argv`: Original command-line arguments for reproducibility
 - `skip_dependabot`: Skip dependabot workflow generation
@@ -206,7 +208,8 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Attributes:**
 
 - `id`, `name`, `permissions`, `needs`, `if`, `runs_on`, `environment`
-- `outputs`, `env`, `steps`, `timeout_minutes`, `strategy`, `container`, `services`
+- `concurrency`, `outputs`, `env`, `defaults`, `steps`, `timeout_minutes`, `strategy`
+- `continue_on_error`, `container`, `services`, `uses`, `with`, `secrets`
 
 ### GHB::Step
 
@@ -239,6 +242,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `config/options/mongodb.yaml`: MongoDB service version and settings
 - `config/options/mysql.yaml`: MySQL service version and settings
 - `config/options/redis.yaml`: Redis service version and settings
+- `config/options/elasticsearch.yaml`: Elasticsearch service version and settings
 
 ### bin/update_versions.sh
 
