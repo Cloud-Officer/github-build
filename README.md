@@ -4,9 +4,6 @@
 
 * [Introduction](#introduction)
 * [Installation](#installation)
-  * [Prerequisites](#prerequisites)
-  * [Install via Homebrew (Recommended)](#install-via-homebrew-recommended)
-  * [Install from Source](#install-from-source)
 * [Usage](#usage)
   * [Examples](#examples)
 * [Contributing](#contributing)
@@ -27,34 +24,19 @@ and [soup](https://github.com/Cloud-Officer/soup).
 
 ## Installation
 
-### Prerequisites
+Prerequisites are Ruby >= 4.0 and Bundler.
 
-* Ruby >= 4.0
-* Bundler
-
-### Install via Homebrew (Recommended)
-
-```bash
-brew install cloud-officer/ci/githubbuild
-```
-
-### Install from Source
-
-```bash
-git clone https://github.com/Cloud-Officer/github-build.git
-cd github-build
-bundle install
-```
+Run `bundle install` to install dependencies, then run the command.
 
 After installation, verify by running:
 
 ```bash
-github-build --help
+./bin/github-build.rb --help
 ```
 
 ## Usage
 
-Run `github-build` in the root of the project.
+Run `./bin/github-build.rb` in the root of the project.
 
 ```bash
 Usage: github-build options
@@ -98,7 +80,7 @@ To force a custom AWS deployment, create an empty file `.aws` in the root of the
 On this repository.
 
 ```bash
-github-build --skip_dependabot  --skip_slack
+./bin/github-build.rb --skip_dependabot  --skip_slack
 
 Generating build file...
 Reading current build file .github/workflows/build.yml...
