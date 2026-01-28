@@ -92,6 +92,7 @@ module GHB
         mongodb_options: @options.options_config_file_mongodb,
         mysql_options: @options.options_config_file_mysql,
         redis_options: @options.options_config_file_redis,
+        elasticsearch_options: @options.options_config_file_elasticsearch,
         gitignore_config: @options.gitignore_config_file
       }
 
@@ -329,6 +330,7 @@ module GHB
       options_mongodb = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_mongodb}"))&.deep_symbolize_keys&.[](:options)
       options_mysql = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_mysql}"))&.deep_symbolize_keys&.[](:options)
       options_redis = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_redis}"))&.deep_symbolize_keys&.[](:options)
+      options_elasticsearch = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_elasticsearch}"))&.deep_symbolize_keys&.[](:options)
 
       old_workflow = @old_workflow
       unit_tests_conditions = @unit_tests_conditions
@@ -344,6 +346,7 @@ module GHB
         mongodb = false
         mysql = false
         redis = false
+        elasticsearch = false
         setup_options = {}
 
         # Pure Ruby file finding - avoids shell injection (SEC-002)
@@ -368,6 +371,7 @@ module GHB
             mongodb = true if dependency[:mongodb_dependency] && file_contains?(dep_file, dependency[:mongodb_dependency])
             mysql = true if dependency[:mysql_dependency] && file_contains?(dep_file, dependency[:mysql_dependency])
             redis = true if dependency[:redis_dependency] && file_contains?(dep_file, dependency[:redis_dependency])
+            elasticsearch = true if dependency[:elasticsearch_dependency] && file_contains?(dep_file, dependency[:elasticsearch_dependency])
           end
         end
 
@@ -380,6 +384,7 @@ module GHB
         add_setup_options(setup_options, options_mongodb) if mongodb
         add_setup_options(setup_options, options_mysql) if mysql
         add_setup_options(setup_options, options_redis) if redis
+        add_setup_options(setup_options, options_elasticsearch) if elasticsearch
 
         additional_checks =
           if language[:short_name] == 'swift'

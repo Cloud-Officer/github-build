@@ -1,0 +1,8 @@
+---
+options:
+  - name: elasticsearch-version
+    value: 9.1.10
+  - name: elasticsearch-plugins
+    value:
+  - name: elasticsearch-port
+    value:

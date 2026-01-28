@@ -279,6 +279,7 @@ RSpec.describe(GHB::Application) do
         options_config_file_mongodb: 'config/options/mongodb.yaml',
         options_config_file_mysql: 'config/options/mysql.yaml',
         options_config_file_redis: 'config/options/redis.yaml',
+        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml',
         gitignore_config_file: 'config/gitignore.yaml'
       )
     end
@@ -303,6 +304,7 @@ RSpec.describe(GHB::Application) do
         options_config_file_mongodb: 'config/options/mongodb.yaml',
         options_config_file_mysql: 'config/options/mysql.yaml',
         options_config_file_redis: 'config/options/redis.yaml',
+        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml',
         gitignore_config_file: 'config/gitignore.yaml'
       )
       config_app = config_test_class.new(bad_options)
@@ -379,6 +381,7 @@ RSpec.describe(GHB::Application) do
         options_config_file_mongodb: 'config/options/mongodb.yaml',
         options_config_file_mysql: 'config/options/mysql.yaml',
         options_config_file_redis: 'config/options/redis.yaml',
+        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml',
         gitignore_config_file: 'config/gitignore.yaml'
       )
       config_app = config_test_class.new(bad_options)

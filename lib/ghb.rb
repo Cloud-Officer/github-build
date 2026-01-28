@@ -13,6 +13,7 @@ module GHB
   OPTIONS_MONGODB_CONFIG_FILE = 'config/options/mongodb.yaml'
   OPTIONS_MYSQL_CONFIG_FILE = 'config/options/mysql.yaml'
   OPTIONS_REDIS_CONFIG_FILE = 'config/options/redis.yaml'
+  OPTIONS_ELASTICSEARCH_CONFIG_FILE = 'config/options/elasticsearch.yaml'
   DEFAULT_UBUNTU_VERSION = 'ubuntu-latest'
   DEFAULT_MACOS_VERSION = 'macos-latest'
   DEFAULT_JOB_TIMEOUT_MINUTES = 30
@@ -26,6 +27,7 @@ module GHB
   private_constant :OPTIONS_MONGODB_CONFIG_FILE
   private_constant :OPTIONS_MYSQL_CONFIG_FILE
   private_constant :OPTIONS_REDIS_CONFIG_FILE
+  private_constant :OPTIONS_ELASTICSEARCH_CONFIG_FILE
   private_constant :DEFAULT_UBUNTU_VERSION
   private_constant :DEFAULT_MACOS_VERSION
   public_constant :DEFAULT_JOB_TIMEOUT_MINUTES
