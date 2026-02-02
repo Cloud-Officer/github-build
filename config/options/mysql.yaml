@@ -1,7 +1,7 @@
 ---
 options:
   - name: mysql-version
-    value: 9.6
+    value: 8.0
   - name: mysql-distribution
     value:
   - name: mysql-auto-start
