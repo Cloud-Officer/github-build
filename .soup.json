@@ -446,7 +446,7 @@
   "rspec-support": {
     "language": "Ruby",
     "package": "rspec-support",
-    "version": "3.13.6",
+    "version": "3.13.7",
     "license": "MIT",
     "description": "Support utilities for RSpec gems",
     "website": "https://rspec.info",

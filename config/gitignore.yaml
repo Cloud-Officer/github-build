@@ -99,7 +99,7 @@ extension_detection:
   django:
     packages:
       requirements.txt:
-        - "^[Dd]jango[=~<>![]"
+        - "^[Dd]jango[=~<>!\\[]"
       pyproject.toml:
         - '"[Dd]jango"'
   dotenv:
@@ -136,7 +136,7 @@ extension_detection:
   flask:
     packages:
       requirements.txt:
-        - "^[Ff]lask[=~<>![]"
+        - "^[Ff]lask[=~<>!\\[]"
       pyproject.toml:
         - '"[Ff]lask"'
   flutter:
