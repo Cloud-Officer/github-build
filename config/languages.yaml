@@ -7,7 +7,7 @@ go:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.25.6
+      value: 1.25.7
     - name: go-version-file
       value:
     - name: go-check-latest
@@ -215,7 +215,7 @@ proto:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.25.6
+      value: 1.25.7
     - name: go-version-file
       value:
     - name: go-check-latest
@@ -251,7 +251,7 @@ python:
     - .python-version
   setup_options:
     - name: python-version
-      value: 3.14.2
+      value: 3.14.3
     - name: python-version-file
       value:
     - name: python-cache
