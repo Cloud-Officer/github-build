@@ -104,7 +104,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `update_gitignore`: Updates .gitignore based on detected project types
 - `detect_gitignore_templates(config)`: Detects gitignore templates by file extensions, files, and packages
 - `detect_custom_patterns(config)`: Detects and appends AI assistant ignore patterns
-- `find_files_matching(path, pattern, excluded_paths, max_depth)`: Pure Ruby file finder avoiding shell injection
+- `find_files_matching(path, pattern, excluded_paths, max_depth:)`: Pure Ruby file finder avoiding shell injection
 - `atomic_copy_config(source, target)`: Atomic file copy with temp file and rename
 - `file_contains?(file, pattern)`: Pure Ruby content search using `File.foreach`
 
@@ -322,8 +322,8 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 7. Preserves existing dismissal restrictions and bypass allowances
 8. Configures branch protection with required status checks, pull request reviews, signed commits, and conversation resolution
 9. Configures repository options (delete branch on merge, etc.) and checks for Vercel integration
-10. Enables security features (vulnerability alerts, secret scanning, CodeQL default setup)
-11. Disables GHAS features for private repos (cost avoidance)
+10. Enables security features (vulnerability alerts, automated security fixes, secret scanning, CodeQL default setup)
+11. Disables GHAS features (secret scanning, CodeQL) for private repos (cost avoidance)
 
 **Security Considerations:**
 
