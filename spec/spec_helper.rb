@@ -9,6 +9,7 @@ require 'webmock/rspec'
 # Load the application
 require_relative '../lib/ghb'
 require_relative '../lib/ghb/application'
+require_relative '../lib/ghb/github_api_client'
 require_relative '../lib/ghb/options'
 require_relative '../lib/ghb/status'
 require_relative '../lib/ghb/workflow/job'
