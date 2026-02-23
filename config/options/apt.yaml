@@ -1,4 +1,14 @@
 ---
+# APT Package Options
+#
+# Additional system packages to install via apt-get before building.
+# These options are always included in the setup step.
+#
+# Each option's name is converted to an uppercase environment variable
+# and passed to the cloud-officer/ci-actions/setup@v2 action.
+# Empty values mean the option is not set.
+
 options:
-- name: apt-packages
-  value:
+  # Space-separated list of apt packages to install (e.g., "libxml2-dev libssl-dev")
+  - name: apt-packages
+    value:

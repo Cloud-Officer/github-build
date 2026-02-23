@@ -1,14 +1,29 @@
 ---
+# MongoDB Service Options
+#
+# Options for the MongoDB service container, added when a language's dependency file
+# contains the mongodb_dependency string (e.g., "mongodb" in go.mod or package.json).
+#
+# Each option's name is converted to an uppercase environment variable
+# and passed to the cloud-officer/ci-actions/setup@v2 action.
+# Empty values mean the option is not set (service defaults apply).
+
 options:
+  # MongoDB server version
   - name: mongodb-version
     value: 8.0.0
+  # Replica set name (empty = standalone mode)
   - name: mongodb-replica-set
     value:
+  # Port number (default: 27017)
   - name: mongodb-port
     value:
+  # Default database name
   - name: mongodb-db
     value:
+  # Root username
   - name: mongodb-username
     value:
+  # Root password
   - name: mongodb-password
     value:

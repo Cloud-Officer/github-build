@@ -1,16 +1,32 @@
 ---
+# MySQL Service Options
+#
+# Options for the MySQL service container, added when a language's dependency file
+# contains the mysql_dependency string (e.g., "sql" in go.mod, "mysql" in package.json).
+#
+# Each option's name is converted to an uppercase environment variable
+# and passed to the cloud-officer/ci-actions/setup@v2 action.
+# Empty values mean the option is not set (service defaults apply).
+
 options:
+  # MySQL server version
   - name: mysql-version
     value: 8.0
+  # Distribution (e.g., "mysql" or "mariadb")
   - name: mysql-distribution
     value:
+  # Auto-start the service (true/false)
   - name: mysql-auto-start
     value:
+  # Custom my.cnf configuration
   - name: mysql-my-cnf
     value:
+  # Root user password
   - name: mysql-root-password
     value:
+  # Additional user to create
   - name: mysql-user
     value:
+  # Password for the additional user
   - name: mysql-password
     value:
