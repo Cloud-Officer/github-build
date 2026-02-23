@@ -1234,52 +1234,55 @@ module GHB
     def detect_gitignore_templates(config)
       templates = Set.new
 
-      # Add always-enabled templates
-      config[:always_enabled]&.each do |template|
-        templates.add(template)
-      end
+      config[:always_enabled]&.each { |template| templates.add(template) }
 
-      # Exclude common dependency/build folders from search - pure Ruby approach (SEC-002)
-      dependency_excludes = %w[node_modules vendor .git .hg .svn venv .venv env __pycache__ .pytest_cache .bundle target build dist out Pods Carthage .build DerivedData packages .nuget .npm .yarn .pnpm bower_components jspm_packages]
-      excluded_paths = dependency_excludes + @submodules
+      excluded_paths = build_gitignore_excluded_paths
 
-      # Detect templates based on file extensions, specific files, and packages
       config[:extension_detection]&.each do |template_name, detection_config|
-        detected = false
-
-        # Check for file extensions - pure Ruby (SEC-002)
-        detection_config[:extensions]&.each do |ext|
-          break if detected
-
-          pattern = Regexp.new("\\.#{Regexp.escape(ext)}$")
-          matches = find_files_matching('.', pattern, excluded_paths, max_depth: 5)
-          detected = matches.any?
-        end
-
-        # Check for specific files
-        detection_config[:files]&.each do |file|
-          break if detected
-
-          detected = File.exist?(file)
-        end
-
-        # Check for packages in package manager files - pure Ruby regex (SEC-002)
-        detection_config[:packages]&.each do |pm_file, packages|
-          break if detected
-          next unless File.exist?(pm_file.to_s)
-
-          file_content = File.read(pm_file.to_s)
-          packages.each do |pkg|
-            break if detected
-
-            detected = file_content.match?(Regexp.new(pkg))
-          end
-        end
-
-        templates.add(template_name.to_s) if detected
+        templates.add(template_name.to_s) if template_detected?(detection_config, excluded_paths)
       end
 
       templates.to_a.sort
+    end
+
+    # Exclude common dependency/build folders from search - pure Ruby approach (SEC-002)
+    def build_gitignore_excluded_paths
+      dependency_excludes = %w[node_modules vendor .git .hg .svn venv .venv env __pycache__ .pytest_cache .bundle target build dist out Pods Carthage .build DerivedData packages .nuget .npm .yarn .pnpm bower_components jspm_packages]
+      dependency_excludes + @submodules
+    end
+
+    def template_detected?(detection_config, excluded_paths)
+      extension_detected?(detection_config[:extensions], excluded_paths) ||
+        file_detected?(detection_config[:files]) ||
+        package_detected?(detection_config[:packages])
+    end
+
+    # Check for file extensions - pure Ruby (SEC-002)
+    def extension_detected?(extensions, excluded_paths)
+      return false if extensions.nil?
+
+      extensions.any? do |ext|
+        pattern = Regexp.new("\\.#{Regexp.escape(ext)}$")
+        find_files_matching('.', pattern, excluded_paths, max_depth: 5).any?
+      end
+    end
+
+    def file_detected?(files)
+      return false if files.nil?
+
+      files.any? { |file| File.exist?(file) }
+    end
+
+    # Check for packages in package manager files - pure Ruby regex (SEC-002)
+    def package_detected?(packages)
+      return false if packages.nil?
+
+      packages.any? do |pm_file, pkg_patterns|
+        next false unless File.exist?(pm_file.to_s)
+
+        file_content = File.read(pm_file.to_s)
+        pkg_patterns.any? { |pkg| file_content.match?(Regexp.new(pkg)) }
+      end
     end
 
     def detect_custom_patterns(config)
