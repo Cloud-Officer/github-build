@@ -92,7 +92,7 @@ module GHB
           do_with(job_data[:with])
           do_secrets(job_data[:secrets])
 
-          job_data[:steps].each do |step|
+          job_data[:steps]&.each do |step|
             do_step(step[:name]) do
               do_id(step[:id])
               do_if(step[:if])

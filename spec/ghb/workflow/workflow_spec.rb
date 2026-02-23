@@ -158,6 +158,31 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       expect(steps[1].run).to(eq('npm test'))
     end
 
+    it 'reads reusable workflow job without steps' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      yaml_with_reusable = <<~YAML
+        name: CI
+        "on":
+          push:
+        jobs:
+          deploy:
+            name: Deploy
+            uses: org/repo/.github/workflows/deploy.yml@main
+            with:
+              environment: production
+            secrets:
+              token: ${{ secrets.GITHUB_TOKEN }}
+      YAML
+
+      allow(File).to(receive(:read).and_return(yaml_with_reusable.dup))
+      workflow.read('build.yml')
+
+      expect(workflow.jobs).to(have_key(:deploy))
+      job = workflow.jobs[:deploy]
+      expect(job.name).to(eq('Deploy'))
+      expect(job.uses).to(eq('org/repo/.github/workflows/deploy.yml@main'))
+      expect(job.steps).to(be_empty)
+    end
+
     it 'converts github_token to github-token' do # rubocop:disable RSpec/ExampleLength
       yaml_with_token = <<~YAML
         name: CI
