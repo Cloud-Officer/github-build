@@ -922,11 +922,17 @@ module GHB
       protection_exists = response.code == 200
       current_protection = protection_exists ? JSON.parse(response.body) : {}
 
+      configure_branch_protection(github_client, repo_url, current_protection, protection_exists)
+      configure_repository_options(github_client, repo_url)
+      configure_security_features(github_client, repo_url, is_private)
+      configure_codeql(github_client, repo_url, is_private)
+
+      puts('    Repository settings configured successfully!')
+    end
+
+    def configure_branch_protection(github_client, repo_url, current_protection, protection_exists)
       # Add Vercel check if Next.js project
       @required_status_checks << 'Vercel' if File.exist?('package.json') && File.read('package.json').include?('"next"')
-
-      # Get code scanning analyses (CodeQL, Semgrep, etc.)
-      code_scanning_checks = []
 
       # Check for CodeQL default setup
       codeql_response = github_client.get("#{repo_url}/code-scanning/default-setup", expected_codes: nil)
@@ -940,10 +946,6 @@ module GHB
           # only 'javascript' check actually runs (it covers both JS and TS)
           redundant_languages = %w[javascript-typescript typescript]
           languages = codeql_setup['languages'].reject { |lang| redundant_languages.include?(lang) }
-
-          languages.each do |lang|
-            code_scanning_checks << "Analyze (#{lang})"
-          end
           puts("    CodeQL languages detected: #{languages.join(', ')} (#{languages.length})")
         end
       end
@@ -1037,7 +1039,9 @@ module GHB
         headers: { Accept: 'application/vnd.github.zzzax-preview+json' },
         expected_codes: [200, 204]
       )
+    end
 
+    def configure_repository_options(github_client, repo_url)
       # Enable vulnerability alerts
       puts('    Enabling vulnerability alerts...')
       github_client.put("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204])
@@ -1058,8 +1062,9 @@ module GHB
       }
 
       github_client.patch(repo_url, body: repo_settings)
+    end
 
-      # Advanced Security features - disable for private repos (GHAS incurs charges)
+    def configure_security_features(github_client, repo_url, is_private)
       if is_private
         puts('    Disabling Advanced Security features (private repository - GHAS incurs charges)...')
         security_settings = {
@@ -1101,8 +1106,9 @@ module GHB
         puts('        Secret scanning non-provider patterns enabled')
         puts('        Secret scanning AI detection (generic passwords) enabled')
       end
+    end
 
-      # CodeQL - disable for private repos (GHAS incurs charges)
+    def configure_codeql(github_client, repo_url, is_private)
       if is_private
         puts('    Disabling CodeQL default setup (private repository - GHAS incurs charges)...')
         code_scanning_config = {
@@ -1140,8 +1146,6 @@ module GHB
           puts('        CodeQL default setup enabled')
         end
       end
-
-      puts('    Repository settings configured successfully!')
     end
 
     def update_gitignore
