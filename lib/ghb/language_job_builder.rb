@@ -33,8 +33,16 @@ module GHB
       options_redis = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_redis}"))&.deep_symbolize_keys&.[](:options)
       options_elasticsearch = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_elasticsearch}"))&.deep_symbolize_keys&.[](:options)
 
+      service_options = {
+        apt: options_apt,
+        mongodb: options_mongodb,
+        mysql: options_mysql,
+        redis: options_redis,
+        elasticsearch: options_elasticsearch
+      }
+
       languages&.each_value do |language|
-        detect_language(language, options_apt, options_mongodb, options_mysql, options_redis, options_elasticsearch)
+        detect_language(language, service_options)
       end
 
       @dependencies_commands += @dependencies_commands_additions
@@ -44,7 +52,7 @@ module GHB
 
     private
 
-    def detect_language(language, options_apt, options_mongodb, options_mysql, options_redis, options_elasticsearch)
+    def detect_language(language, service_options)
       return if language[:file_extension].nil?
 
       language_detected = false
@@ -104,11 +112,11 @@ module GHB
       puts("        Enabling #{language[:long_name]}...")
       version_file = language[:version_files]&.find { |f| File.exist?(f) }
       add_setup_options(setup_options, language[:setup_options], version_file)
-      add_setup_options(setup_options, options_apt)
-      add_setup_options(setup_options, options_mongodb) if mongodb
-      add_setup_options(setup_options, options_mysql) if mysql
-      add_setup_options(setup_options, options_redis) if redis
-      add_setup_options(setup_options, options_elasticsearch) if elasticsearch
+      add_setup_options(setup_options, service_options[:apt])
+      add_setup_options(setup_options, service_options[:mongodb]) if mongodb
+      add_setup_options(setup_options, service_options[:mysql]) if mysql
+      add_setup_options(setup_options, service_options[:redis]) if redis
+      add_setup_options(setup_options, service_options[:elasticsearch]) if elasticsearch
 
       add_language_job(language, setup_options, version_file, mono_dependency_locations)
     end
