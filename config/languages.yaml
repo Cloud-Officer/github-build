@@ -7,7 +7,7 @@ go:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.25.7
+      value: 1.26.0
     - name: go-version-file
       value:
     - name: go-check-latest
@@ -41,7 +41,7 @@ js:
     - .nvmrc
   setup_options:
     - name: node-version
-      value: 25.6.0
+      value: 25.6.1
     - name: node-always-auth
       value:
     - name: node-version-file
@@ -173,7 +173,7 @@ php:
     - .php-version
   setup_options:
     - name: php-version
-      value: 8.5.2
+      value: 8.5.3
     - name: php-version-file
       value:
     - name: php-extensions
@@ -215,7 +215,7 @@ proto:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.25.7
+      value: 1.26.0
     - name: go-version-file
       value:
     - name: go-check-latest
@@ -290,6 +290,16 @@ swift:
       dependabot_ecosystem: swift
     - dependency_file: Package.swift
       dependabot_ecosystem: swift
+shell_script:
+  short_name: shell_script
+  long_name: Shell Script
+  file_extension: sh
+  dependencies:
+    - dependency_file: .bats
+      package_manager_name: Bats Install
+      package_manager_default: sudo apt-get update && sudo apt-get install -y bats
+  unit_test_framework_name: Bats
+  unit_test_framework_default: bats tests/
 ruby:
   short_name: ruby
   long_name: Ruby
