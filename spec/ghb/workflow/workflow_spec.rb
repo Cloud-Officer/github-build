@@ -57,6 +57,31 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       workflow.do_concurrency({ group: '${{ github.workflow }}', cancel_in_progress: true })
       expect(workflow.concurrency).to(eq({ group: '${{ github.workflow }}', cancel_in_progress: true }))
     end
+
+    it '#do_on does not change value when nil' do
+      workflow.do_on(nil)
+      expect(workflow.on).to(eq({}))
+    end
+
+    it '#do_permissions does not change value when nil' do
+      workflow.do_permissions(nil)
+      expect(workflow.permissions).to(eq({}))
+    end
+
+    it '#do_env does not change value when nil' do
+      workflow.do_env(nil)
+      expect(workflow.env).to(eq({}))
+    end
+
+    it '#do_defaults does not change value when nil' do
+      workflow.do_defaults(nil)
+      expect(workflow.defaults).to(eq({}))
+    end
+
+    it '#do_concurrency does not change value when nil' do
+      workflow.do_concurrency(nil)
+      expect(workflow.concurrency).to(eq({}))
+    end
   end
 
   describe '#do_job' do
@@ -260,6 +285,33 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       expect(File).to(have_received(:write)) do |_, content|
         expect(content).to(include('${{secrets.GH_PAT}}'))
         expect(content).not_to(include('${{secrets.GITHUB_TOKEN}}'))
+      end
+    end
+
+    it 'includes run_name, permissions, env, defaults, and concurrency in YAML output when set' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      workflow.do_run_name('Deploy to ${{ github.ref }}')
+      workflow.do_on({ push: {}, pull_request: {} })
+      workflow.do_permissions({ contents: 'read', packages: 'write' })
+      workflow.do_env({ NODE_ENV: 'production', CI: 'true' })
+      workflow.do_defaults({ run: { shell: 'bash' } })
+      workflow.do_concurrency({ group: 'ci-${{ github.ref }}', 'cancel-in-progress': true })
+      workflow.do_job(:build) do
+        do_runs_on('ubuntu-latest')
+      end
+
+      workflow.write(temp_file)
+
+      expect(File).to(have_received(:write)) do |_, content|
+        expect(content).to(include('run-name:'))
+        expect(content).to(include('Deploy to ${{ github.ref }}'))
+        expect(content).to(include('permissions:'))
+        expect(content).to(include('contents: read'))
+        expect(content).to(include('env:'))
+        expect(content).to(include('NODE_ENV: production'))
+        expect(content).to(include('defaults:'))
+        expect(content).to(include('shell: bash'))
+        expect(content).to(include('concurrency:'))
+        expect(content).to(include('cancel-in-progress: true'))
       end
     end
   end

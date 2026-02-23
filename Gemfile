@@ -17,5 +17,6 @@ group :development, :test do
   gem 'rubocop-performance', '>= 1.13.3', require: false
   gem 'rubocop-rspec', '>= 2.16.0', require: false
   gem 'rubocop-thread_safety', '>= 0.5.1', require: false
+  gem 'simplecov', '>= 0.22.0', require: false
   gem 'webmock', '>= 3.18.0'
 end
