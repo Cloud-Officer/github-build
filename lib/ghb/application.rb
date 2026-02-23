@@ -31,6 +31,7 @@ module GHB
 
     def initialize(argv)
       @code_deploy_pre_steps = []
+      @default_branch = detect_default_branch
       @exit_code = Status::SUCCESS_EXIT_CODE
       @dependencies_steps = []
       @file_cache = {}
@@ -108,12 +109,17 @@ module GHB
 
       DockerhubManager.new(dockerhub_workflow: @dockerhub_workflow).save
       GitignoreManager.new(options: @options, submodules: @submodules, file_cache: @file_cache).update
-      RepositoryConfigurator.new(options: @options, required_status_checks: @required_status_checks).configure
+      RepositoryConfigurator.new(options: @options, required_status_checks: @required_status_checks, default_branch: @default_branch).configure
 
       @exit_code
     end
 
     private
+
+    def detect_default_branch
+      branch = `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null`.strip.sub(%r{^refs/remotes/origin/}, '')
+      branch.empty? ? 'master' : branch
+    end
 
     def configure_options(argv)
       Options.new(argv).parse
@@ -213,7 +219,7 @@ module GHB
             },
           push:
             {
-              branches: %w[master [0-9]* dependabot/**],
+              branches: [@default_branch, '[0-9]*', 'dependabot/**'],
               tags: %w[**]
             }
         }

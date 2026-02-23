@@ -7,9 +7,10 @@ require_relative 'github_api_client'
 module GHB
   # Configures GitHub repository settings including branch protection, security features, and CodeQL.
   class RepositoryConfigurator
-    def initialize(options:, required_status_checks:)
+    def initialize(options:, required_status_checks:, default_branch: 'master')
       @options = options
       @required_status_checks = required_status_checks
+      @default_branch = default_branch
     end
 
     def configure
@@ -30,7 +31,7 @@ module GHB
       is_private = repo_info['private'] == true
 
       # Get current branch protection to preserve settings (404 means no protection configured yet)
-      response = github_client.get("#{repo_url}/branches/master/protection", expected_codes: [200, 404])
+      response = github_client.get("#{repo_url}/branches/#{@default_branch}/protection", expected_codes: [200, 404])
       protection_exists = response.code == 200
       current_protection = protection_exists ? JSON.parse(response.body) : {}
 
@@ -144,12 +145,12 @@ module GHB
         required_conversation_resolution: true
       }
 
-      github_client.put("#{repo_url}/branches/master/protection", body: branch_protection)
+      github_client.put("#{repo_url}/branches/#{@default_branch}/protection", body: branch_protection)
 
       # Enable required signatures (separate endpoint)
       puts('    Enabling required signatures...')
       github_client.post(
-        "#{repo_url}/branches/master/protection/required_signatures",
+        "#{repo_url}/branches/#{@default_branch}/protection/required_signatures",
         expected_codes: [200, 204]
       )
     end
