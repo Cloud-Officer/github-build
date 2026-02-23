@@ -7,6 +7,7 @@ require 'httparty'
 require 'json'
 require 'psych'
 
+require_relative 'github_api_client'
 require_relative 'options'
 require_relative 'status'
 require_relative 'workflow/workflow'
@@ -909,28 +910,15 @@ module GHB
       puts('Configuring repository settings...')
       repository = Dir.pwd.split('/').last
       repo_url = "https://api.github.com/repos/#{@options.organization}/#{repository}"
-
-      headers =
-        {
-          headers:
-            {
-              Authorization: "token #{github_token}",
-              Accept: 'application/vnd.github.v3+json'
-            }
-        }
+      github_client = GitHubAPIClient.new(github_token)
 
       # Get repository info to check visibility
-      response = HTTParty.get(repo_url, headers)
-      raise("Cannot get repository info: #{response.message}") unless response.code == 200
-
+      response = github_client.get(repo_url)
       repo_info = JSON.parse(response.body)
       is_private = repo_info['private'] == true
 
       # Get current branch protection to preserve settings (404 means no protection configured yet)
-      response = HTTParty.get("#{repo_url}/branches/master/protection", headers)
-
-      raise("Cannot get branch protection: #{response.message}") unless [200, 404].include?(response.code)
-
+      response = github_client.get("#{repo_url}/branches/master/protection", expected_codes: [200, 404])
       protection_exists = response.code == 200
       current_protection = protection_exists ? JSON.parse(response.body) : {}
 
@@ -941,7 +929,7 @@ module GHB
       code_scanning_checks = []
 
       # Check for CodeQL default setup
-      codeql_response = HTTParty.get("#{repo_url}/code-scanning/default-setup", headers)
+      codeql_response = github_client.get("#{repo_url}/code-scanning/default-setup", expected_codes: nil)
 
       if codeql_response.code == 200
         codeql_setup = JSON.parse(codeql_response.body)
@@ -1040,29 +1028,23 @@ module GHB
         required_conversation_resolution: true
       }
 
-      response = HTTParty.put(
-        "#{repo_url}/branches/master/protection",
-        headers.merge(body: branch_protection.to_json)
-      )
-      raise("Cannot set branch protection: #{response.message}") unless response.code == 200
+      github_client.put("#{repo_url}/branches/master/protection", body: branch_protection)
 
       # Enable required signatures (separate endpoint)
       puts('    Enabling required signatures...')
-      response = HTTParty.post(
+      github_client.post(
         "#{repo_url}/branches/master/protection/required_signatures",
-        headers.merge(headers: headers[:headers].merge(Accept: 'application/vnd.github.zzzax-preview+json'))
+        headers: { Accept: 'application/vnd.github.zzzax-preview+json' },
+        expected_codes: [200, 204]
       )
-      raise("Cannot enable required signatures: #{response.message}") unless [200, 204].include?(response.code)
 
       # Enable vulnerability alerts
       puts('    Enabling vulnerability alerts...')
-      response = HTTParty.put("#{repo_url}/vulnerability-alerts", headers)
-      raise("Cannot enable vulnerability alerts: #{response.message}") unless [200, 204].include?(response.code)
+      github_client.put("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204])
 
       # Enable automated security fixes
       puts('    Enabling automated security fixes...')
-      response = HTTParty.put("#{repo_url}/automated-security-fixes", headers)
-      raise("Cannot enable automated security fixes: #{response.message}") unless [200, 204].include?(response.code)
+      github_client.put("#{repo_url}/automated-security-fixes", expected_codes: [200, 204])
 
       # Configure repository settings
       puts('    Configuring repository options...')
@@ -1075,8 +1057,7 @@ module GHB
         delete_branch_on_merge: true
       }
 
-      response = HTTParty.patch(repo_url, headers.merge(body: repo_settings.to_json))
-      raise("Cannot configure repository settings: #{response.message}") unless response.code == 200
+      github_client.patch(repo_url, body: repo_settings)
 
       # Advanced Security features - disable for private repos (GHAS incurs charges)
       if is_private
@@ -1091,7 +1072,7 @@ module GHB
           }
         }
 
-        response = HTTParty.patch(repo_url, headers.merge(body: security_settings.to_json))
+        response = github_client.patch(repo_url, body: security_settings, expected_codes: nil)
 
         if response.code == 200
           puts('        Secret scanning disabled')
@@ -1112,8 +1093,7 @@ module GHB
           }
         }
 
-        response = HTTParty.patch(repo_url, headers.merge(body: security_settings.to_json))
-        raise("Cannot enable Advanced Security features: #{response.message}") unless response.code == 200
+        github_client.patch(repo_url, body: security_settings)
 
         puts('        Secret scanning enabled')
         puts('        Secret scanning push protection enabled')
@@ -1129,9 +1109,10 @@ module GHB
           state: 'not-configured'
         }
 
-        response = HTTParty.patch(
+        response = github_client.patch(
           "#{repo_url}/code-scanning/default-setup",
-          headers.merge(body: code_scanning_config.to_json)
+          body: code_scanning_config,
+          expected_codes: nil
         )
 
         puts('        CodeQL default setup disabled') if [200, 202].include?(response.code)
@@ -1139,9 +1120,7 @@ module GHB
         puts('    Enabling CodeQL default setup...')
 
         # First check current status
-        response = HTTParty.get("#{repo_url}/code-scanning/default-setup", headers)
-        raise("Cannot get CodeQL default setup status: #{response.message}") unless response.code == 200
-
+        response = github_client.get("#{repo_url}/code-scanning/default-setup")
         current_setup = JSON.parse(response.body)
 
         if current_setup['state'] == 'configured'
@@ -1152,11 +1131,11 @@ module GHB
             query_suite: 'default'
           }
 
-          response = HTTParty.patch(
+          github_client.patch(
             "#{repo_url}/code-scanning/default-setup",
-            headers.merge(body: code_scanning_config.to_json)
+            body: code_scanning_config,
+            expected_codes: [200, 202]
           )
-          raise("Cannot enable CodeQL default setup: #{response.message}") unless [200, 202].include?(response.code)
 
           puts('        CodeQL default setup enabled')
         end
