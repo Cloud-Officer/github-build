@@ -116,6 +116,62 @@ RSpec.describe(GHB::Application) do
         .to(raise_error(GHB::ConfigError, /Invalid YAML in languages config file/))
     end
 
+    it 'raises ConfigError when a linter entry is missing required keys' do # rubocop:disable RSpec/ExampleLength
+      linters_yaml = <<~YAML
+        bad_linter:
+          short_name: bad
+          long_name: Bad Linter
+      YAML
+
+      allow(File).to(receive_messages(exist?: true, read: linters_yaml))
+
+      config_app = config_test_class.new(mock_options)
+
+      expect { config_app.validate_config! }
+        .to(raise_error(GHB::ConfigError, %r{Linter 'bad_linter' in config/linters.yaml is missing required keys: uses, path, pattern}))
+    end
+
+    it 'raises ConfigError when a language entry is missing required keys' do # rubocop:disable RSpec/ExampleLength
+      linters_yaml = File.read("#{__dir__}/../../config/linters.yaml")
+      languages_yaml = <<~YAML
+        bad_lang:
+          file_extension: bad
+      YAML
+
+      call_count = 0
+      allow(File).to(receive(:exist?).and_return(true))
+      allow(File).to(receive(:read)) do
+        call_count += 1
+        call_count == 1 ? linters_yaml : languages_yaml
+      end
+
+      config_app = config_test_class.new(mock_options)
+
+      expect { config_app.validate_config! }
+        .to(raise_error(GHB::ConfigError, %r{Language 'bad_lang' in config/languages.yaml is missing required keys: short_name, long_name}))
+    end
+
+    it 'raises ConfigError when a service option entry is missing name' do # rubocop:disable RSpec/ExampleLength
+      valid_yaml = "valid: yaml\n"
+      options_yaml = <<~YAML
+        options:
+          - value: some_value
+      YAML
+
+      call_count = 0
+      allow(File).to(receive(:exist?).and_return(true))
+      allow(File).to(receive(:read)) do
+        call_count += 1
+        # linters (1), languages (2), apt_options (3)
+        call_count == 3 ? options_yaml : valid_yaml
+      end
+
+      config_app = config_test_class.new(mock_options)
+
+      expect { config_app.validate_config! }
+        .to(raise_error(GHB::ConfigError, %r{Option entry 0 in config/options/apt.yaml is missing required key: name}))
+    end
+
     it 'provides clear error message with file path' do # rubocop:disable RSpec/ExampleLength
       bad_options = instance_double(
         GHB::Options,
