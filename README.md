@@ -6,6 +6,7 @@
 * [Installation](#installation)
 * [Usage](#usage)
   * [Examples](#examples)
+  * [Required Secrets](#required-secrets)
 * [Contributing](#contributing)
 
 ## Introduction
@@ -97,6 +98,45 @@ Reading current build file .github/workflows/build.yml...
 Checking repository settings...
 Updating .gitignore...
 ```
+
+### Required Secrets
+
+Generated workflows reference the following GitHub Actions secrets that must be configured in target repositories.
+
+#### Core Secrets (All Workflows)
+
+| Secret    | Purpose                                                                                                                                                                                  |
+|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GH_PAT`  | GitHub Personal Access Token used for API authentication, git operations, and accessing private dependencies across all generated workflow jobs (linters, tests, licenses, deployments). |
+| `SSH_KEY` | SSH private key used for repository checkout and SSH-based git operations across all generated workflow jobs.                                                                            |
+
+#### AWS Secrets (CodeDeploy and Custom AWS Deployments)
+
+Required when using CodeDeploy (`--application_name`) or custom AWS deployments (`.aws` file present).
+
+| Secret                  | Purpose                                                                                            |
+|-------------------------|----------------------------------------------------------------------------------------------------|
+| `AWS_ACCESS_KEY_ID`     | AWS access key for authenticating S3 and CodeDeploy API calls.                                     |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key paired with `AWS_ACCESS_KEY_ID` for AWS API authentication.                         |
+| `AWS_DEFAULT_REGION`    | AWS region for API calls and CodeDeploy operations (e.g., `us-east-1`).                            |
+| `CODEDEPLOY_BUCKET`     | S3 bucket name for storing CodeDeploy deployment packages. Used exclusively by the CodeDeploy job. |
+
+#### Slack Secret (Notifications)
+
+Required unless `--skip_slack` is specified.
+
+| Secret              | Purpose                                                                  |
+|---------------------|--------------------------------------------------------------------------|
+| `SLACK_WEBHOOK_URL` | Incoming webhook URL for posting workflow status notifications to Slack. |
+
+#### Docker Hub Secrets (Docker Image Publishing)
+
+Required when a `.dockerhub` file is present in the repository root.
+
+| Secret            | Purpose                                                              |
+|-------------------|----------------------------------------------------------------------|
+| `DOCKER_USERNAME` | Docker Hub username for authenticating image pushes.                 |
+| `DOCKER_PASSWORD` | Docker Hub password or access token for authenticating image pushes. |
 
 ## Contributing
 
