@@ -150,7 +150,6 @@ module GHB
       puts('    Enabling required signatures...')
       github_client.post(
         "#{repo_url}/branches/master/protection/required_signatures",
-        headers: { Accept: 'application/vnd.github.zzzax-preview+json' },
         expected_codes: [200, 204]
       )
     end
