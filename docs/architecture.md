@@ -146,6 +146,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `ignored_linters`: Hash of linters to skip
 - `languages_config_file`: Path to languages config file
 - `linters_config_file`: Path to linters config file
+- `mono_repo`: Scan one level deep for language dependency files
 - `only_dependabot`: Only generate dependabot workflow
 - `options_config_file_apt`: Path to APT options config
 - `options_config_file_mongodb`: Path to MongoDB options config
@@ -298,10 +299,11 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 1. Loads language and options configurations from YAML files
 2. For each language, uses pure Ruby `find_files_matching` to search for files matching the language's file extension
 3. Verifies dependency files exist (e.g., `go.mod`, `package.json`)
-4. Checks dependency files for database dependencies (MongoDB, MySQL, Redis, Elasticsearch) using `file_contains?`
-5. Detects version files (`.ruby-version`, `.nvmrc`, etc.) and validates against recommended versions
-6. Merges setup options with version validation (strict mode exits on mismatch, non-strict warns)
-7. Creates unit test workflow job with appropriate setup, package manager, and test steps
+4. In mono-repo mode, scans one level deep for subdirectory dependency files and generates per-subdirectory package manager and test steps
+5. Checks dependency files (including subdirectory files in mono-repo mode) for database dependencies (MongoDB, MySQL, Redis, Elasticsearch) using `file_contains?`
+6. Detects version files (`.ruby-version`, `.nvmrc`, etc.) and validates against recommended versions
+7. Merges setup options with version validation (strict mode exits on mismatch, non-strict warns)
+8. Creates unit test workflow job with appropriate setup, package manager, and test steps
 
 **Complexity:** O(n * m) where n = number of languages, m = files in repository
 

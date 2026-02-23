@@ -104,7 +104,6 @@ semgrep:
   permissions:
     actions: read
     contents: read
-    security-events: write
 rubocop:
   short_name: Rubocop
   long_name: Ruby Linter

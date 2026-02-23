@@ -356,10 +356,19 @@ module GHB
 
         if matches.any?
           dependency_detected = false
+          mono_dependency_locations = []
 
           language[:dependencies].each do |dependency|
             dependency_detected = true if File.file?(dependency[:dependency_file])
+
+            next unless @options.mono_repo
+
+            Dir.glob("*/#{dependency[:dependency_file]}").each do |found|
+              mono_dependency_locations << { dependency: dependency, subdir: File.dirname(found), path: found }
+            end
           end
+
+          dependency_detected = true if mono_dependency_locations.any?
 
           next unless dependency_detected
 
@@ -372,6 +381,16 @@ module GHB
             mysql = true if dependency[:mysql_dependency] && file_contains?(dep_file, dependency[:mysql_dependency])
             redis = true if dependency[:redis_dependency] && file_contains?(dep_file, dependency[:redis_dependency])
             elasticsearch = true if dependency[:elasticsearch_dependency] && file_contains?(dep_file, dependency[:elasticsearch_dependency])
+          end
+
+          # Also check subdirectory dependency files for service detection
+          mono_dependency_locations.each do |loc|
+            dep = loc[:dependency]
+            path = loc[:path]
+            mongodb = true if dep[:mongodb_dependency] && file_contains?(path, dep[:mongodb_dependency])
+            mysql = true if dep[:mysql_dependency] && file_contains?(path, dep[:mysql_dependency])
+            redis = true if dep[:redis_dependency] && file_contains?(path, dep[:redis_dependency])
+            elasticsearch = true if dep[:elasticsearch_dependency] && file_contains?(path, dep[:elasticsearch_dependency])
           end
         end
 
@@ -448,14 +467,36 @@ module GHB
             end
           end
 
-          next unless dependency_detected
-
-          do_step(language[:unit_test_framework_name]) do
-            copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
-            do_shell('bash')
-            do_run(language[:unit_test_framework_default]) if run.nil?
-            env['GITHUB_TOKEN'] = '${{secrets.GH_PAT}}'
+          if dependency_detected
+            do_step(language[:unit_test_framework_name]) do
+              copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+              do_shell('bash')
+              do_run(language[:unit_test_framework_default]) if run.nil?
+              env['GITHUB_TOKEN'] = '${{secrets.GH_PAT}}'
+            end
           end
+
+          mono_dependency_locations.each do |loc|
+            dep = loc[:dependency]
+            subdir = loc[:subdir]
+
+            do_step("#{dep[:package_manager_name]} (#{subdir})") do
+              copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+              do_shell('bash')
+              do_run("cd #{subdir} && #{dep[:package_manager_default]}") if run.nil?
+              env['GITHUB_TOKEN'] = '${{secrets.GH_PAT}}'
+              dependencies_commands_additions << dep[:package_manager_update] if dep[:package_manager_update]
+            end
+
+            do_step("#{language[:unit_test_framework_name]} (#{subdir})") do
+              copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+              do_shell('bash')
+              do_run("cd #{subdir} && #{language[:unit_test_framework_default]}") if run.nil?
+              env['GITHUB_TOKEN'] = '${{secrets.GH_PAT}}'
+            end
+          end
+
+          next unless dependency_detected || mono_dependency_locations.any?
 
           if File.exist?('Podfile.lock') and skip_license_check == false
             do_step('Licenses') do
