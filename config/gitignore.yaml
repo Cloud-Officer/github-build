@@ -1,9 +1,26 @@
 ---
-# Gitignore.io templates configuration
-# Detection is based on SOURCE files, not build artifacts
+# Gitignore Configuration
+#
+# Controls automatic .gitignore generation using gitignore.io templates plus custom patterns.
+# Templates are detected by scanning the repository for matching file extensions, specific
+# files, or package dependencies. Detected templates are fetched from gitignore.io and
+# combined with custom patterns into the project's .gitignore.
+#
+# Sections:
+#   custom_patterns      - Patterns always added (not available on gitignore.io)
+#   always_enabled       - Templates included unconditionally (OS and generic IDE patterns)
+#   extension_detection  - Templates detected by file presence or package dependencies
+#
+# Extension Detection Field Reference:
+#   extensions  (array, optional)  - File extensions to search for (up to 5 directory levels deep)
+#   files       (array, optional)  - Specific filenames whose presence triggers the template
+#   packages    (hash, optional)   - Package manager file → regex patterns. The file is read
+#                                    and each regex is tested against its contents.
+#                                    Example: {package.json: ['"gatsby"']}
 
 # Custom patterns for tools not available on gitignore.io
 # These are always appended to .gitignore to prevent accidental commits
+# Each entry contains a list of patterns (comment line + ignore rule)
 custom_patterns:
   claudecode:
     patterns:

@@ -1,4 +1,43 @@
 ---
+# Languages Configuration
+#
+# Defines supported programming languages for CI workflow generation.
+# Each language entry controls:
+#   - How the language is detected in a repository (via file_extension)
+#   - How the runtime is set up in GitHub Actions (via setup_options)
+#   - How dependencies are installed and updated (via dependencies)
+#   - How unit tests are executed (via unit_test_framework_*)
+#
+# Field Reference:
+#   short_name       (string, required) - Internal identifier used in job IDs and conditional logic
+#   long_name        (string, required) - Human-readable name displayed in workflow job names
+#   file_extension   (string, required) - File extension (without dot) used to detect if the language
+#                                         exists in the repo. If no matching files are found, the
+#                                         language is skipped entirely
+#   version_files    (array, optional)  - Files that specify the language version (e.g., .go-version,
+#                                         .ruby-version). When present, the version from the file takes
+#                                         precedence over the setup_options value
+#   setup_options    (array, optional)  - Options passed to the GitHub Actions setup action
+#                                         (cloud-officer/ci-actions/setup@v2). Each option has:
+#                                           name:  option name, converted to an uppercase env var
+#                                           value: default value (empty means not set)
+#   dependencies     (array, optional)  - Package manager and service dependency definitions. Each entry:
+#                                           dependency_file:            file indicating the package manager
+#                                                                       is in use (e.g., go.mod, Gemfile)
+#                                           mongodb_dependency:         string to grep in dependency_file
+#                                                                       to detect MongoDB usage
+#                                           mysql_dependency:           string to grep for MySQL detection
+#                                           redis_dependency:           string to grep for Redis detection
+#                                           elasticsearch_dependency:   string to grep for Elasticsearch
+#                                           package_manager_name:       display name for workflow steps
+#                                           package_manager_default:    install command
+#                                           package_manager_update:     update command (used in cron job)
+#                                           dependabot_ecosystem:       Dependabot ecosystem identifier
+#   unit_test_framework_name    (string, optional) - Display name for the test step
+#   unit_test_framework_default (string, optional) - Default test command
+#   runs-on                     (string, optional) - GitHub Actions runner OS override
+#                                                    (defaults to Ubuntu if not set)
+
 go:
   short_name: go
   long_name: Go

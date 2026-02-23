@@ -1,12 +1,26 @@
 ---
+# Redis Service Options
+#
+# Options for the Redis service container, added when a language's dependency file
+# contains the redis_dependency string (e.g., "redis" in go.mod or package.json).
+#
+# Each option's name is converted to an uppercase environment variable
+# and passed to the cloud-officer/ci-actions/setup@v2 action.
+# Empty values mean the option is not set (service defaults apply).
+
 options:
+  # Redis server version
   - name: redis-version
     value: 8.2
+  # Port number (default: 6379)
   - name: redis-port
     value:
+  # TLS port number
   - name: redis-tls-port
     value:
+  # Auto-start the service (true/false)
   - name: redis-auto-start
     value:
+  # Path to custom redis.conf
   - name: redis-conf
     value:

@@ -1,4 +1,34 @@
 ---
+# Linters Configuration
+#
+# Defines linters that are automatically enabled when matching files are found in the repository.
+# Each linter generates a separate job in the GitHub Actions workflow.
+#
+# Detection: For each linter, files matching `pattern` are searched under `path`.
+# If any matches are found, the linter job is added to the workflow.
+#
+# Field Reference:
+#   short_name       (string, required) - Internal identifier used for filtering (via ignored_linters)
+#                                         and display in step names
+#   long_name        (string, required) - Human-readable name used in workflow job names
+#   condition        (string, optional) - GitHub Actions `if` expression to restrict when the linter
+#                                         runs. Common value: "(github.event_name == 'pull_request'
+#                                         || github.event_name == 'pull_request_target')"
+#                                         If omitted, the linter runs on all event types
+#   uses             (string, required) - GitHub Actions action reference (without version suffix).
+#                                         Version @v2 is appended automatically
+#   config           (string, optional) - Linter config file name (e.g., ".eslintrc.json").
+#                                         Resolved in order: (1) symlink from scripts submodule,
+#                                         (2) preserve project's own config if preserve_config is true,
+#                                         (3) copy from config/linters/ directory
+#   path             (string, required) - Root directory to search for files matching `pattern`
+#   pattern          (string, required) - Regex pattern to match source files (e.g., ".*\\.(py)$")
+#   preserve_config  (bool, optional)   - If true, keeps the project's existing config file instead
+#                                         of overwriting it. Used by Semgrep for custom .semgrepignore
+#   permissions      (hash, optional)   - Job-level GitHub Actions permissions override
+#                                         (e.g., {actions: read, contents: read})
+#   directory        (string, optional) - Additional directory hint for the linter
+
 actionlint:
   short_name: Actionlint
   long_name: Github Actions Linter

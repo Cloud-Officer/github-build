@@ -1,8 +1,20 @@
 ---
+# Elasticsearch Service Options
+#
+# Options for the Elasticsearch service container, added when a language's dependency file
+# contains the elasticsearch_dependency string (e.g., "elasticsearch" in go.mod or package.json).
+#
+# Each option's name is converted to an uppercase environment variable
+# and passed to the cloud-officer/ci-actions/setup@v2 action.
+# Empty values mean the option is not set (service defaults apply).
+
 options:
+  # Elasticsearch server version
   - name: elasticsearch-version
     value: 7.10
+  # Comma-separated list of plugins to install
   - name: elasticsearch-plugins
     value:
+  # Port number (default: 9200)
   - name: elasticsearch-port
     value:
