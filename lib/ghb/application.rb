@@ -122,8 +122,9 @@ module GHB
       exit(Status::ERROR_EXIT_CODE)
     end
 
-    # Validates that all required config files exist and have valid YAML syntax (CFG-001)
-    # @raise [ConfigError] if any config file is missing or malformed
+    # Validates that all required config files exist, have valid YAML syntax,
+    # and contain required keys (CFG-001, CFG-005)
+    # @raise [ConfigError] if any config file is missing, malformed, or missing required keys
     def validate_config!
       config_files = {
         linters_config: @options.linters_config_file,
@@ -143,10 +144,49 @@ module GHB
         raise(ConfigError, "Missing required #{display_name} file: #{relative_path}") unless File.exist?(full_path)
 
         begin
-          Psych.safe_load(cached_file_read(full_path), permitted_classes: [Symbol])
+          data = Psych.safe_load(cached_file_read(full_path), permitted_classes: [Symbol])
         rescue Psych::SyntaxError => e
           raise(ConfigError, "Invalid YAML in #{display_name} file (#{relative_path}): #{e.message}")
         end
+
+        validate_config_schema(name, relative_path, data)
+      end
+    end
+
+    def validate_config_schema(name, relative_path, data)
+      case name
+      when :linters_config
+        validate_entries(data, relative_path, 'linter', %w[short_name long_name uses path pattern])
+      when :languages_config
+        validate_entries(data, relative_path, 'language', %w[short_name long_name])
+      when :apt_options, :mongodb_options, :mysql_options, :redis_options, :elasticsearch_options
+        validate_option_entries(data, relative_path)
+      end
+    end
+
+    def validate_entries(data, relative_path, entry_type, required_keys)
+      return unless data.is_a?(Hash)
+
+      data.each do |entry_name, entry|
+        next unless entry.is_a?(Hash)
+
+        missing_keys = required_keys.reject { |key| entry.key?(key) || entry.key?(key.to_sym) }
+        next if missing_keys.empty?
+
+        raise(ConfigError, "#{entry_type.capitalize} '#{entry_name}' in #{relative_path} is missing required keys: #{missing_keys.join(', ')}")
+      end
+    end
+
+    def validate_option_entries(data, relative_path)
+      return unless data.is_a?(Hash)
+
+      options = data['options'] || data[:options]
+      return unless options.is_a?(Array)
+
+      options.each_with_index do |option, index|
+        next if option.is_a?(Hash) && (option.key?('name') || option.key?(:name))
+
+        raise(ConfigError, "Option entry #{index} in #{relative_path} is missing required key: name")
       end
     end
 
