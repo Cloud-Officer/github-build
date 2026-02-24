@@ -13,6 +13,7 @@
 | Ruby | csv | 3.3.5 | Ruby | The CSV library provides a complete interface to CSV files and data | <https://github.com/ruby/csv> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | date | 3.5.1 | Ruby | The official date library for Ruby. | <https://github.com/ruby/date> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | diff-lcs | 1.6.2 | MIT | Diff::LCS computes the difference between two Enumerable sequences using the | <https://github.com/halostatue/diff-lcs> | 2026-01-26 | Low | Dependency | Dependency |
+| Ruby | docile | 1.4.1 | MIT | Docile treats the methods of a given ruby object as a DSL (domain specific language) within a given block | <https://ms-ati.github.io/docile/> | 2026-02-23 | Low | Dependency | Dependency |
 | Ruby | drb | 2.2.3 | Ruby | Distributed object system for Ruby | <https://github.com/ruby/drb> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | duplicate | 1.1.1 | Apache License Version 2.0 | Originally extracted from rack-app project | <http://www.rack-app.com> | 2026-01-26 | Low | Handle deep clone | Lightweight deep cloning library with no additional dependencies |
 | Ruby | hashdiff | 1.2.1 | MIT | Hashdiff is a diff lib to compute the smallest difference between two hashes | <https://github.com/liufengyun/hashdiff> | 2026-01-26 | Low | Dependency | Dependency |
@@ -50,6 +51,9 @@
 | Ruby | rubocop-thread_safety | 0.7.3 | MIT | Thread-safety checks via static analysis. | <https://github.com/rubocop/rubocop-thread_safety> | 2026-01-26 | Low | Ruby linter | Most popular gem |
 | Ruby | ruby-progressbar | 1.13.0 | MIT | Ruby/ProgressBar is an extremely flexible text progress bar library for Ruby | <https://github.com/jfelchner/ruby-progressbar> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | securerandom | 0.4.1 | Ruby | Interface for secure random number generator. | <https://github.com/ruby/securerandom> | 2026-01-26 | Low | Dependency | Dependency |
+| Ruby | simplecov | 0.22.0 | MIT | Code coverage for Ruby with a powerful configuration library and automatic merging of coverage across test suites | <https://github.com/simplecov-ruby/simplecov> | 2026-02-23 | Low | Code coverage reporting with branch coverage support and minimum threshold enforcement | Most popular Ruby code coverage gem, widely adopted across the Ruby ecosystem |
+| Ruby | simplecov-html | 0.13.2 | MIT | Default HTML formatter for SimpleCov code coverage tool for ruby 2.4+ | <https://github.com/simplecov-ruby/simplecov-html> | 2026-02-23 | Low | Dependency | Dependency |
+| Ruby | simplecov_json_formatter | 0.1.4 | MIT | JSON formatter for SimpleCov | <https://github.com/fede-moya/simplecov_json_formatter> | 2026-02-23 | Low | Dependency | Dependency |
 | Ruby | stringio | 3.2.0 | Ruby | Pseudo `IO` class from/to `String`. | <https://github.com/ruby/stringio> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | tzinfo | 2.0.6 | MIT | TZInfo provides access to time zone data and allows times to be converted using time zone rules. | <https://tzinfo.github.io> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | unicode-display_width | 3.2.0 | MIT | [Unicode 17.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, Emoji specification, and other data. | <https://github.com/janlelis/unicode-display_width> | 2026-01-26 | Low | Dependency | Dependency |

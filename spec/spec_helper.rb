@@ -1,5 +1,12 @@
 # frozen_string_literal: true
 
+require 'simplecov'
+SimpleCov.start do
+  add_filter '/spec/'
+  enable_coverage :branch
+  minimum_coverage line: 80, branch: 80
+end
+
 require 'bundler/setup'
 require 'fileutils'
 require 'tempfile'
