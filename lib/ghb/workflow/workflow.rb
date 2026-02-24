@@ -62,6 +62,8 @@ module GHB
       content.gsub!('github_token:', 'github-token:')
 
       workflow_data = Psych.safe_load(content)&.deep_symbolize_keys
+      return if workflow_data.nil?
+
       @name = workflow_data[:name]
       @run_name = workflow_data[:'run-name']
       @on = workflow_data[:on] || []
