@@ -73,7 +73,7 @@ module GHB
       @concurrency = workflow_data[:concurrency] || {}
       @jobs = {}
 
-      workflow_data[:jobs].each do |job_id, job_data|
+      workflow_data[:jobs]&.each do |job_id, job_data|
         do_job(job_id) do
           do_name(job_data[:name])
           do_permissions(job_data[:permissions])

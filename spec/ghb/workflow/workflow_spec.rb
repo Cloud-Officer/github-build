@@ -236,6 +236,15 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       expect(workflow.name).to(eq('Test'))
       expect(workflow.jobs).to(eq({}))
     end
+
+    it 'handles YAML with missing jobs key gracefully' do # rubocop:disable RSpec/MultipleExpectations
+      yaml_without_jobs = "name: CI\n\"on\":\n  push:\n"
+      allow(File).to(receive(:read).and_return(yaml_without_jobs.dup))
+      workflow.read('no-jobs.yml')
+
+      expect(workflow.name).to(eq('CI'))
+      expect(workflow.jobs).to(eq({}))
+    end
   end
 
   describe '#write' do
