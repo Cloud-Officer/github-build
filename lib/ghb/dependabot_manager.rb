@@ -70,6 +70,7 @@ module GHB
 
         do_step('Update Dependencies') do
           do_shell('bash')
+          do_env({ GH_PAT: '${{secrets.GH_PAT}}' })
           do_run(dependencies_commands)
         end
 
