@@ -38,7 +38,7 @@ module GHB
       api_url = "https://www.toptal.com/developers/gitignore/api/#{templates_param}"
 
       puts("    Detected templates: #{detected_templates.join(', ')}")
-      response = HTTParty.get(api_url)
+      response = HTTParty.get(api_url, timeout: 30)
 
       raise("Cannot fetch gitignore templates: #{response.message}") unless response.code == 200
 
