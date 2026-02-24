@@ -24,7 +24,7 @@
 | Ruby | lint_roller | 1.1.0 | MIT | A plugin specification for linter and formatter rulesets | <https://github.com/standardrb/lint_roller> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | logger | 1.7.0 | Ruby | Provides a simple logging utility for outputting messages. | <https://github.com/ruby/logger> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | mini_mime | 1.1.5 | MIT | A minimal mime type library | <https://github.com/discourse/mini_mime> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | minitest | 6.0.1 | MIT | minitest provides a complete suite of testing facilities supporting | <https://minite.st/> | 2026-01-26 | Low | Dependency | Dependency |
+| Ruby | minitest | 6.0.2 | MIT | minitest provides a complete suite of testing facilities supporting | <https://minite.st/> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | multi_xml | 0.8.1 | MIT | Provides swappable XML backends utilizing LibXML, Nokogiri, Ox, or REXML. | <https://github.com/sferik/multi_xml> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | optparse | 0.8.1 | Ruby | OptionParser is a class for command-line option analysis | <https://github.com/ruby/optparse> | 2026-01-26 | Low | Command line argument parser | Ruby standard library gem maintained by the Ruby core team |
 | Ruby | parallel | 1.27.0 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2026-01-26 | Low | Dependency | Dependency |
@@ -45,7 +45,7 @@
 | Ruby | rubocop-ast | 1.49.0 | MIT | RuboCop's Node and NodePattern classes. | <https://www.rubocop.org/> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | rubocop-capybara | 2.22.1 | MIT | Code style checking for Capybara test files (RSpec, Cucumber, Minitest). | <https://github.com/rubocop/rubocop-capybara> | 2026-01-26 | Low | Ruby linter | Most popular gem |
 | Ruby | rubocop-graphql | 1.6.0 | MIT | A collection of RuboCop cops to improve GraphQL-related code | <https://github.com/DmitryTsepelev/rubocop-graphql> | 2026-01-26 | Low | Ruby linter | Most popular gem |
-| Ruby | rubocop-minitest | 0.38.2 | MIT | Automatic Minitest code style checking tool. | <https://docs.rubocop.org/rubocop-minitest/> | 2026-01-26 | Low | Ruby linter | Most popular gem |
+| Ruby | rubocop-minitest | 0.39.1 | MIT | Automatic Minitest code style checking tool. | <https://docs.rubocop.org/rubocop-minitest/> | 2026-01-26 | Low | Ruby linter | Most popular gem |
 | Ruby | rubocop-performance | 1.26.1 | MIT | A collection of RuboCop cops to check for performance optimizations | <https://docs.rubocop.org/rubocop-performance/> | 2026-01-26 | Low | A collection of RuboCop cops to check for performance optimizations in Ruby code | Most popular gem |
 | Ruby | rubocop-rspec | 3.9.0 | MIT | Code style checking for RSpec files. | <https://github.com/rubocop/rubocop-rspec> | 2026-01-26 | Low | Code style checking for RSpec files. A plugin for the RuboCop code style enforcing & linting tool | Most popular gem |
 | Ruby | rubocop-thread_safety | 0.7.3 | MIT | Thread-safety checks via static analysis. | <https://github.com/rubocop/rubocop-thread_safety> | 2026-01-26 | Low | Ruby linter | Most popular gem |
