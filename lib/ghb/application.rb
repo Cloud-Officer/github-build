@@ -45,9 +45,9 @@ module GHB
       @unit_tests_conditions = nil
       @dependencies_commands =
         <<~BASH
-          git config --global --add url."https://${{secrets.GH_PAT}}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
-          git config --global --add url."https://${{secrets.GH_PAT}}:x-oauth-basic@github.com/".insteadOf https://github.com/
-          git config --global --add url."https://${{secrets.GH_PAT}}:x-oauth-basic@github.com/".insteadOf git@github.com:
+          git config --global --add url."https://${GH_PAT}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
+          git config --global --add url."https://${GH_PAT}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${GH_PAT}:x-oauth-basic@github.com/".insteadOf git@github.com:
 
         BASH
     end
