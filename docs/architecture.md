@@ -13,31 +13,42 @@
 ```text
 +----------------------+     +------------------+     +---------------------+
 |    CLI Interface     |     |   Configuration  |     |   External APIs     |
-|  bin/github-build.rb |---->|      Files       |---->|  (GitHub, gitignore |
-+----------------------+     +------------------+     |   .io, etc.)        |
+|  bin/github-build.rb |---->|      Files       |     |  (GitHub, gitignore |
++----------------------+     +------------------+     |   .io)              |
          |                        |                    +---------------------+
-         v                        v                         |
+         v                        v                         ^
 +------------------------------------------------------------------------+
-|                           GHB::Application                              |
-|  - Workflow generation    - Linter detection    - Language detection   |
-|  - Repository settings    - Gitignore updates   - Dependabot config    |
-|  - Licenses check         - AWS commands        - Slack notification   |
-|  - DockerHub workflow     - Cron workflow        - Config validation    |
+|                      GHB::Application (Orchestrator)                    |
+|  - Config validation   - Workflow read/write   - Default detection     |
 +------------------------------------------------------------------------+
-         |                        |                         |
-         v                        v                         v
-+-------------------+     +------------------+     +---------------------+
-|  GHB::Workflow    |     |    GHB::Job      |     |    GHB::Step        |
-|  - Read/Write     |     |  - Properties    |     |  - Properties       |
-|  - YAML handling  |     |  - Steps mgmt    |     |  - Serialization    |
-+-------------------+     +------------------+     +---------------------+
+         |  delegates to
+         v
++------------------------------------------------------------------------+
+|                         Job Builders & Managers                         |
+|  VariablesJobBuilder  |  LinterJobBuilder    |  LicensesJobBuilder    |
+|  LanguageJobBuilder   |  CodeDeployJobBuilder|  AwsJobBuilder         |
+|  SlackJobBuilder      |  DependabotManager   |  DockerhubManager      |
+|  GitignoreManager     |  RepositoryConfigurator                       |
++------------------------------------------------------------------------+
+         |  uses                       |  uses
+         v                             v
++-------------------+     +---------------------+     +-----------------+
+|  GHB::Workflow    |     |  GHB::FileScanner   |     | GitHubAPIClient |
+|  - Read/Write     |     |  - find_files_match  |     | - get/put/post  |
+|  - YAML handling  |     |  - file_contains?    |     | - retry logic   |
++-------------------+     |  - atomic_copy_config|     +-----------------+
+   |            |          +---------------------+
+   v            v
++----------+ +----------+
+| GHB::Job | |GHB::Step |
++----------+ +----------+
          |
          v
 +-------------------+
 |   Output Files    |
 | .github/workflows |
 |   build.yml       |
-|   cron.yml        |
+|   dependencies.yml|
 |   dockerhub.yml   |
 | .gitignore        |
 | Linter configs    |
@@ -46,15 +57,17 @@
 
 ### System Overview
 
-github-build is a Ruby CLI tool that automatically generates and updates GitHub Actions workflow files. It analyzes a repository to detect programming languages, linters, and dependencies, then generates appropriate CI/CD configuration files.
+github-build is a Ruby CLI tool that automatically generates and updates GitHub Actions workflow files. It analyzes a repository to detect programming languages, linters, and dependencies, then generates appropriate CI/CD configuration files. The architecture follows a builder pattern where `Application` orchestrates specialized builder and manager classes.
 
 ### Component Interactions
 
 1. The CLI entry point (`bin/github-build.rb`) instantiates `GHB::Application`
-2. `Application` parses command-line options via `GHB::Options`
-3. `Application` orchestrates workflow generation by reading existing workflow files, detecting linters based on file patterns, detecting languages based on file extensions and dependency files, generating workflow jobs and steps, and writing output files
-4. `Workflow`, `Job`, and `Step` classes model GitHub Actions structure
-5. External API calls configure repository settings via GitHub REST API
+2. `Application` parses command-line options via `GHB::Options` and validates configuration
+3. `Application` delegates workflow generation to specialized builders: `VariablesJobBuilder`, `LinterJobBuilder`, `LicensesJobBuilder`, `LanguageJobBuilder`, `CodeDeployJobBuilder`, `AwsJobBuilder`, and `SlackJobBuilder`
+4. Post-generation managers handle output: `DependabotManager`, `DockerhubManager`, `GitignoreManager`, and `RepositoryConfigurator`
+5. `FileScanner` mixin provides shared pure-Ruby file operations to builders that need file pattern matching
+6. `GitHubAPIClient` centralizes GitHub REST API calls with retry logic for `RepositoryConfigurator`
+7. `Workflow`, `Job`, and `Step` classes model the GitHub Actions YAML structure
 
 ## Software units
 
@@ -83,36 +96,48 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 ### GHB::Application
 
-**Purpose:** Main application class that orchestrates workflow generation, linter detection, language detection, and repository configuration.
+**Purpose:** Main orchestrator that delegates workflow generation to specialized builder and manager classes.
 
 **Location:** `lib/ghb/application.rb`
 
 **Key Components:**
 
 - `initialize(argv)`: Parses command-line arguments and initializes workflow objects
-- `execute`: Main entry point that runs all generation steps
+- `execute`: Main entry point that delegates to builders and managers in sequence
+
+**Private Methods:**
+
+- `detect_default_branch`: Detects repository default branch via git
+- `configure_options(argv)`: Creates and parses `Options` from command-line arguments
 - `validate_config!`: Validates all YAML configuration files exist and have valid syntax
-- `workflow_job_detect_linters`: Scans codebase for linter configuration needs
-- `workflow_job_detect_languages`: Detects programming languages and their dependencies
-- `workflow_job_licenses_check`: Adds license checking job to workflow
-- `workflow_job_code_deploy`: Generates AWS CodeDeploy jobs if applicable
-- `workflow_job_aws_commands`: Creates AWS commands job
-- `workflow_job_publish_status`: Creates Slack notification job for build status
-- `save_dependabot_config`: Creates cron dependencies workflow
-- `save_dockerhub_config`: Creates Docker Hub publish workflow
-- `check_repository_settings`: Configures GitHub repository settings via API
-- `update_gitignore`: Updates .gitignore based on detected project types
-- `detect_gitignore_templates(config)`: Detects gitignore templates by file extensions, files, and packages
-- `detect_custom_patterns(config)`: Detects and appends AI assistant ignore patterns
-- `find_files_matching(path, pattern, excluded_paths, max_depth:)`: Pure Ruby file finder avoiding shell injection
-- `atomic_copy_config(source, target)`: Atomic file copy with temp file and rename
-- `file_contains?(file, pattern)`: Pure Ruby content search using `File.foreach`
+- `validate_config_schema(name, relative_path, data)`: Validates YAML schema structure
+- `validate_entries(data, relative_path, entry_type, required_keys)`: Validates config entries have required keys
+- `validate_option_entries(data, relative_path)`: Validates option config entries
+- `workflow_read`: Reads existing workflow YAML file
+- `workflow_set_defaults`: Sets workflow defaults from existing or new values
+- `collect_required_status_checks`: Collects status checks from generated jobs for branch protection
+- `workflow_write`: Writes the generated workflow to YAML file
+
+**Includes:**
+
+- `GHB::FileScanner` (mixin for file operations)
 
 **Internal Dependencies:**
 
 - `GHB::Options`
 - `GHB::Status`
 - `GHB::Workflow`
+- `GHB::VariablesJobBuilder`
+- `GHB::LinterJobBuilder`
+- `GHB::LicensesJobBuilder`
+- `GHB::LanguageJobBuilder`
+- `GHB::CodeDeployJobBuilder`
+- `GHB::AwsJobBuilder`
+- `GHB::SlackJobBuilder`
+- `GHB::DependabotManager`
+- `GHB::DockerhubManager`
+- `GHB::GitignoreManager`
+- `GHB::RepositoryConfigurator`
 
 **External Dependencies:**
 
@@ -174,6 +199,190 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `SUCCESS_EXIT_CODE`: 0
 - `ERROR_EXIT_CODE`: 1
 - `FAILURE_EXIT_CODE`: 2
+
+### GHB::FileScanner (Module)
+
+**Purpose:** Shared utility module providing pure-Ruby file operations to avoid shell command injection. Included as a mixin by Application, LinterJobBuilder, LanguageJobBuilder, and GitignoreManager.
+
+**Location:** `lib/ghb/file_scanner.rb`
+
+**Key Components:**
+
+- `find_files_matching(path, pattern, excluded_paths, max_depth:)`: Recursively searches for files matching a regex pattern using `Find.find`, with optional depth limit and path exclusions
+- `file_contains?(file, pattern)`: Checks if a file contains a literal string match using `File.foreach`
+- `atomic_copy_config(source, target)`: Atomically copies a config file using a temp file and rename, with optional transformation via block
+
+**External Dependencies:**
+
+- `find` (Ruby stdlib)
+
+### GHB::GitHubAPIClient
+
+**Purpose:** Centralized GitHub REST API client with shared headers, retry logic with exponential backoff, and error handling.
+
+**Location:** `lib/ghb/github_api_client.rb`
+
+**Key Components:**
+
+- `initialize(token)`: Creates client with GitHub personal access token
+- `get(url, expected_codes:)`: HTTP GET with response validation
+- `put(url, body:, expected_codes:)`: HTTP PUT with response validation
+- `post(url, body:, headers:, expected_codes:)`: HTTP POST with response validation
+- `patch(url, body:, expected_codes:)`: HTTP PATCH with response validation
+
+**External Dependencies:**
+
+- `httparty`
+- `json`
+
+### GHB::VariablesJobBuilder
+
+**Purpose:** Builds the "Prepare Variables" job that sets up shared environment outputs for downstream jobs.
+
+**Location:** `lib/ghb/variables_job_builder.rb`
+
+**Key Components:**
+
+- `initialize(options:, new_workflow:)`: Accepts options and new workflow
+- `build`: Creates the variables preparation job with outputs
+
+### GHB::LinterJobBuilder
+
+**Purpose:** Detects which linters should be enabled based on file patterns in the repository and creates corresponding linting workflow jobs.
+
+**Location:** `lib/ghb/linter_job_builder.rb`
+
+**Includes:** `GHB::FileScanner`
+
+**Key Components:**
+
+- `initialize(options:, submodules:, old_workflow:, new_workflow:, file_cache:)`: Accepts configuration and workflow objects
+- `build`: Loads linter config, parses `.gitmodules`, scans for matching files, and creates linter jobs with config file copying
+
+### GHB::LicensesJobBuilder
+
+**Purpose:** Builds the "Licenses Check" job in the workflow and determines unit test preconditions.
+
+**Location:** `lib/ghb/licenses_job_builder.rb`
+
+**Key Components:**
+
+- `initialize(options:, old_workflow:, new_workflow:)`: Accepts options and workflow objects
+- `build`: Creates the licenses check job if not skipped
+
+**Attributes:**
+
+- `unit_tests_conditions`: Conditions string for unit test jobs (read-only)
+
+### GHB::LanguageJobBuilder
+
+**Purpose:** Detects programming languages based on file extensions and dependency files, then creates unit test workflow jobs with appropriate setup, package manager, and test framework steps. Supports mono-repo mode with per-subdirectory steps.
+
+**Location:** `lib/ghb/language_job_builder.rb`
+
+**Includes:** `GHB::FileScanner`
+
+**Key Components:**
+
+- `initialize(options:, submodules:, old_workflow:, new_workflow:, unit_tests_conditions:, file_cache:, dependencies_commands:)`: Accepts comprehensive configuration
+- `build`: Detects languages, checks for database dependencies (MongoDB, MySQL, Redis, Elasticsearch), validates versions, and creates test jobs
+
+**Attributes:**
+
+- `code_deploy_pre_steps`: Pre-deployment steps collected during language detection (read-only)
+- `dependencies_steps`: Dependency management steps collected during detection (read-only)
+- `dependencies_commands`: Accumulated dependency update commands (read-only)
+
+### GHB::CodeDeployJobBuilder
+
+**Purpose:** Builds AWS CodeDeploy jobs for deploying applications via S3 and CodeDeploy, including environment-specific deployment jobs.
+
+**Location:** `lib/ghb/code_deploy_job_builder.rb`
+
+**Key Components:**
+
+- `initialize(options:, old_workflow:, new_workflow:, code_deploy_pre_steps:)`: Accepts options, workflows, and pre-deployment steps
+- `build`: Creates CodeDeploy packaging and per-environment deployment jobs
+
+### GHB::AwsJobBuilder
+
+**Purpose:** Builds the "AWS Commands" job for custom AWS deployment scripts.
+
+**Location:** `lib/ghb/aws_job_builder.rb`
+
+**Key Components:**
+
+- `initialize(options:, old_workflow:, new_workflow:)`: Accepts options and workflow objects
+- `build`: Creates the AWS commands job if `.aws` file exists
+
+### GHB::SlackJobBuilder
+
+**Purpose:** Builds the "Publish Statuses" job for Slack build notifications.
+
+**Location:** `lib/ghb/slack_job_builder.rb`
+
+**Key Components:**
+
+- `initialize(options:, old_workflow:, new_workflow:)`: Accepts options and workflow objects
+- `build`: Creates the Slack notification job if not skipped
+
+### GHB::DependabotManager
+
+**Purpose:** Manages the cron-based dependency update workflow and removes legacy dependabot configuration files.
+
+**Location:** `lib/ghb/dependabot_manager.rb`
+
+**Key Components:**
+
+- `initialize(new_workflow:, cron_workflow:, dependencies_steps:, dependencies_commands:)`: Accepts workflow objects and dependency configuration
+- `save`: Removes `.github/dependabot.yml` if present and writes the dependencies workflow
+
+### GHB::DockerhubManager
+
+**Purpose:** Manages Docker Hub image publishing workflow generation.
+
+**Location:** `lib/ghb/dockerhub_manager.rb`
+
+**Key Components:**
+
+- `initialize(dockerhub_workflow:)`: Accepts DockerHub workflow object
+- `save`: Configures and writes the DockerHub workflow if `.dockerhub` file exists
+
+### GHB::GitignoreManager
+
+**Purpose:** Manages `.gitignore` file generation by detecting project types, fetching templates from gitignore.io, and applying project-specific modifications.
+
+**Location:** `lib/ghb/gitignore_manager.rb`
+
+**Includes:** `GHB::FileScanner`
+
+**Key Components:**
+
+- `initialize(options:, submodules:, file_cache:)`: Accepts options, submodules list, and file cache
+- `update`: Detects templates, fetches from API, applies modifications, and writes `.gitignore`
+
+**External Dependencies:**
+
+- `httparty`
+
+### GHB::RepositoryConfigurator
+
+**Purpose:** Configures GitHub repository settings including branch protection rules, security features (vulnerability alerts, secret scanning, CodeQL), and repository options via the GitHub REST API.
+
+**Location:** `lib/ghb/repository_configurator.rb`
+
+**Key Components:**
+
+- `initialize(options:, required_status_checks:, default_branch:)`: Accepts options, collected status checks, and default branch
+- `configure`: Validates GITHUB_TOKEN, retrieves repo info, and configures branch protection, security features, and repository options
+
+**Internal Dependencies:**
+
+- `GHB::GitHubAPIClient`
+
+**External Dependencies:**
+
+- `json`
 
 ### GHB::Workflow
 
@@ -275,7 +484,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 **Purpose:** Automatically detects which linters should be enabled based on file patterns.
 
-**Location:** `lib/ghb/application.rb` in `GHB::Application#workflow_job_detect_linters`
+**Location:** `lib/ghb/linter_job_builder.rb` in `GHB::LinterJobBuilder#build`
 
 **Implementation:**
 
@@ -292,7 +501,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 **Purpose:** Detects programming languages and their dependencies to configure build jobs.
 
-**Location:** `lib/ghb/application.rb` in `GHB::Application#workflow_job_detect_languages`
+**Location:** `lib/ghb/language_job_builder.rb` in `GHB::LanguageJobBuilder#build`
 
 **Implementation:**
 
@@ -311,12 +520,12 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 **Purpose:** Configures GitHub repository settings including branch protection.
 
-**Location:** `lib/ghb/application.rb` in `GHB::Application#check_repository_settings`
+**Location:** `lib/ghb/repository_configurator.rb` in `GHB::RepositoryConfigurator#configure`
 
 **Implementation:**
 
 1. Validates `GITHUB_TOKEN` environment variable is present
-2. Retrieves current repository info to check visibility (public/private)
+2. Retrieves current repository info to check visibility (public/private) via `GitHubAPIClient`
 3. Gets current branch protection via GitHub API (handles 404 for new repos without protection)
 4. Detects CodeQL languages and filters redundant entries
 5. Collects required status checks from generated workflow jobs
@@ -329,7 +538,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 **Security Considerations:**
 
-- Uses GITHUB_TOKEN for API authentication
+- Uses GITHUB_TOKEN for API authentication via `GitHubAPIClient`
 - Validates branch protection before modification
 - Preserves existing dismissal restrictions and bypass allowances
 - Handles new repositories without existing branch protection gracefully
@@ -338,14 +547,14 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 **Purpose:** Detects project types to generate comprehensive .gitignore files.
 
-**Location:** `lib/ghb/application.rb` in `GHB::Application#update_gitignore`, `GHB::Application#detect_gitignore_templates`, and `GHB::Application#detect_custom_patterns`
+**Location:** `lib/ghb/gitignore_manager.rb` in `GHB::GitignoreManager#update`, `GHB::GitignoreManager#detect_gitignore_templates`, and `GHB::GitignoreManager#detect_custom_patterns`
 
 **Implementation:**
 
 1. Loads detection rules from `config/gitignore.yaml`
 2. Adds always-enabled templates (OS, IDEs)
 3. For each extension detection entry, checks file extensions using `find_files_matching`, specific files that indicate the technology, and package dependencies in manifest files using pure Ruby regex
-4. Fetches templates from gitignore.io API
+4. Fetches templates from gitignore.io API via HTTParty
 5. Applies project-specific modifications (uncomment JetBrains patterns, comment out conflicting directory patterns like `bin/`, `lib/`, `var/`)
 6. Detects and appends AI assistant ignore patterns (Claude Code, Cursor, Copilot, OpenAI Codex) via `detect_custom_patterns`
 7. Preserves custom entries from existing .gitignore
