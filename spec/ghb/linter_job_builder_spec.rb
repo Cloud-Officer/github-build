@@ -353,6 +353,62 @@ RSpec.describe(GHB::LinterJobBuilder) do
       end
     end
 
+    context 'when rubocop config is copied for a Rails project' do
+      let(:options) do
+        instance_double(
+          GHB::Options,
+          only_dependabot: false,
+          skip_semgrep: false,
+          ignored_linters: {},
+          excluded_folders: [],
+          linters_config_file: 'config/linters.yaml'
+        )
+      end
+
+      it 'uncomments Rails-specific rules in .rubocop.yml' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        allow(File).to(receive(:exist?).and_call_original)
+        allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
+
+        builder = described_class.new(
+          options: options,
+          submodules: submodules,
+          old_workflow: old_workflow,
+          new_workflow: new_workflow,
+          file_cache: file_cache
+        )
+
+        # Only match rubocop pattern (Fastfile)
+        allow(builder).to(receive(:find_files_matching)) do |_path, pattern, _excluded|
+          if pattern.source.include?('Fastfile')
+            ['Fastfile']
+          else
+            []
+          end
+        end
+
+        # No script_path, no preserve_config -> falls through to atomic_copy_config
+        allow(File).to(receive(:exist?).with('/linters/.rubocop.yml').and_return(false))
+        allow(File).to(receive(:exist?).with('.rubocop.yml').and_return(false))
+
+        # Rails project detection
+        allow(File).to(receive(:exist?).with('Gemfile').and_return(true))
+        allow(File).to(receive(:read).and_call_original)
+        allow(File).to(receive(:read).with('Gemfile').and_return("gem 'rails'\n"))
+
+        # atomic_copy_config internals
+        rubocop_content = "# AllCops:\n#   TargetRailsVersion: 7.0\n"
+        allow(File).to(receive(:read).with(%r{config/linters/\.rubocop\.yml}).and_return(rubocop_content))
+        allow(File).to(receive(:write))
+        allow(FileUtils).to(receive(:mv))
+
+        builder.build
+
+        expect(new_workflow.jobs).to(have_key(:rubocop))
+        # The transformation block should have uncommented the Rails rules
+        expect(File).to(have_received(:write).with(anything, "AllCops:\n  TargetRailsVersion: 7.0\n"))
+      end
+    end
+
     context 'when script_path has the linter config file' do
       let(:options) do
         instance_double(
