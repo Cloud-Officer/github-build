@@ -7,6 +7,7 @@
 * [Usage](#usage)
   * [Examples](#examples)
   * [Argument Persistence](#argument-persistence)
+  * [Feature Triggers](#feature-triggers)
   * [Required Secrets](#required-secrets)
 * [Contributing](#contributing)
 
@@ -77,8 +78,6 @@ options
 Create a [Github personal access token](https://github.com/settings/tokens) and set it in the `GITHUB_TOKEN`
 environment variable to enable the repository settings check.
 
-To force a custom AWS deployment, create an empty file `.aws` in the root of the project.
-
 ### Examples
 
 On this repository.
@@ -117,6 +116,18 @@ To change the persisted arguments, either:
 
 * Run `github-build` again with the new set of flags, or
 * Edit the `# github-build ...` comment at the top of the build file directly
+
+### Feature Triggers
+
+Certain features are automatically activated based on the presence of specific files or directories in the repository
+root. No CLI flags are needed for these; they are detected on every run.
+
+| File / Directory | Effect | How to Disable |
+| ---------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `.aws` | Adds an AWS commands job to the workflow | Remove the `.aws` file |
+| `appspec.yml` | Adds CodeDeploy and environment deployment jobs (`beta_deploy`, `rc_deploy`, `prod_deploy`) | Remove `appspec.yml` |
+| `.dockerhub` | Generates a separate Docker Hub workflow (`.github/workflows/docker.yml`) that pushes images on tag events | Remove the `.dockerhub` file |
+| `ci_scripts/` | Adds `Xcode` to the expected branch protection status checks | Remove the `ci_scripts/` directory |
 
 ### Required Secrets
 
