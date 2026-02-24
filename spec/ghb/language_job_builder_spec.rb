@@ -397,6 +397,176 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(env_mismatch_workflow.jobs).to(have_key(:go_unit_tests))
       expect(env_mismatch_workflow.env[:'MONGODB-VERSION']).to(eq('7.0'))
     end
+
+    it 'exits with error when strict_version_check is true and version file mismatches' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      stub_config_file_reads(go_language_yaml)
+
+      allow(builder).to(receive_messages(find_files_matching: ['./main.go'], file_contains?: false))
+      allow(File).to(receive(:file?).with('go.mod').and_return(true))
+      allow(File).to(receive(:exist?).with('.go-version').and_return(true))
+      allow(File).to(receive(:read).with('.go-version').and_return("1.25.0\n"))
+      allow($stdout).to(receive(:puts))
+
+      expect { builder.build }
+        .to(raise_error(SystemExit) { |e| expect(e.status).to(eq(GHB::Status::ERROR_EXIT_CODE)) })
+    end
+
+    it 'exits with error when strict_version_check is true and env VERSION value mismatches' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      version_mismatch_workflow = GHB::Workflow.new('CI')
+      version_mismatch_workflow.env[:'MONGODB-VERSION'] = '7.0'
+
+      version_mismatch_builder = described_class.new(
+        options: mock_options,
+        submodules: submodules,
+        old_workflow: old_workflow,
+        new_workflow: version_mismatch_workflow,
+        unit_tests_conditions: unit_tests_conditions,
+        file_cache: {},
+        dependencies_commands: +''
+      )
+
+      stub_non_strict_config_file_reads(version_mismatch_builder, go_language_yaml)
+
+      allow(version_mismatch_builder).to(receive_messages(find_files_matching: ['./main.go'], file_contains?: false))
+      allow(version_mismatch_builder).to(receive(:file_contains?).with('go.mod', 'mongodb').and_return(true))
+      allow(File).to(receive(:file?).with('go.mod').and_return(true))
+      allow(File).to(receive(:exist?).with('.go-version').and_return(false))
+      allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
+      allow($stdout).to(receive(:puts))
+
+      expect { version_mismatch_builder.build }
+        .to(raise_error(SystemExit) { |e| expect(e.status).to(eq(GHB::Status::ERROR_EXIT_CODE)) })
+    end
+
+    it 'adds Licenses step when Podfile.lock exists and skip_license_check is false' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      license_options = instance_double(
+        GHB::Options,
+        only_dependabot: false,
+        mono_repo: false,
+        excluded_folders: [],
+        skip_license_check: false,
+        force_codedeploy_setup: false,
+        strict_version_check: true,
+        languages_config_file: 'config/languages.yaml',
+        options_config_file_apt: 'config/options/apt.yaml',
+        options_config_file_mongodb: 'config/options/mongodb.yaml',
+        options_config_file_mysql: 'config/options/mysql.yaml',
+        options_config_file_redis: 'config/options/redis.yaml',
+        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml'
+      )
+
+      license_builder = described_class.new(
+        options: license_options,
+        submodules: submodules,
+        old_workflow: old_workflow,
+        new_workflow: new_workflow,
+        unit_tests_conditions: unit_tests_conditions,
+        file_cache: {},
+        dependencies_commands: +''
+      )
+
+      stub_non_strict_config_file_reads(license_builder, go_language_yaml)
+
+      allow(license_builder).to(receive_messages(find_files_matching: ['./main.go'], file_contains?: false))
+      allow(File).to(receive(:file?).with('go.mod').and_return(true))
+      allow(File).to(receive(:exist?).with('.go-version').and_return(false))
+      allow(File).to(receive(:exist?).with('Podfile.lock').and_return(true))
+
+      license_builder.build
+
+      job = new_workflow.jobs[:go_unit_tests]
+      step_names = job.steps.map(&:name)
+      expect(step_names).to(include('Licenses'))
+
+      licenses_step = job.steps.find { |s| s.name == 'Licenses' }
+      expect(licenses_step.uses).to(include('soup'))
+      expect(licenses_step.with).to(have_key(:'ssh-key'))
+    end
+
+    it 'detects mono_repo subdirectory dependencies and adds per-subdir steps' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      mono_options = instance_double(
+        GHB::Options,
+        only_dependabot: false,
+        mono_repo: true,
+        excluded_folders: [],
+        skip_license_check: true,
+        force_codedeploy_setup: false,
+        strict_version_check: true,
+        languages_config_file: 'config/languages.yaml',
+        options_config_file_apt: 'config/options/apt.yaml',
+        options_config_file_mongodb: 'config/options/mongodb.yaml',
+        options_config_file_mysql: 'config/options/mysql.yaml',
+        options_config_file_redis: 'config/options/redis.yaml',
+        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml'
+      )
+
+      mono_builder = described_class.new(
+        options: mono_options,
+        submodules: submodules,
+        old_workflow: old_workflow,
+        new_workflow: new_workflow,
+        unit_tests_conditions: unit_tests_conditions,
+        file_cache: {},
+        dependencies_commands: +''
+      )
+
+      stub_non_strict_config_file_reads(mono_builder, go_language_yaml)
+
+      allow(mono_builder).to(receive_messages(find_files_matching: ['./main.go'], file_contains?: false))
+      allow(File).to(receive(:file?).with('go.mod').and_return(false))
+      allow(File).to(receive(:exist?).with('.go-version').and_return(false))
+      allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
+      allow(Dir).to(receive(:glob).with('*/go.mod').and_return(['svc-a/go.mod']))
+
+      mono_builder.build
+
+      job = new_workflow.jobs[:go_unit_tests]
+      step_names = job.steps.map(&:name)
+      expect(step_names).to(include('Go Modules (svc-a)'))
+      expect(step_names).to(include('Testing (svc-a)'))
+    end
+
+    it 'detects services in mono_repo subdirectory dependency files' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      mono_options = instance_double(
+        GHB::Options,
+        only_dependabot: false,
+        mono_repo: true,
+        excluded_folders: [],
+        skip_license_check: true,
+        force_codedeploy_setup: false,
+        strict_version_check: true,
+        languages_config_file: 'config/languages.yaml',
+        options_config_file_apt: 'config/options/apt.yaml',
+        options_config_file_mongodb: 'config/options/mongodb.yaml',
+        options_config_file_mysql: 'config/options/mysql.yaml',
+        options_config_file_redis: 'config/options/redis.yaml',
+        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml'
+      )
+
+      mono_svc_builder = described_class.new(
+        options: mono_options,
+        submodules: submodules,
+        old_workflow: old_workflow,
+        new_workflow: new_workflow,
+        unit_tests_conditions: unit_tests_conditions,
+        file_cache: {},
+        dependencies_commands: +''
+      )
+
+      stub_non_strict_config_file_reads(mono_svc_builder, go_language_yaml)
+
+      allow(mono_svc_builder).to(receive_messages(find_files_matching: ['./main.go'], file_contains?: false))
+      allow(mono_svc_builder).to(receive(:file_contains?).with('svc-a/go.mod', 'mongodb').and_return(true))
+      allow(File).to(receive(:file?).with('go.mod').and_return(false))
+      allow(File).to(receive(:exist?).with('.go-version').and_return(false))
+      allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
+      allow(Dir).to(receive(:glob).with('*/go.mod').and_return(['svc-a/go.mod']))
+
+      mono_svc_builder.build
+
+      expect(new_workflow.jobs).to(have_key(:go_unit_tests))
+      expect(new_workflow.env).to(have_key(:'MONGODB-VERSION'))
+    end
   end
 
   private
