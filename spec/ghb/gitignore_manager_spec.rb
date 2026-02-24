@@ -47,7 +47,7 @@ RSpec.describe(GHB::GitignoreManager) do
       allow(File).to(receive(:exist?).with(anything).and_return(false))
 
       api_response = instance_double(HTTParty::Response, code: 200, body: "# Created by gitignore.io\n# Edit at gitignore.io\n\n### Linux ###\n*~\n")
-      allow(HTTParty).to(receive(:get).and_return(api_response))
+      allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
 
       written_content = nil
       allow(File).to(receive(:write).with('.gitignore', anything)) do |_path, content|
@@ -70,7 +70,7 @@ RSpec.describe(GHB::GitignoreManager) do
       allow(File).to(receive(:read).with('.gitignore').and_return(existing_gitignore))
 
       api_response = instance_double(HTTParty::Response, code: 200, body: "# Created by gitignore.io\n# Edit at gitignore.io\n\n### Linux ###\n*~\n# End of gitignore.io\n")
-      allow(HTTParty).to(receive(:get).and_return(api_response))
+      allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
 
       written_content = nil
       allow(File).to(receive(:write).with('.gitignore', anything)) do |_path, content|
@@ -95,7 +95,7 @@ RSpec.describe(GHB::GitignoreManager) do
       allow(File).to(receive(:exist?).with(anything).and_return(false))
 
       api_response = instance_double(HTTParty::Response, code: 200, body: "# Created by gitignore.io\n# Edit at gitignore.io\n\n### Linux ###\n*~\n")
-      allow(HTTParty).to(receive(:get).and_return(api_response))
+      allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
 
       written_content = nil
       allow(File).to(receive(:write).with('.gitignore', anything)) do |_path, content|
@@ -116,7 +116,7 @@ RSpec.describe(GHB::GitignoreManager) do
       allow(File).to(receive(:exist?).with(anything).and_return(false))
 
       api_response = double('HTTParty::Response', code: 500, message: 'Internal Server Error') # rubocop:disable RSpec/VerifiedDoubles
-      allow(HTTParty).to(receive(:get).and_return(api_response))
+      allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
 
       expect { manager.update }
         .to(raise_error(RuntimeError, /Cannot fetch gitignore templates/))
