@@ -6,6 +6,7 @@
 * [Installation](#installation)
 * [Usage](#usage)
   * [Examples](#examples)
+  * [Argument Persistence](#argument-persistence)
   * [Required Secrets](#required-secrets)
 * [Contributing](#contributing)
 
@@ -98,6 +99,24 @@ Reading current build file .github/workflows/build.yml...
 Checking repository settings...
 Updating .gitignore...
 ```
+
+### Argument Persistence
+
+When you run `github-build` with command-line arguments, they are saved as a comment on the first line of the
+generated build file:
+
+```yaml
+# github-build --skip_dependabot --skip_slack
+name: CI
+```
+
+On subsequent runs, if you invoke `github-build` with **no arguments**, it automatically reads and re-applies the
+saved arguments from the build file. This means you only need to specify your flags once.
+
+To change the persisted arguments, either:
+
+* Run `github-build` again with the new set of flags, or
+* Edit the `# github-build ...` comment at the top of the build file directly
 
 ### Required Secrets
 
