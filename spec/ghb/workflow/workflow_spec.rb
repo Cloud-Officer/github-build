@@ -228,6 +228,14 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       # The conversion happens on the raw content, this test verifies it doesn't break
       expect(workflow.jobs[:build].steps.first.name).to(eq('Test'))
     end
+
+    it 'returns early without error when YAML content is empty' do # rubocop:disable RSpec/MultipleExpectations
+      allow(File).to(receive(:read).and_return("---\n".dup))
+      workflow.read('empty.yml')
+
+      expect(workflow.name).to(eq('Test'))
+      expect(workflow.jobs).to(eq({}))
+    end
   end
 
   describe '#write' do
