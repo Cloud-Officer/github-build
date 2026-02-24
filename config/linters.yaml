@@ -12,8 +12,7 @@
 #                                         and display in step names
 #   long_name        (string, required) - Human-readable name used in workflow job names
 #   condition        (string, optional) - GitHub Actions `if` expression to restrict when the linter
-#                                         runs. Common value: "(github.event_name == 'pull_request'
-#                                         || github.event_name == 'pull_request_target')"
+#                                         runs. Common value: "github.event_name == 'pull_request'"
 #                                         If omitted, the linter runs on all event types
 #   uses             (string, required) - GitHub Actions action reference (without version suffix).
 #                                         Version @v2 is appended automatically
@@ -32,7 +31,7 @@
 actionlint:
   short_name: Actionlint
   long_name: Github Actions Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/actionlint
   config:
   path: ".github/workflows"
@@ -47,7 +46,7 @@ bandit:
 eslint:
   short_name: ESLint
   long_name: JavaScript ES Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/eslint
   config: ".eslintrc.json"
   path: "."
@@ -55,7 +54,7 @@ eslint:
 flake8:
   short_name: Flake8
   long_name: Python Flake8 Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/flake8
   config: ".flake8"
   path: "."
@@ -63,7 +62,7 @@ flake8:
 golangci:
   short_name: Golangci-lint
   long_name: Go Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/golangci
   config: ".golangci.yml"
   path: "."
@@ -71,7 +70,7 @@ golangci:
 hadolint:
   short_name: Hadolint
   long_name: Docker Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/hadolint
   config: ".hadolint.yaml"
   path: "."
@@ -79,7 +78,7 @@ hadolint:
 ktlint:
   short_name: KTLint
   long_name: Kotlin Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/ktlint
   config: ".editorconfig"
   path: "."
@@ -87,7 +86,7 @@ ktlint:
 markdownlint:
   short_name: Markdownlint
   long_name: Markdown Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/markdownlint
   config: ".markdownlint.yml"
   path: "."
@@ -109,7 +108,7 @@ phpstan:
 pmd:
   short_name: PMD
   long_name: Java Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/pmd
   config: ".pmd.xml"
   path: "."
@@ -117,7 +116,7 @@ pmd:
 protolint:
   short_name: Protolint
   long_name: Protocol Buffer Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/protolint
   config: ".protolint.yaml"
   path: "."
@@ -125,7 +124,7 @@ protolint:
 semgrep:
   short_name: Semgrep
   long_name: Semgrep Security Scanner
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/semgrep
   config: ".semgrepignore"
   preserve_config: true
@@ -137,7 +136,7 @@ semgrep:
 rubocop:
   short_name: Rubocop
   long_name: Ruby Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/rubocop
   config: ".rubocop.yml"
   path: "."
@@ -146,7 +145,7 @@ rubocop:
 shellcheck:
   short_name: ShellCheck
   long_name: Shell Scripts Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/shellcheck
   config: ".shellcheckrc"
   path: "."
@@ -161,7 +160,7 @@ swiftlint:
 yamllint:
   short_name: Yamllint
   long_name: YAML Linter
-  condition: "(github.event_name == 'pull_request' || github.event_name == 'pull_request_target')"
+  condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/yamllint
   config: ".yamllint.yml"
   path: "."
