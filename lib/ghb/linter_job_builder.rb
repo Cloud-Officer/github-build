@@ -49,6 +49,18 @@ module GHB
       pattern = Regexp.new(linter[:pattern])
       matches = find_files_matching(linter[:path], pattern, excluded_paths)
 
+      if linter[:content_match] && !matches.empty?
+        if linter[:content_match_pattern]
+          content_pattern = Regexp.new(linter[:content_match_pattern])
+          matches =
+            matches.select do |file|
+              !file.match?(content_pattern) || file_contains?(file, linter[:content_match])
+            end
+        else
+          matches = matches.select { |file| file_contains?(file, linter[:content_match]) }
+        end
+      end
+
       return if matches.empty?
 
       result = matches.join("\n")

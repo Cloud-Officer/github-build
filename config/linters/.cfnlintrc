@@ -1,0 +1,9 @@
+templates:
+  - "*.yaml"
+  - "*.yml"
+  - "*.json"
+ignore_templates:
+  - .github/**
+  - docs/**
+  - node_modules/**
+  - vendor/**

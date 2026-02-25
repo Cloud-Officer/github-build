@@ -24,6 +24,12 @@
 #   pattern          (string, required) - Regex pattern to match source files (e.g., ".*\\.(py)$")
 #   preserve_config  (bool, optional)   - If true, keeps the project's existing config file instead
 #                                         of overwriting it. Used by Semgrep for custom .semgrepignore
+#   content_match    (string, optional) - If set, files matching `pattern` are further filtered:
+#                                         only files containing this literal string are kept.
+#                                         Useful when file extensions alone can't identify the language
+#   content_match_pattern (string, optional) - When set, `content_match` only applies to files
+#                                         matching this sub-pattern. Other files pass through
+#                                         unconditionally. If omitted, `content_match` applies to all files
 #   permissions      (hash, optional)   - Job-level GitHub Actions permissions override
 #                                         (e.g., {actions: read, contents: read})
 #   directory        (string, optional) - Additional directory hint for the linter
@@ -43,6 +49,25 @@ bandit:
   config: ".bandit"
   path: "."
   pattern: ".*\\.(py)$"
+cfnlint:
+  short_name: Cfn-lint
+  long_name: CloudFormation Linter
+  condition: "github.event_name == 'pull_request'"
+  uses: cloud-officer/ci-actions/linters/cfnlint
+  config: ".cfnlintrc"
+  path: "."
+  pattern: ".*\\.(yaml|yml|json)$"
+  content_match: "AWSTemplateFormatVersion"
+checkov:
+  short_name: Checkov
+  long_name: IaC Security Scanner
+  condition: "github.event_name == 'pull_request'"
+  uses: cloud-officer/ci-actions/linters/checkov
+  config: ".checkov.yaml"
+  path: "."
+  pattern: "(.*\\.(tf)$)|(.*Dockerfile$)|(.*\\.(yaml|yml|json)$)"
+  content_match: "AWSTemplateFormatVersion"
+  content_match_pattern: ".*\\.(yaml|yml|json)$"
 eslint:
   short_name: ESLint
   long_name: JavaScript ES Linter
@@ -157,6 +182,16 @@ swiftlint:
   config: ".swiftlint.yml"
   path: "."
   pattern: ".*\\.(swift)$"
+trivy:
+  short_name: Trivy
+  long_name: Container & IaC Vulnerability Scanner
+  condition: "github.event_name == 'pull_request'"
+  uses: cloud-officer/ci-actions/linters/trivy
+  config: ".trivyignore"
+  path: "."
+  pattern: "(.*\\.(tf)$)|(.*Dockerfile$)|(.*\\.(yaml|yml|json)$)"
+  content_match: "AWSTemplateFormatVersion"
+  content_match_pattern: ".*\\.(yaml|yml|json)$"
 yamllint:
   short_name: Yamllint
   long_name: YAML Linter
