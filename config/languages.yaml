@@ -332,11 +332,16 @@ swift:
 shell_script:
   short_name: shell_script
   long_name: Shell Script
-  file_extension: sh
+  file_extension: sh|bats
   dependencies:
     - dependency_file: .bats
       package_manager_name: Bats Install
-      package_manager_default: sudo apt-get update && sudo apt-get install -y bats
+      package_manager_default: |-
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew install bats-core
+        else
+          sudo apt-get update && sudo apt-get install -y bats
+        fi
   unit_test_framework_name: Bats
   unit_test_framework_default: bats tests/
 ruby:

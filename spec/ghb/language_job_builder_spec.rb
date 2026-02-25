@@ -567,6 +567,44 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(new_workflow.jobs).to(have_key(:go_unit_tests))
       expect(new_workflow.env).to(have_key(:'MONGODB-VERSION'))
     end
+
+    it 'detects shell_script language via .bats files when no .sh files exist' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      shell_script_config = {
+        shell_script: {
+          short_name: 'shell_script',
+          long_name: 'Shell Script',
+          file_extension: 'sh|bats',
+          dependencies: [
+            {
+              dependency_file: '.bats',
+              package_manager_name: 'Bats Install',
+              package_manager_default: 'sudo apt-get update && sudo apt-get install -y bats'
+            }
+          ],
+          unit_test_framework_name: 'Bats',
+          unit_test_framework_default: 'bats tests/'
+        }
+      }
+
+      shell_script_yaml = Psych.dump(shell_script_config.deep_stringify_keys)
+      stub_config_file_reads(shell_script_yaml)
+
+      allow(builder).to(receive_messages(find_files_matching: ['./tests/my_test.bats'], file_contains?: false))
+      allow(File).to(receive(:file?).with('.bats').and_return(true))
+      allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
+
+      builder.build
+
+      expect(new_workflow.jobs).to(have_key(:shell_script_unit_tests))
+
+      job = new_workflow.jobs[:shell_script_unit_tests]
+      expect(job.name).to(eq('Shell Script Unit Tests'))
+
+      step_names = job.steps.map(&:name)
+      expect(step_names).to(include('Setup'))
+      expect(step_names).to(include('Bats Install'))
+      expect(step_names).to(include('Bats'))
+    end
   end
 
   private
