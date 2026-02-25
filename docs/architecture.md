@@ -493,8 +493,9 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 2. Parses `.gitmodules` for submodule paths to exclude
 3. For each linter, uses pure Ruby `find_files_matching` with regex pattern matching to search for files
 4. Excludes specified folders and submodules from search
-5. If matching files found, enables the linter and uses `atomic_copy_config` to safely copy/transform configuration files (e.g., uncommenting Rails rules in `.rubocop.yml`)
-6. Creates workflow job with appropriate steps for each enabled linter
+5. If a `content_match` string is configured, further filters matched files by checking file contents via `file_contains?`. When `content_match_pattern` is also set, only files whose path matches that sub-pattern require the content check; other files pass through unconditionally
+6. If matching files remain, enables the linter and uses `atomic_copy_config` to safely copy/transform configuration files (e.g., uncommenting Rails rules in `.rubocop.yml`)
+7. Creates workflow job with appropriate steps for each enabled linter
 
 **Complexity:** O(n * m) where n = number of linters, m = files in repository
 
