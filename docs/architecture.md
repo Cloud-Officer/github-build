@@ -49,7 +49,7 @@
 | .github/workflows |
 |   build.yml       |
 |   dependencies.yml|
-|   dockerhub.yml   |
+|   docker.yml      |
 | .gitignore        |
 | Linter configs    |
 +-------------------+
@@ -208,6 +208,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Key Components:**
 
+- `cached_file_read(path)`: Caches and returns file contents to avoid redundant reads across builders
 - `find_files_matching(path, pattern, excluded_paths, max_depth:)`: Recursively searches for files matching a regex pattern using `Find.find`, with optional depth limit and path exclusions
 - `file_contains?(file, pattern)`: Checks if a file contains a literal string match using `File.foreach`
 - `atomic_copy_config(source, target)`: Atomically copies a config file using a temp file and rename, with optional transformation via block
@@ -218,7 +219,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 ### GHB::GitHubAPIClient
 
-**Purpose:** Centralized GitHub REST API client with shared headers, retry logic with exponential backoff, and error handling.
+**Purpose:** Centralized GitHub REST API client with shared headers, retry logic with linear backoff, and error handling.
 
 **Location:** `lib/ghb/github_api_client.rb`
 
