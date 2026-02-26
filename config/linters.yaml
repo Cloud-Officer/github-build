@@ -179,9 +179,9 @@ trivy:
   uses: cloud-officer/ci-actions/linters/trivy
   config: ".trivyignore"
   path: "."
-  pattern: "(.*\\.(tf)$)|(.*Dockerfile$)|(.*\\.(yaml|yml|json)$)"
+  pattern: "(.*\\.(tf)$)|(.*Dockerfile$)|(.*\\.(yaml|yml|json)$)|(.*/?(package-lock\\.json|yarn\\.lock|pnpm-lock\\.yaml|go\\.sum|requirements\\.txt|Pipfile\\.lock|poetry\\.lock|Gemfile\\.lock|composer\\.lock|pom\\.xml|build\\.gradle(\\.kts)?|Cargo\\.lock|Package\\.resolved)$)"
   content_match: "AWSTemplateFormatVersion"
-  content_match_pattern: ".*\\.(yaml|yml|json)$"
+  content_match_pattern: ".*\\.(yaml|yml)$"
 yamllint:
   short_name: Yamllint
   long_name: YAML Linter
