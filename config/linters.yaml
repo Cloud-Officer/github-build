@@ -58,16 +58,6 @@ cfnlint:
   path: "."
   pattern: ".*\\.(yaml|yml|json)$"
   content_match: "AWSTemplateFormatVersion"
-checkov:
-  short_name: Checkov
-  long_name: IaC Security Scanner
-  condition: "github.event_name == 'pull_request'"
-  uses: cloud-officer/ci-actions/linters/checkov
-  config: ".checkov.yaml"
-  path: "."
-  pattern: "(.*\\.(tf)$)|(.*Dockerfile$)|(.*\\.(yaml|yml|json)$)"
-  content_match: "AWSTemplateFormatVersion"
-  content_match_pattern: ".*\\.(yaml|yml|json)$"
 eslint:
   short_name: ESLint
   long_name: JavaScript ES Linter

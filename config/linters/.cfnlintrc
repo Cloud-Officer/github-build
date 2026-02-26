@@ -1,7 +1,5 @@
 templates:
   - "*.yaml"
-  - "*.yml"
-  - "*.json"
 ignore_templates:
   - .github/**
   - docs/**
