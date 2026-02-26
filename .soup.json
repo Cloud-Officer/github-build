@@ -215,6 +215,18 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
+  "json-schema": {
+    "language": "Ruby",
+    "package": "json-schema",
+    "version": "6.1.0",
+    "license": "MIT",
+    "description": "Ruby JSON Schema Validator",
+    "website": "https://github.com/voxpupuli/json-schema/",
+    "last_verified_at": "2026-02-26",
+    "risk_level": "Low",
+    "requirements": "Dependency",
+    "verification_reasoning": "Dependency"
+  },
   "language_server-protocol": {
     "language": "Ruby",
     "package": "language_server-protocol",
@@ -247,6 +259,18 @@
     "description": "Provides a simple logging utility for outputting messages.",
     "website": "https://github.com/ruby/logger",
     "last_verified_at": "2026-01-26",
+    "risk_level": "Low",
+    "requirements": "Dependency",
+    "verification_reasoning": "Dependency"
+  },
+  "mcp": {
+    "language": "Ruby",
+    "package": "mcp",
+    "version": "0.7.1",
+    "license": "Apache-2.0",
+    "description": "The official Ruby SDK for Model Context Protocol servers and clients",
+    "website": "https://github.com/modelcontextprotocol/ruby-sdk",
+    "last_verified_at": "2026-02-26",
     "risk_level": "Low",
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
@@ -470,7 +494,7 @@
   "rubocop": {
     "language": "Ruby",
     "package": "rubocop",
-    "version": "1.84.2",
+    "version": "1.85.0",
     "license": "MIT",
     "description": "RuboCop is a Ruby code style checking and code formatting tool.",
     "website": "https://rubocop.org/",

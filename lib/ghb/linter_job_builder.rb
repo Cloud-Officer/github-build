@@ -40,12 +40,18 @@ module GHB
     private
 
     def detect_linter(short_name, linter, script_path)
-      return if @options.ignored_linters[short_name]
+      if @options.ignored_linters[short_name]
+        delete_linter_config(linter)
+        return
+      end
 
-      return if linter[:short_name].include?('Semgrep') and @options.skip_semgrep
+      if linter[:short_name].include?('Semgrep') and @options.skip_semgrep
+        delete_linter_config(linter)
+        return
+      end
 
       # Pure Ruby file finding - avoids shell injection (SEC-001)
-      excluded_paths = @options.excluded_folders + @submodules
+      excluded_paths = @options.excluded_folders + @submodules + [@options.linters_config_file]
       pattern = Regexp.new(linter[:pattern])
       matches = find_files_matching(linter[:path], pattern, excluded_paths)
 
@@ -61,7 +67,10 @@ module GHB
         end
       end
 
-      return if matches.empty?
+      if matches.empty?
+        delete_linter_config(linter)
+        return
+      end
 
       result = matches.join("\n")
 
@@ -74,6 +83,13 @@ module GHB
 
       copy_linter_config(linter, script_path)
       add_linter_job(short_name, linter)
+    end
+
+    def delete_linter_config(linter)
+      return unless linter[:config]
+      return if linter[:preserve_config] && File.exist?(linter[:config]) && !File.symlink?(linter[:config])
+
+      File.delete(linter[:config]) if File.exist?(linter[:config]) || File.symlink?(linter[:config])
     end
 
     def copy_linter_config(linter, script_path)

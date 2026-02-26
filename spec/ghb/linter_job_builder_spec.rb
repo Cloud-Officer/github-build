@@ -256,7 +256,9 @@ RSpec.describe(GHB::LinterJobBuilder) do
       it 'preserves the existing config file' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
+        allow(File).to(receive(:symlink?).and_return(false))
         allow(File).to(receive(:write))
+        allow(File).to(receive(:delete))
 
         builder = described_class.new(
           options: options,
@@ -406,6 +408,120 @@ RSpec.describe(GHB::LinterJobBuilder) do
         expect(new_workflow.jobs).to(have_key(:rubocop))
         # The transformation block should have uncommented the Rails rules
         expect(File).to(have_received(:write).with(anything, "AllCops:\n  TargetRailsVersion: 7.0\n"))
+      end
+    end
+
+    context 'when linter is not enabled (no matches) and has a config file' do
+      let(:options) do
+        instance_double(
+          GHB::Options,
+          only_dependabot: false,
+          skip_semgrep: false,
+          ignored_linters: {},
+          excluded_folders: [],
+          linters_config_file: 'config/linters.yaml'
+        )
+      end
+
+      it 'deletes the stale config file' do # rubocop:disable RSpec/ExampleLength
+        allow(File).to(receive(:exist?).and_call_original)
+        allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
+        allow(File).to(receive(:symlink?).and_return(false))
+        allow(File).to(receive(:delete))
+
+        builder = described_class.new(
+          options: options,
+          submodules: submodules,
+          old_workflow: old_workflow,
+          new_workflow: new_workflow,
+          file_cache: file_cache
+        )
+
+        # No files match any linter
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+
+        # Stale config exists on disk
+        allow(File).to(receive(:exist?).with('.eslintrc.json').and_return(true))
+
+        builder.build
+
+        expect(File).to(have_received(:delete).with('.eslintrc.json'))
+      end
+    end
+
+    context 'when linter is ignored and has a config file' do
+      let(:options) do
+        instance_double(
+          GHB::Options,
+          only_dependabot: false,
+          skip_semgrep: false,
+          ignored_linters: { eslint: true },
+          excluded_folders: [],
+          linters_config_file: 'config/linters.yaml'
+        )
+      end
+
+      it 'deletes the config file for the ignored linter' do # rubocop:disable RSpec/ExampleLength
+        allow(File).to(receive(:exist?).and_call_original)
+        allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
+        allow(File).to(receive(:symlink?).and_return(false))
+        allow(File).to(receive(:delete))
+
+        builder = described_class.new(
+          options: options,
+          submodules: submodules,
+          old_workflow: old_workflow,
+          new_workflow: new_workflow,
+          file_cache: file_cache
+        )
+
+        # Return matches for non-ignored linters so they proceed normally
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+
+        # Stale config for eslint exists on disk
+        allow(File).to(receive(:exist?).with('.eslintrc.json').and_return(true))
+
+        builder.build
+
+        expect(File).to(have_received(:delete).with('.eslintrc.json'))
+      end
+    end
+
+    context 'when linter has preserve_config and config is user-owned' do
+      let(:options) do
+        instance_double(
+          GHB::Options,
+          only_dependabot: false,
+          skip_semgrep: false,
+          ignored_linters: {},
+          excluded_folders: [],
+          linters_config_file: 'config/linters.yaml'
+        )
+      end
+
+      it 'does not delete the config file' do # rubocop:disable RSpec/ExampleLength
+        allow(File).to(receive(:exist?).and_call_original)
+        allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
+        allow(File).to(receive(:symlink?).and_return(false))
+        allow(File).to(receive(:delete))
+
+        builder = described_class.new(
+          options: options,
+          submodules: submodules,
+          old_workflow: old_workflow,
+          new_workflow: new_workflow,
+          file_cache: file_cache
+        )
+
+        # No files match any linter pattern
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+
+        # Semgrep has preserve_config: true; its config exists and is NOT a symlink
+        allow(File).to(receive(:exist?).with('.semgrepignore').and_return(true))
+
+        builder.build
+
+        expect(File).not_to(have_received(:delete).with('.semgrepignore'))
       end
     end
 
