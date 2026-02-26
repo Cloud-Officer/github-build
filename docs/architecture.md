@@ -529,14 +529,14 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 1. Validates `GITHUB_TOKEN` environment variable is present
 2. Retrieves current repository info to check visibility (public/private) via `GitHubAPIClient`
 3. Gets current branch protection via GitHub API (handles 404 for new repos without protection)
-4. Detects CodeQL languages and filters redundant entries
+4. Detects Vercel integration (Next.js) and CodeQL languages, filtering redundant entries
 5. Collects required status checks from generated workflow jobs
 6. Validates existing checks match expected checks (only for existing protection)
 7. Preserves existing dismissal restrictions and bypass allowances
 8. Configures branch protection with required status checks, pull request reviews, signed commits, and conversation resolution
-9. Configures repository options (delete branch on merge, etc.) and checks for Vercel integration
-10. Enables security features (vulnerability alerts, automated security fixes, secret scanning, CodeQL default setup)
-11. Disables GHAS features (secret scanning, CodeQL) for private repos (cost avoidance)
+9. Configures repository options: enables vulnerability alerts and automated security fixes, disables wiki and projects, configures merge strategies, and enables delete branch on merge
+10. Enables secret scanning features (push protection, validity checks, non-provider patterns, AI detection) for public repos; disables them for private repos (GHAS cost avoidance)
+11. Enables CodeQL default setup for public repos; disables it for private repos (GHAS cost avoidance)
 
 **Security Considerations:**
 
