@@ -68,6 +68,25 @@ module GHB
 
         self.steps = [dependencies_steps&.first]
 
+        do_step('Close Stale Dependency PRs') do
+          do_shell('bash')
+          do_env({ GH_TOKEN: '${{secrets.GH_PAT}}' })
+          do_run(
+            <<~BASH
+              prs=$(gh pr list --repo "${{github.repository}}" --search "Update Dependencies in:title" --state open --json number,headRefName --jq '.[] | "\\(.number) \\(.headRefName)"')
+
+              if [ -n "$prs" ]; then
+                while IFS=' ' read -r pr_number branch_name; do
+                  echo "Closing PR #${pr_number} and deleting branch ${branch_name}"
+                  gh pr close "${pr_number}" --repo "${{github.repository}}" --delete-branch --comment "Superseded by a newer dependency update."
+                done <<< "$prs"
+              else
+                echo "No stale dependency update PRs found."
+              fi
+            BASH
+          )
+        end
+
         do_step('Update Dependencies') do
           do_shell('bash')
           do_env({ GH_PAT: '${{secrets.GH_PAT}}' })

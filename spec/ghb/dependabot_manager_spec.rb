@@ -147,6 +147,47 @@ RSpec.describe(GHB::DependabotManager) do
       end
     end
 
+    context 'when workflow is generated' do
+      it 'includes a Close Stale Dependency PRs step before Update Dependencies' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        new_workflow.do_job(:licenses) do
+          do_name('Licenses')
+          do_step('Licenses') do
+            do_uses('cloud-officer/ci-actions/soup@v2')
+            do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'github-token': '${{secrets.GH_PAT}}' })
+          end
+        end
+
+        step = GHB::Step.new('Setup', { with: { 'ssh-key': '${{secrets.SSH_KEY}}' } })
+        deps_steps = [step]
+        deps_commands = "bundle update\n"
+
+        allow(File).to(receive(:exist?).with('.github/dependabot.yml').and_return(false))
+        allow(FileUtils).to(receive(:rm_f))
+        allow(FileUtils).to(receive(:mkdir_p))
+        allow(File).to(receive(:write))
+
+        manager = described_class.new(
+          new_workflow: new_workflow,
+          cron_workflow: cron_workflow,
+          dependencies_steps: deps_steps,
+          dependencies_commands: deps_commands
+        )
+
+        manager.save
+
+        job = cron_workflow.jobs[:update_dependencies]
+        step_names = job.steps.map(&:name)
+        close_step = job.steps.find { |s| s.name == 'Close Stale Dependency PRs' }
+
+        expect(close_step).not_to(be_nil)
+        expect(close_step.shell).to(eq('bash'))
+        expect(close_step.run).to(include('gh pr list'))
+        expect(close_step.run).to(include('gh pr close'))
+        expect(close_step.run).to(include('--delete-branch'))
+        expect(step_names.index('Close Stale Dependency PRs')).to(be < step_names.index('Update Dependencies'))
+      end
+    end
+
     context 'when licenses step in old workflow has non-empty with' do
       it 'preserves with from old workflow licenses step' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         new_workflow.do_job(:licenses) do
