@@ -168,7 +168,7 @@ kotlin:
     - name: java-mvn-toolchain-vendor
       value:
     - name: android-sdk-version
-      value: 34
+      value: 36
     - name: android-build-tools-version
       value:
     - name: android-ndk-version
