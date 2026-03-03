@@ -72,30 +72,25 @@ fi
 export latest_mysql
 yq --indent=2 e '(.options[] | select(.name == "mysql-version").value) = env(latest_mysql)' -i "config/options/mysql.yaml"
 
-# Redis (ElastiCache/Valkey)
+# Valkey (ElastiCache)
 
-latest_redis=$(aws elasticache describe-cache-engine-versions --engine redis --query 'CacheEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1)
 latest_valkey=$(aws elasticache describe-cache-engine-versions --engine valkey --query 'CacheEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1)
 
-# Compare and use the highest version
-if [ -n "${latest_valkey}" ] && [ -n "${latest_redis}" ]; then
-    if [ "$(printf '%s\n' "${latest_valkey}" "${latest_redis}" | sort -V | tail -n1)" == "${latest_valkey}" ]; then
-        latest_redis="${latest_valkey}"
-    fi
-elif [ -n "${latest_valkey}" ]; then
-    latest_redis="${latest_valkey}"
+if [ -z "${latest_valkey}" ]; then
+    latest_valkey=$(curl -s https://api.github.com/repos/valkey-io/valkey/releases | jq -r '[.[] | select(.tag_name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name] | first')
 fi
 
-if [ -z "${latest_redis}" ]; then
-    latest_redis=$(curl -s https://api.github.com/repos/valkey-io/valkey/releases | jq -r '[.[] | select(.tag_name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name] | first')
+# Validate version against actions-setup-redis supported valkey versions
+installer_ts=$(curl -s https://raw.githubusercontent.com/shogo82148/actions-setup-redis/main/src/installer.ts)
+valkey_versions=$(echo "${installer_ts}" | grep -o 'valkey: \[.*\]')
+valkey_minor=$(echo "${latest_valkey}" | grep -oE '^[0-9]+\.[0-9]+')
 
-    if [ -z "${latest_redis}" ]; then
-        latest_redis=$(curl -s https://raw.githubusercontent.com/redis/redis/unstable/src/version.h | grep REDIS_VERSION | cut -d'"' -f2)
-    fi
+if [ -z "${latest_valkey}" ] || ! echo "${valkey_versions}" | grep -q "\"${valkey_minor}\""; then
+    latest_valkey="latest"
 fi
 
-export latest_redis
-yq --indent=2 e '(.options[] | select(.name == "redis-version").value) = env(latest_redis)' -i "config/options/redis.yaml"
+export latest_valkey
+yq --indent=2 e '(.options[] | select(.name == "redis-version").value) = env(latest_valkey)' -i "config/options/redis.yaml"
 
 # Elasticsearch (OpenSearch)
 
