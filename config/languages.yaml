@@ -74,7 +74,7 @@ go:
 js:
   short_name: js
   long_name: JavaScript
-  file_extension: js
+  file_extension: js|mjs|cjs
   version_files:
     - .node-version
     - .nvmrc
