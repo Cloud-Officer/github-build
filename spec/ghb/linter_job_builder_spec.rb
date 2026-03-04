@@ -525,6 +525,63 @@ RSpec.describe(GHB::LinterJobBuilder) do
       end
     end
 
+    context 'when preserve_config is true and script_path has the config file' do
+      let(:options) do
+        instance_double(
+          GHB::Options,
+          only_dependabot: false,
+          skip_semgrep: false,
+          ignored_linters: {},
+          excluded_folders: [],
+          linters_config_file: 'config/linters.yaml'
+        )
+      end
+
+      it 'preserves the project config instead of symlinking from script_path' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        allow(File).to(receive(:exist?).and_call_original)
+        allow(File).to(receive(:exist?).with('.gitmodules').and_return(true))
+        allow(File).to(receive(:read).and_call_original)
+
+        gitmodules_content = <<~GITMODULES
+          [submodule "scripts"]
+          \tpath = scripts-repo
+          \turl = git@github.com:org/scripts.git
+        GITMODULES
+        allow(File).to(receive(:read).with('.gitmodules').and_return(gitmodules_content))
+        allow(File).to(receive(:symlink?).and_return(false))
+        allow(File).to(receive(:delete))
+
+        builder = described_class.new(
+          options: options,
+          submodules: [],
+          old_workflow: old_workflow,
+          new_workflow: new_workflow,
+          file_cache: file_cache
+        )
+
+        # Only match semgrep pattern
+        allow(builder).to(receive(:find_files_matching)) do |_path, pattern, _excluded|
+          if pattern.source.include?('swift') && pattern.source.include?('py')
+            ['app.py']
+          else
+            []
+          end
+        end
+
+        # script_path has the config
+        allow(File).to(receive(:exist?).with('scripts-repo/linters/.semgrepignore').and_return(true))
+        # Project has its own non-symlink config
+        allow(File).to(receive(:exist?).with('.semgrepignore').and_return(true))
+        allow(File).to(receive(:symlink?).with('.semgrepignore').and_return(false))
+        allow(FileUtils).to(receive(:ln_s))
+
+        builder.build
+
+        expect(new_workflow.jobs).to(have_key(:semgrep))
+        expect(FileUtils).not_to(have_received(:ln_s).with('scripts-repo/linters/.semgrepignore', '.semgrepignore', force: true))
+      end
+    end
+
     context 'when script_path has the linter config file' do
       let(:options) do
         instance_double(
@@ -577,6 +634,51 @@ RSpec.describe(GHB::LinterJobBuilder) do
 
         expect(new_workflow.jobs).to(have_key(:golangci))
         expect(FileUtils).to(have_received(:ln_s).with('scripts-repo/linters/.golangci.yml', '.golangci.yml', force: true))
+      end
+    end
+
+    context 'when local linters/ directory has the config file' do
+      let(:options) do
+        instance_double(
+          GHB::Options,
+          only_dependabot: false,
+          skip_semgrep: false,
+          ignored_linters: {},
+          excluded_folders: [],
+          linters_config_file: 'config/linters.yaml'
+        )
+      end
+
+      it 'creates a symlink from local linters/ instead of copying' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        allow(File).to(receive(:exist?).and_call_original)
+        # No .gitmodules -> no script_path
+        allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
+
+        builder = described_class.new(
+          options: options,
+          submodules: submodules,
+          old_workflow: old_workflow,
+          new_workflow: new_workflow,
+          file_cache: file_cache
+        )
+
+        # Only match eslint pattern (js files)
+        allow(builder).to(receive(:find_files_matching)) do |_path, pattern, _excluded|
+          if pattern.source.include?('js')
+            ['app.js']
+          else
+            []
+          end
+        end
+
+        # No script_path, but local linters/ directory has the config
+        allow(File).to(receive(:exist?).with('linters/.eslintrc.json').and_return(true))
+        allow(FileUtils).to(receive(:ln_s))
+
+        builder.build
+
+        expect(new_workflow.jobs).to(have_key(:eslint))
+        expect(FileUtils).to(have_received(:ln_s).with('linters/.eslintrc.json', '.eslintrc.json', force: true))
       end
     end
   end

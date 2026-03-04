@@ -17,9 +17,10 @@
 #   uses             (string, required) - GitHub Actions action reference (without version suffix).
 #                                         Version @v2 is appended automatically
 #   config           (string, optional) - Linter config file name (e.g., ".eslintrc.json").
-#                                         Resolved in order: (1) symlink from scripts submodule,
-#                                         (2) preserve project's own config if preserve_config is true,
-#                                         (3) copy from config/linters/ directory
+#                                         Resolved in order: (1) preserve project's own config if
+#                                         preserve_config is true, (2) symlink from scripts submodule,
+#                                         (3) symlink from local linters/ directory,
+#                                         (4) copy from config/linters/ directory
 #   path             (string, required) - Root directory to search for files matching `pattern`
 #   pattern          (string, required) - Regex pattern to match source files (e.g., ".*\\.(py)$")
 #   preserve_config  (bool, optional)   - If true, keeps the project's existing config file instead
@@ -136,18 +137,6 @@ protolint:
   config: ".protolint.yaml"
   path: "."
   pattern: ".*\\.(proto)$"
-semgrep:
-  short_name: Semgrep
-  long_name: Semgrep Security Scanner
-  condition: "github.event_name == 'pull_request'"
-  uses: cloud-officer/ci-actions/linters/semgrep
-  config: ".semgrepignore"
-  preserve_config: true
-  path: "."
-  pattern: ".*\\.(py|js|mjs|cjs|jsx|ts|tsx|go|rb|java|kt|php|c|cpp|cs|rs|swift|scala)$"
-  permissions:
-    actions: read
-    contents: read
 rubocop:
   short_name: Rubocop
   long_name: Ruby Linter
@@ -157,6 +146,15 @@ rubocop:
   path: "."
   pattern: "(.*\\/Fastfile$)|(.*\\.(rb)$)"
   directory: fastlane
+semgrep:
+  short_name: Semgrep
+  long_name: Semgrep Security Scanner
+  condition: "github.event_name == 'pull_request'"
+  uses: cloud-officer/ci-actions/linters/semgrep
+  config: ".semgrepignore"
+  preserve_config: true
+  path: "."
+  pattern: ".*\\.(py|js|mjs|cjs|jsx|ts|tsx|go|rb|java|kt|php|c|cpp|cs|rs|swift|scala)$"
 shellcheck:
   short_name: ShellCheck
   long_name: Shell Scripts Linter
