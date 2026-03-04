@@ -95,10 +95,12 @@ module GHB
     def copy_linter_config(linter, script_path)
       return unless linter[:config]
 
-      if File.exist?("#{script_path}/linters/#{linter[:config]}") && linter[:config] != '.editorconfig'
-        FileUtils.ln_s("#{script_path}/linters/#{linter[:config]}", linter[:config], force: true)
-      elsif linter[:preserve_config] && File.exist?(linter[:config]) && !File.symlink?(linter[:config])
+      if linter[:preserve_config] && File.exist?(linter[:config]) && !File.symlink?(linter[:config])
         puts("            Preserving existing #{linter[:config]} (project-specific config)")
+      elsif File.exist?("#{script_path}/linters/#{linter[:config]}") && linter[:config] != '.editorconfig'
+        FileUtils.ln_s("#{script_path}/linters/#{linter[:config]}", linter[:config], force: true)
+      elsif File.exist?("linters/#{linter[:config]}") && linter[:config] != '.editorconfig'
+        FileUtils.ln_s("linters/#{linter[:config]}", linter[:config], force: true)
       else
         # Use atomic file operation to prevent data loss if copy fails
         atomic_copy_config("#{__dir__}/../../config/linters/#{linter[:config]}", linter[:config]) do |content|
