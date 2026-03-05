@@ -494,7 +494,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 3. For each linter, uses pure Ruby `find_files_matching` with regex pattern matching to search for files
 4. Excludes specified folders and submodules from search
 5. If a `content_match` string is configured, further filters matched files by checking file contents via `file_contains?`. When `content_match_pattern` is also set, only files whose path matches that sub-pattern require the content check; other files pass through unconditionally
-6. If matching files remain, enables the linter and uses `atomic_copy_config` to safely copy/transform configuration files (e.g., uncommenting Rails rules in `.rubocop.yml`)
+6. If matching files remain, enables the linter and resolves configuration files via a priority chain: preserves existing project-specific configs (when `preserve_config` is set and a non-symlink file exists), creates symlinks to a scripts submodule `linters/` directory, creates symlinks to a local `linters/` directory, or falls back to `atomic_copy_config` to safely copy bundled configs with optional transformation (e.g., uncommenting Rails rules in `.rubocop.yml`)
 7. Creates workflow job with appropriate steps for each enabled linter
 
 **Complexity:** O(n * m) where n = number of linters, m = files in repository
@@ -558,7 +558,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 3. For each extension detection entry, checks file extensions using `find_files_matching`, specific files that indicate the technology, and package dependencies in manifest files using pure Ruby regex
 4. Fetches templates from gitignore.io API via HTTParty
 5. Applies project-specific modifications (uncomment JetBrains patterns, comment out conflicting directory patterns like `bin/`, `lib/`, `var/`)
-6. Detects and appends AI assistant ignore patterns (Claude Code, Cursor, Copilot, OpenAI Codex) via `detect_custom_patterns`
+6. Always appends AI assistant ignore patterns (Claude Code, Cursor, Copilot, OpenAI Codex) via `detect_custom_patterns` to prevent accidental commits even if the tool isn't actively used
 7. Preserves custom entries from existing .gitignore
 
 ## Risk controls
