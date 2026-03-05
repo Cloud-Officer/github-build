@@ -307,7 +307,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 ### GHB::AwsJobBuilder
 
-**Purpose:** Builds the "AWS Commands" job for custom AWS deployment scripts.
+**Purpose:** Builds the "AWS" job for custom AWS deployment scripts.
 
 **Location:** `lib/ghb/aws_job_builder.rb`
 
