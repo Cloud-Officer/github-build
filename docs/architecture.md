@@ -314,7 +314,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(options:, old_workflow:, new_workflow:)`: Accepts options and workflow objects
-- `build`: Creates the AWS commands job if `.aws` file exists
+- `build`: Creates the AWS job if `.aws` file exists
 
 ### GHB::SlackJobBuilder
 
