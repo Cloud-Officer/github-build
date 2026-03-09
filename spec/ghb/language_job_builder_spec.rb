@@ -257,6 +257,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       allow(builder).to(receive_messages(find_files_matching: ['./Sources/main.swift'], file_contains?: false))
       allow(File).to(receive(:file?).with('Package.swift').and_return(true))
       allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
+      allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(false))
       allow($stdout).to(receive(:puts))
 
       builder.build
@@ -269,6 +270,45 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(job.if).to(include('DEPLOY_ON_PROD'))
       expect(job.if).to(include('DEPLOY_MACOS'))
       expect(job.if).to(include('DEPLOY_TVOS'))
+    end
+
+    it 'skips swift unit test job but collects dependency info when ci_scripts exists' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      swift_full_config = {
+        swift: {
+          short_name: 'swift',
+          long_name: 'Swift',
+          file_extension: 'swift',
+          'runs-on': 'macos-latest',
+          version_files: nil,
+          setup_options: nil,
+          dependencies: [
+            {
+              dependency_file: 'Gemfile',
+              package_manager_name: 'Bundler',
+              package_manager_default: 'bundle install',
+              package_manager_update: 'bundle config set frozen false ; bundle update',
+              dependabot_ecosystem: 'bundler'
+            }
+          ],
+          unit_test_framework_name: 'XCTest',
+          unit_test_framework_default: 'swift test'
+        }
+      }
+
+      swift_full_yaml = Psych.dump(swift_full_config.deep_stringify_keys)
+      stub_config_file_reads(swift_full_yaml)
+
+      allow(builder).to(receive_messages(find_files_matching: ['./Sources/main.swift'], file_contains?: false))
+      allow(File).to(receive(:file?).with('Gemfile').and_return(true))
+      allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
+      allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(true))
+      allow($stdout).to(receive(:puts))
+
+      builder.build
+
+      expect(new_workflow.jobs).not_to(have_key(:swift_unit_tests))
+      expect(builder.dependencies_steps).not_to(be_empty)
+      expect(builder.dependencies_commands).to(include('bundle config set frozen false ; bundle update'))
     end
 
     it 'prints warning but does not exit when version file mismatches and strict_version_check is false' do # rubocop:disable RSpec/ExampleLength

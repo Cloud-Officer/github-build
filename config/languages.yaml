@@ -24,6 +24,10 @@
 #   dependencies     (array, optional)  - Package manager and service dependency definitions. Each entry:
 #                                           dependency_file:            file indicating the package manager
 #                                                                       is in use (e.g., go.mod, Gemfile)
+#                                           install_dirs:               directories where dependencies are
+#                                                                       installed (e.g., node_modules, Pods).
+#                                                                       Used to build the excluded dirs list
+#                                                                       for file scanning
 #                                           mongodb_dependency:         string to grep in dependency_file
 #                                                                       to detect MongoDB usage
 #                                           mysql_dependency:           string to grep for MySQL detection
@@ -37,6 +41,13 @@
 #   unit_test_framework_default (string, optional) - Default test command
 #   runs-on                     (string, optional) - GitHub Actions runner OS override
 #                                                    (defaults to Ubuntu if not set)
+#
+# Excluded Directories:
+#   excluded_dirs    (array, top-level) - Directories excluded from file scanning across all tools.
+#                                         Combines install_dir values from dependency entries with
+#                                         additional non-package-manager directories (build outputs,
+#                                         caches, IDE artifacts). Used by FileScanner and
+#                                         GitignoreManager as a single source of truth
 
 go:
   short_name: go
@@ -46,7 +57,7 @@ go:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.26.0
+      value: 1.26.1
     - name: go-version-file
       value:
     - name: go-check-latest
@@ -61,6 +72,8 @@ go:
       value:
   dependencies:
     - dependency_file: go.mod
+      install_dirs:
+        - vendor
       mongodb_dependency: mongodb
       mysql_dependency: sql
       redis_dependency: redis
@@ -101,6 +114,10 @@ js:
       value:
   dependencies:
     - dependency_file: package-lock.json
+      install_dirs:
+        - node_modules
+        - .npm
+        - dist
       mongodb_dependency: mongodb
       mysql_dependency: mysql
       redis_dependency: redis
@@ -110,6 +127,10 @@ js:
       package_manager_update: npm upgrade
       dependabot_ecosystem: npm
     - dependency_file: yarn.lock
+      install_dirs:
+        - node_modules
+        - .yarn
+        - dist
       mongodb_dependency: mongodb
       mysql_dependency: mysql
       redis_dependency: redis
@@ -117,6 +138,19 @@ js:
       package_manager_name: Yarn
       package_manager_default: yarn install
       package_manager_update: yarn upgrade
+      dependabot_ecosystem: npm
+    - dependency_file: pnpm-lock.yaml
+      install_dirs:
+        - node_modules
+        - .pnpm
+        - dist
+      mongodb_dependency: mongodb
+      mysql_dependency: mysql
+      redis_dependency: redis
+      elasticsearch_dependency: elasticsearch
+      package_manager_name: pnpm
+      package_manager_default: pnpm install
+      package_manager_update: pnpm update
       dependabot_ecosystem: npm
   unit_test_framework_name: Jest
   unit_test_framework_default: npx jest
@@ -185,6 +219,10 @@ kotlin:
       value:
   dependencies:
     - dependency_file: build.gradle
+      install_dirs:
+        - .gradle
+        - build
+        - target
       mongodb_dependency: mongo
       mysql_dependency: mysql
       redis_dependency: redis
@@ -194,6 +232,9 @@ kotlin:
       package_manager_update: gradle dependencies --refresh-dependencies
       dependabot_ecosystem: gradle
     - dependency_file: pom.xml
+      install_dirs:
+        - .m2
+        - target
       mongodb_dependency: mongo
       mysql_dependency: mysql
       redis_dependency: redis
@@ -227,6 +268,8 @@ php:
       value: composer
   dependencies:
     - dependency_file: composer.json
+      install_dirs:
+        - vendor
       mongodb_dependency: mongodb
       mysql_dependency: doctrine-bundle
       redis_dependency: redis
@@ -236,6 +279,10 @@ php:
       package_manager_update: composer update --no-scripts
       dependabot_ecosystem: composer
     - dependency_file: yarn.lock
+      install_dirs:
+        - node_modules
+        - .yarn
+        - dist
       mongodb_dependency: mongodb
       mysql_dependency: mysql
       redis_dependency: redis
@@ -254,7 +301,7 @@ proto:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.26.0
+      value: 1.26.1
     - name: go-version-file
       value:
     - name: go-check-latest
@@ -271,6 +318,8 @@ proto:
       value: 26.3
   dependencies:
     - dependency_file: go.mod
+      install_dirs:
+        - vendor
       mongodb_dependency: mongodb
       mysql_dependency: sql
       redis_dependency: redis
@@ -307,6 +356,12 @@ python:
       value:
   dependencies:
     - dependency_file: requirements.txt
+      install_dirs:
+        - venv
+        - .venv
+        - env
+        - __pycache__
+        - .pytest_cache
       mongodb_dependency: mongo
       mysql_dependency: mysql
       redis_dependency: redis
@@ -320,15 +375,47 @@ python:
 swift:
   short_name: swift
   long_name: Swift
+  file_extension: swift
+  runs-on: macos-latest
   dependencies:
     - dependency_file: Gemfile
+      install_dirs:
+        - .bundle
+        - DerivedData
+      package_manager_name: Bundler
+      package_manager_default: bundle install
+      package_manager_update: bundle config set frozen false ; bundle update
       dependabot_ecosystem: bundler
     - dependency_file: Cartfile
+      install_dirs:
+        - Carthage
+      package_manager_name: Carthage
+      package_manager_default: carthage update
+      package_manager_update: carthage update
       dependabot_ecosystem: swift
     - dependency_file: Podfile
+      install_dirs:
+        - Pods
+      package_manager_name: CocoaPods
+      package_manager_default: pod install
+      package_manager_update: pod update
       dependabot_ecosystem: swift
     - dependency_file: Package.swift
+      install_dirs:
+        - .build
+      package_manager_name: Swift Package Manager
+      package_manager_default: swift package resolve
+      package_manager_update: swift package update
       dependabot_ecosystem: swift
+    - dependency_file: Tuist/Package.swift
+      install_dirs:
+        - .build
+      package_manager_name: Tuist Package Manager
+      package_manager_default: tuist install
+      package_manager_update: tuist install --update
+      dependabot_ecosystem: swift
+  unit_test_framework_name: XCTest
+  unit_test_framework_default: swift test
 shell_script:
   short_name: shell_script
   long_name: Shell Script
@@ -369,6 +456,8 @@ ruby:
       value:
   dependencies:
     - dependency_file: Gemfile
+      install_dirs:
+        - .bundle
       mongodb_dependency: mongo
       mysql_dependency: mysql
       redis_dependency: redis
@@ -379,3 +468,9 @@ ruby:
       dependabot_ecosystem: bundler
   unit_test_framework_name: RSpec
   unit_test_framework_default: bundle exec rspec
+# Directories to exclude from file scanning that are NOT package manager install dirs.
+# Combined with install_dirs values from dependency entries to form the complete exclusion list.
+excluded_dirs:
+  - .git # Git repository metadata
+  - .hg # Mercurial repository metadata
+  - .svn # Subversion repository metadata

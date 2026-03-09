@@ -5,11 +5,14 @@ RSpec.describe(GHB::FileScanner) do
     Class.new do
       include GHB::FileScanner
 
+      attr_writer :options
+
       def initialize
         @file_cache = {}
+        @options = Struct.new(:languages_config_file).new('config/languages.yaml')
       end
 
-      public :find_files_matching, :file_contains?, :atomic_copy_config
+      public :find_files_matching, :file_contains?, :atomic_copy_config, :excluded_dirs_from_config
     end
   end
 

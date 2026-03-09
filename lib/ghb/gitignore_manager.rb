@@ -131,10 +131,9 @@ module GHB
       templates.to_a.sort
     end
 
-    # Exclude common dependency/build folders from search - pure Ruby approach (SEC-002)
+    # Build excluded paths from languages.yaml config + submodules - pure Ruby approach (SEC-002)
     def build_gitignore_excluded_paths
-      dependency_excludes = %w[node_modules vendor .git .hg .svn venv .venv env __pycache__ .pytest_cache .bundle target build dist out Pods Carthage .build DerivedData packages .nuget .npm .yarn .pnpm bower_components jspm_packages]
-      dependency_excludes + @submodules
+      excluded_dirs_from_config + @submodules
     end
 
     def template_detected?(detection_config, excluded_paths)

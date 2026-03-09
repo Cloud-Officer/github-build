@@ -29,6 +29,7 @@ RSpec.describe(GHB::Options) do
       expect(options.skip_slack).to(be(false))
       expect(options.only_dependabot).to(be(false))
       expect(options.force_codedeploy_setup).to(be(false))
+      expect(options.get_ignored_folders).to(be(false))
       expect(options.strict_version_check).to(be(true))
     end
 
@@ -152,6 +153,13 @@ RSpec.describe(GHB::Options) do
       options.parse
 
       expect(options.force_codedeploy_setup).to(be(true))
+    end
+
+    it 'parses --get_ignored_folders' do
+      options = described_class.new(['--get_ignored_folders'])
+      options.parse
+
+      expect(options.get_ignored_folders).to(be(true))
     end
 
     it 'parses --no_strict_version_check' do
