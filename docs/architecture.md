@@ -103,7 +103,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(argv)`: Parses command-line arguments and initializes workflow objects
-- `execute`: Main entry point that delegates to builders and managers in sequence
+- `execute`: Main entry point that outputs ignored folders (if requested) or delegates to builders and managers in sequence
 
 **Private Methods:**
 
@@ -167,6 +167,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `build_file`: Path to output workflow file
 - `excluded_folders`: Folders to ignore during detection
 - `force_codedeploy_setup`: Force CodeDeploy setup regardless of detection
+- `get_ignored_folders`: Output ignored folders as JSON and exit
 - `gitignore_config_file`: Path to gitignore config file
 - `ignored_linters`: Hash of linters to skip
 - `languages_config_file`: Path to languages config file
@@ -202,14 +203,15 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 ### GHB::FileScanner (Module)
 
-**Purpose:** Shared utility module providing pure-Ruby file operations to avoid shell command injection. Included as a mixin by Application, LinterJobBuilder, LanguageJobBuilder, and GitignoreManager.
+**Purpose:** Shared utility module providing pure-Ruby file operations to avoid shell command injection. Included as a mixin by Application, LinterJobBuilder, LanguageJobBuilder, and GitignoreManager. Provides config-driven directory exclusions sourced from `languages.yaml`.
 
 **Location:** `lib/ghb/file_scanner.rb`
 
 **Key Components:**
 
 - `cached_file_read(path)`: Caches and returns file contents to avoid redundant reads across builders
-- `find_files_matching(path, pattern, excluded_paths, max_depth:)`: Recursively searches for files matching a regex pattern using `Find.find`, with optional depth limit and path exclusions
+- `excluded_dirs_from_config`: Builds the list of excluded directory patterns from `languages.yaml` by combining `install_dirs` from all dependency entries with the top-level `excluded_dirs`, memoized per instance
+- `find_files_matching(path, pattern, excluded_paths, max_depth:)`: Recursively searches for files matching a regex pattern using `Find.find`, with optional depth limit, path exclusions, and config-driven directory exclusions via `excluded_dirs_from_config`
 - `file_contains?(file, pattern)`: Checks if a file contains a literal string match using `File.foreach`
 - `atomic_copy_config(source, target)`: Atomically copies a config file using a temp file and rename, with optional transformation via block
 
@@ -286,7 +288,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(options:, submodules:, old_workflow:, new_workflow:, unit_tests_conditions:, file_cache:, dependencies_commands:)`: Accepts comprehensive configuration
-- `build`: Detects languages, checks for database dependencies (MongoDB, MySQL, Redis, Elasticsearch), validates versions, and creates test jobs
+- `build`: Detects languages, checks for database dependencies (MongoDB, MySQL, Redis, Elasticsearch), validates versions, and creates test jobs. For Swift projects with Xcode Cloud (`ci_scripts` directory), skips the unit test job while still collecting dependency info
 
 **Attributes:**
 
@@ -376,6 +378,8 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `initialize(options:, required_status_checks:, default_branch:)`: Accepts options, collected status checks, and default branch
 - `configure`: Validates GITHUB_TOKEN, retrieves repo info, and configures branch protection, security features, and repository options
+- `discover_xcode_cloud_checks_from_protection(actual_checks, expected_checks)`: Extracts Xcode Cloud checks from existing branch protection by finding checks not in the expected set
+- `discover_xcode_cloud_checks_from_statuses(github_client, repo_url)`: Discovers Xcode Cloud checks from commit statuses on the default branch for new repos without existing protection
 
 **Internal Dependencies:**
 
@@ -447,7 +451,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Locations:**
 
 - `config/linters.yaml`: Linter definitions with patterns and configurations
-- `config/languages.yaml`: Language definitions with setup options and dependencies
+- `config/languages.yaml`: Language definitions with setup options, dependencies (including `install_dirs` for exclusion), and top-level `excluded_dirs` for non-package-manager directories
 - `config/gitignore.yaml`: Gitignore template detection rules
 - `config/options/apt.yaml`: APT package configuration
 - `config/options/mongodb.yaml`: MongoDB service version and settings
@@ -508,13 +512,14 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 **Implementation:**
 
 1. Loads language and options configurations from YAML files
-2. For each language, uses pure Ruby `find_files_matching` to search for files matching the language's file extension
+2. For each language entry (skipping non-Hash values like `excluded_dirs`), uses pure Ruby `find_files_matching` to search for files matching the language's file extension
 3. Verifies dependency files exist (e.g., `go.mod`, `package.json`)
 4. In mono-repo mode, scans one level deep for subdirectory dependency files and generates per-subdirectory package manager and test steps
 5. Checks dependency files (including subdirectory files in mono-repo mode) for database dependencies (MongoDB, MySQL, Redis, Elasticsearch) using `file_contains?`
 6. Detects version files (`.ruby-version`, `.nvmrc`, etc.) and validates against recommended versions
 7. Merges setup options with version validation (strict mode exits on mismatch, non-strict warns)
 8. Creates unit test workflow job with appropriate setup, package manager, and test steps
+9. For Swift projects with Xcode Cloud (`ci_scripts` directory), removes the unit test job from the workflow while retaining collected dependency info for the cron workflow
 
 **Complexity:** O(n * m) where n = number of languages, m = files in repository
 
@@ -530,13 +535,14 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 2. Retrieves current repository info to check visibility (public/private) via `GitHubAPIClient`
 3. Gets current branch protection via GitHub API (handles 404 for new repos without protection)
 4. Detects Vercel integration (Next.js) and CodeQL languages, filtering redundant entries
-5. Collects required status checks from generated workflow jobs
-6. Validates existing checks match expected checks (only for existing protection)
-7. Preserves existing dismissal restrictions and bypass allowances
-8. Configures branch protection with required status checks, pull request reviews, signed commits, and conversation resolution
-9. Configures repository options: enables vulnerability alerts and automated security fixes, disables wiki and projects, configures merge strategies, and enables delete branch on merge
-10. Enables secret scanning features (push protection, validity checks, non-provider patterns, AI detection) for public repos; disables them for private repos (GHAS cost avoidance)
-11. Enables CodeQL default setup for public repos; disables it for private repos (GHAS cost avoidance)
+5. Discovers Xcode Cloud checks dynamically when `ci_scripts` directory exists: extracts from existing branch protection or from commit statuses on the default branch for new repos
+6. Collects required status checks from generated workflow jobs
+7. Validates existing checks match expected checks (only for existing protection)
+8. Preserves existing dismissal restrictions and bypass allowances
+9. Configures branch protection with required status checks, pull request reviews, signed commits, and conversation resolution
+10. Configures repository options: enables vulnerability alerts and automated security fixes, disables wiki and projects, configures merge strategies, and enables delete branch on merge
+11. Enables secret scanning features (push protection, validity checks, non-provider patterns, AI detection) for public repos; disables them for private repos (GHAS cost avoidance)
+12. Enables CodeQL default setup for public repos; disables it for private repos (GHAS cost avoidance)
 
 **Security Considerations:**
 
@@ -555,7 +561,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 1. Loads detection rules from `config/gitignore.yaml`
 2. Adds always-enabled templates (OS, IDEs)
-3. For each extension detection entry, checks file extensions using `find_files_matching`, specific files that indicate the technology, and package dependencies in manifest files using pure Ruby regex
+3. For each extension detection entry, checks file extensions using `find_files_matching` (with config-driven excluded paths from `languages.yaml` plus submodules), specific files that indicate the technology, and package dependencies in manifest files using pure Ruby regex
 4. Fetches templates from gitignore.io API via HTTParty
 5. Applies project-specific modifications (uncomment JetBrains patterns, comment out conflicting directory patterns like `bin/`, `lib/`, `var/`)
 6. Always appends AI assistant ignore patterns (Claude Code, Cursor, Copilot, OpenAI Codex) via `detect_custom_patterns` to prevent accidental commits even if the tool isn't actively used

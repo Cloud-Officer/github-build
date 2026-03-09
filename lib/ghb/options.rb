@@ -35,13 +35,14 @@ module GHB
       @skip_license_check = false
       @skip_repository_settings = false
       @mono_repo = false
+      @get_ignored_folders = false
       @skip_slack = false
       @strict_version_check = true
 
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :mono_repo, :only_dependabot, :options_config_file_apt, :options_config_file_elasticsearch, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :original_argv, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check
+    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :mono_repo, :only_dependabot, :options_config_file_apt, :options_config_file_elasticsearch, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :original_argv, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check
 
     def parse
       @parser.parse!(@argv)
@@ -87,6 +88,10 @@ module GHB
 
       @parser.on('', '--force_codedeploy_setup', 'Force executing the setup step in CodeDeploy even if not technically required') do
         @force_codedeploy_setup = true
+      end
+
+      @parser.on('', '--get_ignored_folders', 'Output ignored folders as JSON and exit') do
+        @get_ignored_folders = true
       end
 
       @parser.on('', '--gitignore_config_file file', 'Path to gitignore config file') do |file|

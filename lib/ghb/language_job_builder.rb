@@ -42,6 +42,8 @@ module GHB
       }
 
       languages&.each_value do |language|
+        next unless language.is_a?(Hash)
+
         detect_language(language, service_options)
       end
 
@@ -136,6 +138,9 @@ module GHB
       code_deploy_pre_steps = @code_deploy_pre_steps
       dependencies_steps = @dependencies_steps
       dependencies_commands_additions = @dependencies_commands_additions
+
+      # For Swift with Xcode Cloud (ci_scripts), skip the unit test job but still collect dependency info
+      skip_unit_test_job = language[:short_name] == 'swift' && Dir.exist?('ci_scripts')
 
       @new_workflow.do_job(:"#{language[:short_name]}_unit_tests") do
         copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
@@ -237,6 +242,13 @@ module GHB
           end
         end
       end
+
+      # Remove the unit test job from the workflow when Xcode Cloud handles tests,
+      # but dependency info (dependencies_steps, dependencies_commands) was still collected above
+      return unless skip_unit_test_job
+
+      @new_workflow.jobs.delete(:"#{language[:short_name]}_unit_tests")
+      puts("        Skipping #{language[:long_name]} Unit Tests job (Xcode Cloud handles tests via ci_scripts)")
     end
 
     def add_setup_options(setup_options, options, version_file = nil)

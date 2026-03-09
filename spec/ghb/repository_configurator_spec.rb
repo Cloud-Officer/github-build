@@ -537,13 +537,96 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       end
     end
 
-    context 'when ci_scripts directory exists (Xcode check)' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    context 'when ci_scripts directory exists with no existing protection' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:repo_info_response) do
         instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
       end
 
       let(:protection_response) do
         instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
+      end
+
+      let(:codeql_default_setup_response) do
+        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
+      end
+
+      let(:codeql_get_response) do
+        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
+      end
+
+      let(:ok_response) do
+        instance_double(HTTParty::Response, code: 200, body: '{}')
+      end
+
+      let(:accepted_response) do
+        instance_double(HTTParty::Response, code: 202, body: '{}')
+      end
+
+      let(:xcode_status_response) do
+        instance_double(
+          HTTParty::Response,
+          code: 200,
+          body: {
+            statuses: [
+              { context: 'MyApp | UnitTests', target_url: 'https://appstoreconnect.apple.com/teams/123/apps/456/ci/builds/789' }
+            ]
+          }.to_json
+        )
+      end
+
+      before do
+        allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(true))
+
+        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/commits/#{default_branch}/status", expected_codes: [200]).and_return(xcode_status_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
+        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
+        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
+      end
+
+      it 'discovers Xcode Cloud checks from commit statuses' do # rubocop:disable RSpec/ExampleLength
+        configurator.configure
+
+        expect(github_client).to(
+          have_received(:put).with(
+            "#{repo_url}/branches/#{default_branch}/protection",
+            body: hash_including(
+              required_status_checks: hash_including(
+                checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }, { context: 'MyApp | UnitTests', app_id: nil }]
+              )
+            )
+          )
+        )
+      end
+    end
+
+    context 'when ci_scripts directory exists with existing protection' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:current_protection) do
+        {
+          required_status_checks: {
+            contexts: ['Build', 'Lint', 'MyApp | Build + Unit Test'],
+            checks: [
+              { context: 'Build', app_id: 15_368 },
+              { context: 'Lint', app_id: 15_368 },
+              { context: 'MyApp | Build + Unit Test', app_id: nil }
+            ]
+          },
+          required_pull_request_reviews: {}
+        }
+      end
+
+      let(:repo_info_response) do
+        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
+      end
+
+      let(:protection_response) do
+        instance_double(HTTParty::Response, code: 200, body: current_protection.to_json)
       end
 
       let(:codeql_default_setup_response) do
@@ -577,7 +660,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
       end
 
-      it 'adds Xcode to the expected checks' do # rubocop:disable RSpec/ExampleLength
+      it 'extracts Xcode Cloud checks from existing branch protection' do # rubocop:disable RSpec/ExampleLength
         configurator.configure
 
         expect(github_client).to(
@@ -585,7 +668,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
             "#{repo_url}/branches/#{default_branch}/protection",
             body: hash_including(
               required_status_checks: hash_including(
-                checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }, { context: 'Xcode', app_id: nil }]
+                checks: current_protection[:required_status_checks][:checks].map { |c| JSON.parse(c.to_json) }
               )
             )
           )

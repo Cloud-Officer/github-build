@@ -53,6 +53,11 @@ module GHB
     end
 
     def execute
+      if @options.get_ignored_folders
+        puts(JSON.pretty_generate({ ignored_folders: excluded_dirs_from_config }))
+        return Status::SUCCESS_EXIT_CODE
+      end
+
       validate_config!
       puts('Generating build file...')
       workflow_read

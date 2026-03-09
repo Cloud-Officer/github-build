@@ -7,7 +7,8 @@ RSpec.describe(GHB::GitignoreManager) do
     instance_double(
       GHB::Options,
       skip_gitignore: false,
-      gitignore_config_file: 'config/gitignore.yaml'
+      gitignore_config_file: 'config/gitignore.yaml',
+      languages_config_file: 'config/languages.yaml'
     )
   end
   let(:manager) { described_class.new(options: mock_options, submodules: submodules, file_cache: file_cache) }
@@ -175,6 +176,7 @@ RSpec.describe(GHB::GitignoreManager) do
 
     it 'includes package-detected templates when package patterns match' do # rubocop:disable RSpec/ExampleLength
       allow(File).to(receive(:exist?).with('Gemfile').and_return(true))
+      allow(File).to(receive(:read).and_call_original)
       allow(File).to(receive(:read).with('Gemfile').and_return("gem 'rails'\ngem 'rspec'"))
 
       config = {

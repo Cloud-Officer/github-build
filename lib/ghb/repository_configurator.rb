@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'uri'
 
 require_relative 'github_api_client'
 
@@ -69,10 +70,23 @@ module GHB
       # Note: CodeQL checks are NOT included because they use "smart mode" which only runs
       # when relevant files change. CodeQL still blocks PRs through code scanning alerts.
       expected_checks = @required_status_checks.dup
-      expected_checks << 'Xcode' if Dir.exist?('ci_scripts')
 
       # Get actual checks from branch protection
       actual_checks = current_protection.dig('required_status_checks', 'contexts') || []
+
+      # Discover Xcode Cloud checks when ci_scripts directory exists
+      if Dir.exist?('ci_scripts')
+        xcode_checks =
+          if protection_exists
+            # Extract Xcode Cloud checks from existing protection (checks not from GitHub Actions workflows)
+            discover_xcode_cloud_checks_from_protection(actual_checks, expected_checks)
+          else
+            # For new repos, try to discover from commit statuses on the default branch
+            discover_xcode_cloud_checks_from_statuses(github_client, repo_url)
+          end
+
+        expected_checks.concat(xcode_checks)
+      end
 
       puts('    Checking required status checks...')
 
@@ -153,6 +167,40 @@ module GHB
         "#{repo_url}/branches/#{@default_branch}/protection/required_signatures",
         expected_codes: [200, 204]
       )
+    end
+
+    def discover_xcode_cloud_checks_from_protection(actual_checks, expected_checks)
+      xcode_checks = actual_checks - expected_checks
+
+      if xcode_checks.empty?
+        puts('        WARNING: ci_scripts directory exists but no Xcode Cloud checks found in branch protection')
+      else
+        puts("        Xcode Cloud checks detected: #{xcode_checks.join(', ')}")
+      end
+
+      xcode_checks
+    end
+
+    def discover_xcode_cloud_checks_from_statuses(github_client, repo_url)
+      response = github_client.get("#{repo_url}/commits/#{@default_branch}/status", expected_codes: [200])
+      statuses = JSON.parse(response.body)['statuses'] || []
+      xcode_checks = statuses.filter_map do |s|
+        url = s['target_url']
+        next unless url
+
+        host = URI.parse(url).host
+        s['context'] if host == 'appstoreconnect.apple.com'
+      rescue URI::InvalidURIError
+        nil
+      end.uniq
+
+      if xcode_checks.empty?
+        puts('        WARNING: ci_scripts directory exists but no Xcode Cloud checks found on default branch')
+      else
+        puts("        Xcode Cloud checks detected: #{xcode_checks.join(', ')}")
+      end
+
+      xcode_checks
     end
 
     def configure_repository_options(github_client, repo_url)

@@ -172,6 +172,28 @@ RSpec.describe(GHB::Application) do
         .to(raise_error(GHB::ConfigError, %r{Option entry 0 in config/options/apt.yaml is missing required key: name}))
     end
 
+    it 'outputs ignored folders as JSON when get_ignored_folders is set' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      ignored_options = instance_double(
+        GHB::Options,
+        get_ignored_folders: true,
+        languages_config_file: 'config/languages.yaml'
+      )
+      app = config_test_class.new(ignored_options)
+
+      output = +''
+      allow($stdout).to(receive(:write) { |str| output << str })
+
+      expect(app.execute).to(eq(GHB::Status::SUCCESS_EXIT_CODE))
+
+      json = JSON.parse(output)
+
+      expect(json).to(have_key('ignored_folders'))
+      expect(json['ignored_folders']).to(be_an(Array))
+      expect(json['ignored_folders']).to(include('node_modules'))
+      expect(json['ignored_folders']).to(include('vendor'))
+      expect(json['ignored_folders']).to(include('.git'))
+    end
+
     it 'provides clear error message with file path' do # rubocop:disable RSpec/ExampleLength
       bad_options = instance_double(
         GHB::Options,

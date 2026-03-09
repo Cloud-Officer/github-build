@@ -51,6 +51,7 @@ options
         --excluded_folders excluded_folders
                                      Comma separated list of folders to ignore
         --force_codedeploy_setup     Force executing the setup step in CodeDeploy even if not technically required
+        --get_ignored_folders        Output ignored folders as JSON and exit
         --gitignore_config_file file Path to gitignore config file
         --ignored_linters ignored_linters
                                      Ignore linter keys in linter config file

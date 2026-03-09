@@ -18,9 +18,34 @@ module GHB
     # @param excluded_paths [Array<String>] paths to exclude (partial matches)
     # @param max_depth [Integer, nil] maximum directory depth (nil for unlimited)
     # @return [Array<String>] list of matching file paths
+    # Builds the list of excluded directory patterns from languages.yaml.
+    # Combines install_dirs from all dependency entries with the top-level excluded_dirs.
+    # @return [Array<String>] directory names to exclude (e.g., ['node_modules', 'vendor', '.git'])
+    def excluded_dirs_from_config
+      @excluded_dirs_from_config ||=
+        begin
+          config_path = "#{__dir__}/../../#{@options.languages_config_file}"
+          config = Psych.safe_load(cached_file_read(config_path))&.deep_symbolize_keys || {}
+
+          dirs = Set.new
+          config.each_value do |language|
+            next unless language.is_a?(Hash) && language[:dependencies]
+
+            language[:dependencies].each do |dep|
+              dep[:install_dirs]&.each { |dir| dirs.add(dir) }
+            end
+          end
+
+          config[:excluded_dirs]&.each { |dir| dirs.add(dir) }
+
+          dirs.to_a
+        end
+    end
+
     def find_files_matching(path, pattern, excluded_paths = [], max_depth: nil)
       matches = []
       base_depth = path.count(File::SEPARATOR)
+      config_excluded = excluded_dirs_from_config
 
       Find.find(path) do |file_path|
         # Check max depth
@@ -29,11 +54,9 @@ module GHB
           Find.prune if current_depth > max_depth
         end
 
-        # Skip excluded paths (submodules, excluded_folders, common vendor dirs)
+        # Skip excluded paths (submodules, excluded_folders, dirs from languages.yaml)
         should_skip = excluded_paths.any? { |excluded| file_path.include?(excluded) } ||
-                      file_path.include?('/node_modules/') ||
-                      file_path.include?('/vendor/') ||
-                      file_path.include?('/linters/')
+                      config_excluded.any? { |dir| file_path.include?("/#{dir}/") }
 
         if should_skip
           Find.prune
