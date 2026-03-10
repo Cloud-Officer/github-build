@@ -1,6 +1,15 @@
 # Dependency directories
 vendor/
 node_modules/
+.build/
+Pods/
+Carthage/
+DerivedData/
+venv/
+.venv/
+dist/
+build/
+target/
 
 # Test files - Go
 *_test.go

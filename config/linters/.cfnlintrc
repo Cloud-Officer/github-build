@@ -5,3 +5,12 @@ ignore_templates:
   - docs/**
   - node_modules/**
   - vendor/**
+  - .build/**
+  - Pods/**
+  - Carthage/**
+  - DerivedData/**
+  - venv/**
+  - .venv/**
+  - dist/**
+  - build/**
+  - target/**

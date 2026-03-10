@@ -1,3 +1,4 @@
 [bandit]
 targets: .
 recursive: yes
+exclude: node_modules,vendor,.build,Pods,Carthage,DerivedData,venv,.venv,dist,build,target
