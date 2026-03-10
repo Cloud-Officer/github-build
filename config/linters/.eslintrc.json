@@ -3,7 +3,7 @@
     "node": true,
     "es2021": true
   },
-  "ignorePatterns": ["**/dist/**"],
+  "ignorePatterns": ["**/dist/**", "**/vendor/**", "**/node_modules/**", "**/Libraries/**", "**/Pods/**", "**/.build/**", "**/Carthage/**", "**/DerivedData/**", "**/venv/**", "**/.venv/**", "**/build/**", "**/target/**"],
   "extends": ["eslint:recommended"],
   "parserOptions": {
     "ecmaVersion": "latest",

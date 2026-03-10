@@ -498,7 +498,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 3. For each linter, uses pure Ruby `find_files_matching` with regex pattern matching to search for files
 4. Excludes specified folders and submodules from search
 5. If a `content_match` string is configured, further filters matched files by checking file contents via `file_contains?`. When `content_match_pattern` is also set, only files whose path matches that sub-pattern require the content check; other files pass through unconditionally
-6. If matching files remain, enables the linter and resolves configuration files via a priority chain: preserves existing project-specific configs (when `preserve_config` is set and a non-symlink file exists), creates symlinks to a scripts submodule `linters/` directory, creates symlinks to a local `linters/` directory, or falls back to `atomic_copy_config` to safely copy bundled configs with optional transformation (e.g., uncommenting Rails rules in `.rubocop.yml`)
+6. If matching files remain, enables the linter and resolves configuration files via a priority chain: cleans up deprecated config files that were renamed (tracked via `RENAMED_CONFIGS` constant, e.g., `.markdownlint.yml` → `.markdownlint-cli2.yaml`), preserves existing project-specific configs (when `preserve_config` is set and a non-symlink file exists), creates symlinks to a scripts submodule `linters/` directory, creates symlinks to a local `linters/` directory, or falls back to `atomic_copy_config` to safely copy bundled configs with optional transformation (e.g., uncommenting Rails rules in `.rubocop.yml`)
 7. Creates workflow job with appropriate steps for each enabled linter
 
 **Complexity:** O(n * m) where n = number of linters, m = files in repository

@@ -104,7 +104,7 @@ markdownlint:
   long_name: Markdown Linter
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/markdownlint
-  config: ".markdownlint.yml"
+  config: ".markdownlint-cli2.yaml"
   path: "."
   pattern: ".*\\.(md)$"
 phpcs:
