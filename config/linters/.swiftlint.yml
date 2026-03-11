@@ -8,6 +8,7 @@ excluded:
   - Project.swift
   - SourcePackages
   - Tests
+  - .build
   - Tuist/.build
   - Tuist/Cache
   - Tuist/Dependencies
