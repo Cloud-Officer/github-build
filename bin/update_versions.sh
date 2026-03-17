@@ -81,11 +81,10 @@ if [ -z "${latest_valkey}" ]; then
 fi
 
 # Validate version against actions-setup-redis supported valkey versions
-installer_ts=$(curl -s https://raw.githubusercontent.com/shogo82148/actions-setup-redis/main/src/installer.ts)
-valkey_versions=$(echo "${installer_ts}" | grep -o 'valkey: \[.*\]')
+valkey_versions=$(curl -s https://raw.githubusercontent.com/shogo82148/actions-setup-redis/main/src/versions/valkey.json | jq -r '[.[].version | split(".")[0:2] | join(".")] | unique | .[]')
 valkey_minor=$(echo "${latest_valkey}" | grep -oE '^[0-9]+\.[0-9]+')
 
-if [ -z "${latest_valkey}" ] || ! echo "${valkey_versions}" | grep -q "\"${valkey_minor}\""; then
+if [ -z "${latest_valkey}" ] || ! echo "${valkey_versions}" | grep -q "^${valkey_minor}$"; then
     latest_valkey="latest"
 fi
 

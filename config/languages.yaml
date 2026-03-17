@@ -93,7 +93,7 @@ js:
     - .nvmrc
   setup_options:
     - name: node-version
-      value: 25.8.0
+      value: 25.8.1
     - name: node-always-auth
       value:
     - name: node-version-file
@@ -253,7 +253,7 @@ php:
     - .php-version
   setup_options:
     - name: php-version
-      value: 8.5.3
+      value: 8.5.4
     - name: php-version-file
       value:
     - name: php-extensions
@@ -439,7 +439,7 @@ ruby:
     - .ruby-version
   setup_options:
     - name: ruby-version
-      value: 4.0.1
+      value: 4.0.2
     - name: ruby-rubygems
       value:
     - name: ruby-bundler
