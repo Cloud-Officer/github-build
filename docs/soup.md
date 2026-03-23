@@ -19,12 +19,12 @@
 | Ruby | hashdiff | 1.2.1 | MIT | Hashdiff is a diff lib to compute the smallest difference between two hashes | <https://github.com/liufengyun/hashdiff> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | httparty | 0.24.2 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2026-01-26 | High | HTTP client for GitHub REST API communication | Industry-standard Ruby HTTP client with active maintenance and security updates |
 | Ruby | i18n | 1.14.8 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | json | 2.19.1 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2026-01-26 | Low | Dependency | Dependency |
+| Ruby | json | 2.19.2 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | json-schema | 6.2.0 | MIT | Ruby JSON Schema Validator | <https://github.com/voxpupuli/json-schema/> | 2026-02-26 | Low | Dependency | Dependency |
 | Ruby | language_server-protocol | 3.17.0.5 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | lint_roller | 1.1.0 | MIT | A plugin specification for linter and formatter rulesets | <https://github.com/standardrb/lint_roller> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | logger | 1.7.0 | Ruby | Provides a simple logging utility for outputting messages. | <https://github.com/ruby/logger> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | mcp | 0.8.0 | Apache-2.0 | The official Ruby SDK for Model Context Protocol servers and clients | <https://github.com/modelcontextprotocol/ruby-sdk> | 2026-02-26 | Low | Dependency | Dependency |
+| Ruby | mcp | 0.9.0 | Apache-2.0 | The official Ruby SDK for Model Context Protocol servers and clients | <https://github.com/modelcontextprotocol/ruby-sdk> | 2026-02-26 | Low | Dependency | Dependency |
 | Ruby | mini_mime | 1.1.5 | MIT | A minimal mime type library | <https://github.com/discourse/mini_mime> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | minitest | 6.0.2 | MIT | minitest provides a complete suite of testing facilities supporting | <https://minite.st/> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | multi_xml | 0.8.1 | MIT | Provides swappable XML backends utilizing LibXML, Nokogiri, Ox, or REXML. | <https://github.com/sferik/multi_xml> | 2026-01-26 | Low | Dependency | Dependency |
@@ -61,4 +61,4 @@
 | Ruby | unicode-display_width | 3.2.0 | MIT | [Unicode 17.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, Emoji specification, and other data. | <https://github.com/janlelis/unicode-display_width> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | unicode-emoji | 4.2.0 | MIT | [Emoji 17.0] Provides Unicode Emoji data and regexes, incorporating the latest Unicode and Emoji standards | <https://github.com/janlelis/unicode-emoji> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | uri | 1.1.1 | Ruby | URI is a module providing classes to handle Uniform Resource Identifiers | <https://github.com/ruby/uri> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | webmock | 3.26.1 | MIT | WebMock allows stubbing HTTP requests and setting expectations on HTTP requests. | <https://github.com/bblimke/webmock> | 2026-01-26 | Low | HTTP request stubbing for tests | Most popular gem |
+| Ruby | webmock | 3.26.2 | MIT | WebMock allows stubbing HTTP requests and setting expectations on HTTP requests. | <https://github.com/bblimke/webmock> | 2026-01-26 | Low | HTTP request stubbing for tests | Most popular gem |
