@@ -71,7 +71,7 @@ options
         --skip_license_check         Skip license check
         --skip_repository_settings   Skip check of repository settings
         --skip_slack                 Skip slack
-        --no_strict_version_check    Do not exit with error when VERSION options
+        --no_strict_version_check    Do not auto-update when VERSION options
                                      do not match recommended defaults
     -h, --help                       Show this message
 ```

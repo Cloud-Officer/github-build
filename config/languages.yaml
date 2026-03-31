@@ -93,7 +93,7 @@ js:
     - .nvmrc
   setup_options:
     - name: node-version
-      value: 25.8.1
+      value: 25.8.2
     - name: node-always-auth
       value:
     - name: node-version-file
@@ -315,7 +315,7 @@ proto:
     - name: go-architecture
       value:
     - name: xcode-version
-      value: 26.3
+      value: 26.4
   dependencies:
     - dependency_file: go.mod
       install_dirs:

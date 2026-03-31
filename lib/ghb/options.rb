@@ -168,7 +168,7 @@ module GHB
         @skip_slack = true
       end
 
-      @parser.on('', '--no_strict_version_check', 'Do not exit with error when VERSION options do not match recommended defaults') do
+      @parser.on('', '--no_strict_version_check', 'Do not auto-update when VERSION options do not match recommended defaults') do
         @strict_version_check = false
       end
 

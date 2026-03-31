@@ -271,18 +271,15 @@ module GHB
 
             if file_version != option_value.to_s
               puts("\e[31m\n#{'*' * 80}")
+              puts("WARNING: Value mismatch for #{option[:name].upcase}")
+              puts("Version file (#{version_file}): #{file_version}")
+              puts("Recommended value: #{option_value}")
 
               if @options.strict_version_check
-                puts("ERROR: Value mismatch for #{option[:name].upcase}")
-                puts("Version file (#{version_file}): #{file_version}")
-                puts("Recommended value: #{option_value}")
-                puts('Strict version check is enabled. Exiting with error.')
+                puts("Updating #{version_file} to #{option_value}.")
                 puts("#{'*' * 80}\n\e[0m")
-                exit(Status::ERROR_EXIT_CODE)
+                File.write(version_file, "#{option_value}\n")
               else
-                puts("WARNING: Value mismatch for #{option[:name].upcase}")
-                puts("Version file (#{version_file}): #{file_version}")
-                puts("Recommended value: #{option_value}")
                 puts('Using version file.')
                 puts("#{'*' * 80}\n\e[0m")
               end
@@ -304,12 +301,12 @@ module GHB
           puts("\e[31m\n#{'*' * 80}")
 
           if @options.strict_version_check && option[:name].upcase.include?('VERSION')
-            puts("ERROR: Value mismatch for #{option[:name].upcase}")
+            puts("WARNING: Value mismatch for #{option[:name].upcase}")
             puts("Existing value: #{existing_value}")
             puts("Recommended value: #{option_value}")
-            puts('Strict version check is enabled. Exiting with error.')
+            puts("Updating #{option[:name].upcase} to #{option_value}.")
             puts("#{'*' * 80}\n\e[0m")
-            exit(Status::ERROR_EXIT_CODE)
+            @new_workflow.env[option[:name].upcase.to_sym] = option_value
           else
             puts("\e[31m\n#{'*' * 80}")
             puts("WARNING: Value mismatch for #{option[:name].upcase}")
