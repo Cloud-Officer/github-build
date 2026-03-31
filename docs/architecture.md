@@ -187,7 +187,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `skip_repository_settings`: Skip GitHub repository settings configuration
 - `skip_semgrep`: Skip semgrep linter
 - `skip_slack`: Skip Slack notification job
-- `strict_version_check`: Exit with error on version mismatch (default: true)
+- `strict_version_check`: Auto-update version files and env vars to recommended values on mismatch (default: true)
 
 ### GHB::Status
 
@@ -517,7 +517,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 4. In mono-repo mode, scans one level deep for subdirectory dependency files and generates per-subdirectory package manager and test steps
 5. Checks dependency files (including subdirectory files in mono-repo mode) for database dependencies (MongoDB, MySQL, Redis, Elasticsearch) using `file_contains?`
 6. Detects version files (`.ruby-version`, `.nvmrc`, etc.) and validates against recommended versions
-7. Merges setup options with version validation (strict mode exits on mismatch, non-strict warns)
+7. Merges setup options with version validation (strict mode auto-updates version files and env vars to recommended values, non-strict warns)
 8. Creates unit test workflow job with appropriate setup, package manager, and test steps
 9. For Swift projects with Xcode Cloud (`ci_scripts` directory), removes the unit test job from the workflow while retaining collected dependency info for the cron workflow
 

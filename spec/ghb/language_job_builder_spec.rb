@@ -438,20 +438,23 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(env_mismatch_workflow.env[:'MONGODB-VERSION']).to(eq('7.0'))
     end
 
-    it 'exits with error when strict_version_check is true and version file mismatches' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+    it 'auto-updates version file when strict_version_check is true and version file mismatches' do # rubocop:disable RSpec/ExampleLength
       stub_config_file_reads(go_language_yaml)
 
       allow(builder).to(receive_messages(find_files_matching: ['./main.go'], file_contains?: false))
       allow(File).to(receive(:file?).with('go.mod').and_return(true))
       allow(File).to(receive(:exist?).with('.go-version').and_return(true))
+      allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
       allow(File).to(receive(:read).with('.go-version').and_return("1.25.0\n"))
+      allow(File).to(receive(:write))
       allow($stdout).to(receive(:puts))
 
-      expect { builder.build }
-        .to(raise_error(SystemExit) { |e| expect(e.status).to(eq(GHB::Status::ERROR_EXIT_CODE)) })
+      builder.build
+
+      expect(File).to(have_received(:write).with('.go-version', "1.26.0\n"))
     end
 
-    it 'exits with error when strict_version_check is true and env VERSION value mismatches' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+    it 'auto-updates env VERSION value when strict_version_check is true and env VERSION value mismatches' do # rubocop:disable RSpec/ExampleLength
       version_mismatch_workflow = GHB::Workflow.new('CI')
       version_mismatch_workflow.env[:'MONGODB-VERSION'] = '7.0'
 
@@ -474,8 +477,9 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
       allow($stdout).to(receive(:puts))
 
-      expect { version_mismatch_builder.build }
-        .to(raise_error(SystemExit) { |e| expect(e.status).to(eq(GHB::Status::ERROR_EXIT_CODE)) })
+      version_mismatch_builder.build
+
+      expect(version_mismatch_workflow.env[:'MONGODB-VERSION']).to(eq('8.0.0'))
     end
 
     it 'adds Licenses step when Podfile.lock exists and skip_license_check is false' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
