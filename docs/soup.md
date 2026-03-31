@@ -2,11 +2,11 @@
 
 | **Language** | **Package** | **Version** | **License** | **Description** | **Website** | **Last Verified** | **Risk Level** | **Requirements** | **Verification Reasoning** |
 | :---: | :--- | :---: | :---: | :--- | :--- | :---: | :---: | :--- | :--- |
-| Ruby | activesupport | 8.1.2 | MIT | A toolkit of support libraries and Ruby core extensions extracted from the Rails framework | <https://rubyonrails.org> | 2026-01-26 | Low | Provide the deep symbolize and stringify methods on hash | Official Rails ecosystem library maintained by the Rails core team |
+| Ruby | activesupport | 8.1.3 | MIT | A toolkit of support libraries and Ruby core extensions extracted from the Rails framework | <https://rubyonrails.org> | 2026-01-26 | Low | Provide the deep symbolize and stringify methods on hash | Official Rails ecosystem library maintained by the Rails core team |
 | Ruby | addressable | 2.8.9 | Apache-2.0 | Addressable is an alternative implementation to the URI implementation that is | <https://github.com/sporkmonger/addressable> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | ast | 2.4.3 | MIT | A library for working with Abstract Syntax Trees. | <https://whitequark.github.io/ast/> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | base64 | 0.3.0 | Ruby | Support for encoding and decoding binary data using a Base64 representation. | <https://github.com/ruby/base64> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | bigdecimal | 4.0.1 | Ruby | This library provides arbitrary-precision decimal floating-point number class. | <https://github.com/ruby/bigdecimal> | 2026-01-26 | Low | Dependency | Dependency |
+| Ruby | bigdecimal | 4.1.0 | Ruby | This library provides arbitrary-precision decimal floating-point number class. | <https://github.com/ruby/bigdecimal> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | concurrent-ruby | 1.3.6 | MIT | Modern concurrency tools including agents, futures, promises, thread pools, actors, supervisors, and more. | <http://www.concurrent-ruby.com> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | connection_pool | 3.0.2 | MIT | Generic connection pool for Ruby | <https://github.com/mperham/connection_pool> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | crack | 1.0.1 | MIT | Really simple JSON and XML parsing, ripped from Merb and Rails. | <https://github.com/jnunemaker/crack> | 2026-01-26 | Low | Dependency | Dependency |
@@ -19,18 +19,16 @@
 | Ruby | hashdiff | 1.2.1 | MIT | Hashdiff is a diff lib to compute the smallest difference between two hashes | <https://github.com/liufengyun/hashdiff> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | httparty | 0.24.2 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2026-01-26 | High | HTTP client for GitHub REST API communication | Industry-standard Ruby HTTP client with active maintenance and security updates |
 | Ruby | i18n | 1.14.8 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | json | 2.19.1 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | json-schema | 6.2.0 | MIT | Ruby JSON Schema Validator | <https://github.com/voxpupuli/json-schema/> | 2026-02-26 | Low | Dependency | Dependency |
+| Ruby | json | 2.19.3 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | language_server-protocol | 3.17.0.5 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | lint_roller | 1.1.0 | MIT | A plugin specification for linter and formatter rulesets | <https://github.com/standardrb/lint_roller> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | logger | 1.7.0 | Ruby | Provides a simple logging utility for outputting messages. | <https://github.com/ruby/logger> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | mcp | 0.8.0 | Apache-2.0 | The official Ruby SDK for Model Context Protocol servers and clients | <https://github.com/modelcontextprotocol/ruby-sdk> | 2026-02-26 | Low | Dependency | Dependency |
 | Ruby | mini_mime | 1.1.5 | MIT | A minimal mime type library | <https://github.com/discourse/mini_mime> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | minitest | 6.0.2 | MIT | minitest provides a complete suite of testing facilities supporting | <https://minite.st/> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | multi_xml | 0.8.1 | MIT | Provides swappable XML backends utilizing LibXML, Nokogiri, Ox, or REXML. | <https://github.com/sferik/multi_xml> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | optparse | 0.8.1 | Ruby | OptionParser is a class for command-line option analysis | <https://github.com/ruby/optparse> | 2026-01-26 | Low | Command line argument parser | Ruby standard library gem maintained by the Ruby core team |
 | Ruby | parallel | 1.27.0 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | parser | 3.3.10.2 | MIT | A Ruby parser written in pure Ruby. | <https://github.com/whitequark/parser> | 2026-01-26 | Low | Dependency | Dependency |
+| Ruby | parser | 3.3.11.1 | MIT | A Ruby parser written in pure Ruby. | <https://github.com/whitequark/parser> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | prism | 1.9.0 | MIT | Prism Ruby parser | <https://github.com/ruby/prism> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | psych | 5.3.1 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2026-01-26 | Low | Yaml parser | Ruby standard library gem maintained by the Ruby core team |
 | Ruby | public_suffix | 7.0.5 | MIT | PublicSuffix can parse and decompose a domain name into top level domain, domain and subdomains. | <https://simonecarletti.com/code/publicsuffix-ruby> | 2026-01-26 | Low | Dependency | Dependency |
@@ -43,7 +41,7 @@
 | Ruby | rspec-expectations | 3.13.5 | MIT | rspec-expectations provides a simple, readable API to express expected outcomes of a code example. | <https://rspec.info> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | rspec-mocks | 3.13.8 | MIT | RSpec's 'test double' framework, with support for stubbing and mocking | <https://rspec.info> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | rspec-support | 3.13.7 | MIT | Support utilities for RSpec gems | <https://rspec.info> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | rubocop | 1.85.1 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2026-01-26 | Low | Ruby linter | Most popular gem on rubygems |
+| Ruby | rubocop | 1.86.0 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2026-01-26 | Low | Ruby linter | Most popular gem on rubygems |
 | Ruby | rubocop-ast | 1.49.1 | MIT | RuboCop's Node and NodePattern classes. | <https://www.rubocop.org/> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | rubocop-capybara | 2.22.1 | MIT | Code style checking for Capybara test files (RSpec, Cucumber, Minitest). | <https://github.com/rubocop/rubocop-capybara> | 2026-01-26 | Low | Ruby linter | Most popular gem |
 | Ruby | rubocop-graphql | 1.6.0 | MIT | A collection of RuboCop cops to improve GraphQL-related code | <https://github.com/DmitryTsepelev/rubocop-graphql> | 2026-01-26 | Low | Ruby linter | Most popular gem |
@@ -61,4 +59,4 @@
 | Ruby | unicode-display_width | 3.2.0 | MIT | [Unicode 17.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, Emoji specification, and other data. | <https://github.com/janlelis/unicode-display_width> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | unicode-emoji | 4.2.0 | MIT | [Emoji 17.0] Provides Unicode Emoji data and regexes, incorporating the latest Unicode and Emoji standards | <https://github.com/janlelis/unicode-emoji> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | uri | 1.1.1 | Ruby | URI is a module providing classes to handle Uniform Resource Identifiers | <https://github.com/ruby/uri> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | webmock | 3.26.1 | MIT | WebMock allows stubbing HTTP requests and setting expectations on HTTP requests. | <https://github.com/bblimke/webmock> | 2026-01-26 | Low | HTTP request stubbing for tests | Most popular gem |
+| Ruby | webmock | 3.26.2 | MIT | WebMock allows stubbing HTTP requests and setting expectations on HTTP requests. | <https://github.com/bblimke/webmock> | 2026-01-26 | Low | HTTP request stubbing for tests | Most popular gem |
