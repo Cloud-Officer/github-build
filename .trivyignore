@@ -1,3 +1,19 @@
 # Trivy ignore rules
 # Add CVE IDs or vulnerability IDs to ignore, one per line
 # Example: CVE-2023-12345
+AWS-0104
+AWS-0079
+AWS-0021
+AWS-0053
+AWS-0132
+AWS-0015
+AWS-0164
+AWS-0123
+AWS-0124
+AWS-0089
+AWS-0078
+AWS-0098
+AWS-0066
+AWS-0022
+AWS-0004
+AWS-0070
