@@ -27,7 +27,7 @@
 | Ruby | minitest | 6.0.3 | MIT | minitest provides a complete suite of testing facilities supporting | <https://minite.st/> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | multi_xml | 0.8.1 | MIT | Provides swappable XML backends utilizing LibXML, Nokogiri, Ox, or REXML. | <https://github.com/sferik/multi_xml> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | optparse | 0.8.1 | Ruby | OptionParser is a class for command-line option analysis | <https://github.com/ruby/optparse> | 2026-01-26 | Low | Command line argument parser | Ruby standard library gem maintained by the Ruby core team |
-| Ruby | parallel | 1.28.0 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2026-01-26 | Low | Dependency | Dependency |
+| Ruby | parallel | 2.0.0 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | parser | 3.3.11.1 | MIT | A Ruby parser written in pure Ruby. | <https://github.com/whitequark/parser> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | prism | 1.9.0 | MIT | Prism Ruby parser | <https://github.com/ruby/prism> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | psych | 5.3.1 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2026-01-26 | Low | Yaml parser | Ruby standard library gem maintained by the Ruby core team |
@@ -41,7 +41,7 @@
 | Ruby | rspec-expectations | 3.13.5 | MIT | rspec-expectations provides a simple, readable API to express expected outcomes of a code example. | <https://rspec.info> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | rspec-mocks | 3.13.8 | MIT | RSpec's 'test double' framework, with support for stubbing and mocking | <https://rspec.info> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | rspec-support | 3.13.7 | MIT | Support utilities for RSpec gems | <https://rspec.info> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | rubocop | 1.86.0 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2026-01-26 | Low | Ruby linter | Most popular gem on rubygems |
+| Ruby | rubocop | 1.86.1 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2026-01-26 | Low | Ruby linter | Most popular gem on rubygems |
 | Ruby | rubocop-ast | 1.49.1 | MIT | RuboCop's Node and NodePattern classes. | <https://www.rubocop.org/> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | rubocop-capybara | 2.22.1 | MIT | Code style checking for Capybara test files (RSpec, Cucumber, Minitest). | <https://github.com/rubocop/rubocop-capybara> | 2026-01-26 | Low | Ruby linter | Most popular gem |
 | Ruby | rubocop-graphql | 1.6.0 | MIT | A collection of RuboCop cops to improve GraphQL-related code | <https://github.com/DmitryTsepelev/rubocop-graphql> | 2026-01-26 | Low | Ruby linter | Most popular gem |

@@ -7,6 +7,7 @@ require 'httparty'
 require 'json'
 require 'psych'
 
+require_relative 'auto_merge_manager'
 require_relative 'aws_job_builder'
 require_relative 'code_deploy_job_builder'
 require_relative 'dependabot_manager'
@@ -35,6 +36,7 @@ module GHB
       @exit_code = Status::SUCCESS_EXIT_CODE
       @dependencies_steps = []
       @file_cache = {}
+      @auto_merge_workflow = Workflow.new('Auto-merge for code owners')
       @cron_workflow = Workflow.new('Cron Dependencies')
       @dockerhub_workflow = Workflow.new('Publish Docker image')
       @new_workflow = Workflow.new('Build')
@@ -112,6 +114,7 @@ module GHB
         dependencies_commands: @dependencies_commands
       ).save
 
+      AutoMergeManager.new(auto_merge_workflow: @auto_merge_workflow).save
       DockerhubManager.new(dockerhub_workflow: @dockerhub_workflow).save
       GitignoreManager.new(options: @options, submodules: @submodules, file_cache: @file_cache).update
       RepositoryConfigurator.new(options: @options, required_status_checks: @required_status_checks, default_branch: @default_branch).configure

@@ -176,6 +176,7 @@ trivy:
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/trivy
   config: ".trivyignore"
+  preserve_config: true
   path: "."
   pattern: "(.*\\.(tf)$)|(.*Dockerfile$)|(.*\\.(yaml|yml|json)$)|(.*/?(package-lock\\.json|yarn\\.lock|pnpm-lock\\.yaml|go\\.sum|requirements\\.txt|Pipfile\\.lock|poetry\\.lock|Gemfile\\.lock|composer\\.lock|pom\\.xml|build\\.gradle(\\.kts)?|Cargo\\.lock|Package\\.resolved)$)"
   content_match: "AWSTemplateFormatVersion"

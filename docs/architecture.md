@@ -28,7 +28,7 @@
 |  VariablesJobBuilder  |  LinterJobBuilder    |  LicensesJobBuilder    |
 |  LanguageJobBuilder   |  CodeDeployJobBuilder|  AwsJobBuilder         |
 |  SlackJobBuilder      |  DependabotManager   |  DockerhubManager      |
-|  GitignoreManager     |  RepositoryConfigurator                       |
+|  AutoMergeManager     |  GitignoreManager    |  RepositoryConfigurator|
 +------------------------------------------------------------------------+
          |  uses                       |  uses
          v                             v
@@ -64,7 +64,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 1. The CLI entry point (`bin/github-build.rb`) instantiates `GHB::Application`
 2. `Application` parses command-line options via `GHB::Options` and validates configuration
 3. `Application` delegates workflow generation to specialized builders: `VariablesJobBuilder`, `LinterJobBuilder`, `LicensesJobBuilder`, `LanguageJobBuilder`, `CodeDeployJobBuilder`, `AwsJobBuilder`, and `SlackJobBuilder`
-4. Post-generation managers handle output: `DependabotManager`, `DockerhubManager`, `GitignoreManager`, and `RepositoryConfigurator`
+4. Post-generation managers handle output: `DependabotManager`, `AutoMergeManager`, `DockerhubManager`, `GitignoreManager`, and `RepositoryConfigurator`
 5. `FileScanner` mixin provides shared pure-Ruby file operations to builders that need file pattern matching
 6. `GitHubAPIClient` centralizes GitHub REST API calls with retry logic for `RepositoryConfigurator`
 7. `Workflow`, `Job`, and `Step` classes model the GitHub Actions YAML structure
@@ -137,6 +137,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `GHB::DependabotManager`
 - `GHB::DockerhubManager`
 - `GHB::GitignoreManager`
+- `GHB::AutoMergeManager`
 - `GHB::RepositoryConfigurator`
 
 **External Dependencies:**
@@ -328,6 +329,17 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `initialize(options:, old_workflow:, new_workflow:)`: Accepts options and workflow objects
 - `build`: Creates the Slack notification job if not skipped
+
+### GHB::AutoMergeManager
+
+**Purpose:** Manages auto-merge workflow generation for code owners, enabling automatic squash-merge of pull requests authored by CODEOWNERS.
+
+**Location:** `lib/ghb/auto_merge_manager.rb`
+
+**Key Components:**
+
+- `initialize(auto_merge_workflow:)`: Accepts auto-merge workflow object
+- `save`: Configures the auto-merge workflow with CODEOWNERS detection and writes `.github/workflows/auto-merge.yml`
 
 ### GHB::DependabotManager
 
