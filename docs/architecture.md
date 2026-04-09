@@ -160,6 +160,9 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `initialize(argv)`: Sets up option parser with defaults
 - `parse`: Parses command-line arguments
 - `args_comment`: Generates comment header for persisting arguments
+
+**Private Methods:**
+
 - `args_from_file(file)`: Reads arguments from existing build file
 
 **Attributes:**
