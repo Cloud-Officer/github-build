@@ -102,6 +102,7 @@ RSpec.describe(GHB::AutoMergeManager) do
       expect(merge_step).not_to(be_nil)
       expect(merge_step.if).to(eq("steps.check.outputs.is_owner == 'true'"))
       expect(merge_step.run).to(eq('gh pr merge --auto --squash "$PR"'))
+      expect(merge_step.env[:GH_TOKEN]).to(eq('${{secrets.GITHUB_TOKEN}}'))
     end
   end
 end
