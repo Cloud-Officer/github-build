@@ -20,7 +20,7 @@ module GHB
 
       @auto_merge_workflow.permissions =
         {
-          contents: 'read',
+          contents: 'write',
           'pull-requests': 'write'
         }
 

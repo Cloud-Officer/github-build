@@ -40,7 +40,7 @@ RSpec.describe(GHB::AutoMergeManager) do
       expect(auto_merge_workflow.permissions).to(
         eq(
           {
-            contents: 'read',
+            contents: 'write',
             'pull-requests': 'write'
           }
         )
