@@ -94,6 +94,18 @@ module GHB
           )
         end
 
+        do_step('Approve PR') do
+          do_if("steps.check.outputs.is_owner == 'true'")
+          do_shell('bash')
+          do_env(
+            {
+              GH_TOKEN: '${{secrets.GITHUB_TOKEN}}',
+              PR: '${{github.event.pull_request.number}}'
+            }
+          )
+          do_run('gh pr review --approve "$PR"')
+        end
+
         do_step('Enable auto-merge') do
           do_if("steps.check.outputs.is_owner == 'true'")
           do_shell('bash')

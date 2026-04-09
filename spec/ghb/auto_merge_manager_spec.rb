@@ -84,6 +84,16 @@ RSpec.describe(GHB::AutoMergeManager) do
       expect(check_step.env[:GH_TOKEN]).to(eq('${{secrets.GH_PAT}}'))
     end
 
+    it 'includes an approve PR step' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager.save
+
+      approve_step = auto_merge_workflow.jobs[:enable_automerge].steps.find { |s| s.name == 'Approve PR' }
+      expect(approve_step).not_to(be_nil)
+      expect(approve_step.if).to(eq("steps.check.outputs.is_owner == 'true'"))
+      expect(approve_step.run).to(eq('gh pr review --approve "$PR"'))
+    end
+
     it 'includes an enable auto-merge step' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
       manager.save

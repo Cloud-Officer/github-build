@@ -37,8 +37,8 @@ jobs:
           exit 0
         fi
 
-        # Collect every @handle from non-comment, non-blank lines
-        handles=$(grep -vE '^\s*(#|$)' "$CODEOWNERS" \
+        # Collect @handles only from the catch-all (*) line — the repo-wide code owners
+        handles=$(grep -E '^\*\s' "$CODEOWNERS" \
           | grep -oE '@[A-Za-z0-9_.\-]+(/[A-Za-z0-9_.\-]+)?' \
           | sort -u)
 
@@ -69,6 +69,13 @@ jobs:
         GH_TOKEN: "${{secrets.GH_PAT}}"
         AUTHOR: "${{github.event.pull_request.user.login}}"
         ORG: "${{github.repository_owner}}"
+    - name: Approve PR
+      shell: bash
+      if: steps.check.outputs.is_owner == 'true'
+      run: gh pr review --approve "$PR"
+      env:
+        GH_TOKEN: "${{secrets.GH_PAT}}"
+        PR: "${{github.event.pull_request.number}}"
     - name: Enable auto-merge
       shell: bash
       if: steps.check.outputs.is_owner == 'true'

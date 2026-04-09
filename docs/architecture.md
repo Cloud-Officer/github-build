@@ -339,7 +339,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(auto_merge_workflow:)`: Accepts auto-merge workflow object
-- `save`: Configures the auto-merge workflow with CODEOWNERS detection and writes `.github/workflows/auto-merge.yml`
+- `save`: Configures the auto-merge workflow with CODEOWNERS detection, auto-approval, and writes `.github/workflows/auto-merge.yml`
 
 ### GHB::DependabotManager
 

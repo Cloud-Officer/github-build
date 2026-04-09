@@ -217,6 +217,7 @@ module GHB
       repo_settings = {
         has_wiki: false,
         has_projects: false,
+        allow_auto_merge: true,
         allow_merge_commit: false,
         allow_squash_merge: true,
         allow_rebase_merge: true,
