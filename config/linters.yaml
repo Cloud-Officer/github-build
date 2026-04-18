@@ -97,6 +97,7 @@ ktlint:
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/ktlint
   config: ".editorconfig"
+  preserve_config: true
   path: "."
   pattern: ".*\\.(kt|kts)$"
 markdownlint:
