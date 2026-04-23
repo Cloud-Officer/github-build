@@ -24,7 +24,7 @@
 | Ruby | lint_roller | 1.1.0 | MIT | A plugin specification for linter and formatter rulesets | <https://github.com/standardrb/lint_roller> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | logger | 1.7.0 | Ruby | Provides a simple logging utility for outputting messages. | <https://github.com/ruby/logger> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | mini_mime | 1.1.5 | MIT | A minimal mime type library | <https://github.com/discourse/mini_mime> | 2026-01-26 | Low | Dependency | Dependency |
-| Ruby | minitest | 6.0.4 | MIT | minitest provides a complete suite of testing facilities supporting | <https://minite.st/> | 2026-01-26 | Low | Dependency | Dependency |
+| Ruby | minitest | 6.0.5 | MIT | minitest provides a complete suite of testing facilities supporting | <https://minite.st/> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | multi_xml | 0.8.1 | MIT | Provides swappable XML backends utilizing LibXML, Nokogiri, Ox, or REXML. | <https://github.com/sferik/multi_xml> | 2026-01-26 | Low | Dependency | Dependency |
 | Ruby | optparse | 0.8.1 | Ruby | OptionParser is a class for command-line option analysis | <https://github.com/ruby/optparse> | 2026-01-26 | Low | Command line argument parser | Ruby standard library gem maintained by the Ruby core team |
 | Ruby | parallel | 2.0.1 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2026-01-26 | Low | Dependency | Dependency |
