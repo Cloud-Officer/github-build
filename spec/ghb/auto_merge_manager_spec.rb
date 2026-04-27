@@ -41,7 +41,8 @@ RSpec.describe(GHB::AutoMergeManager) do
         eq(
           {
             contents: 'write',
-            'pull-requests': 'write'
+            'pull-requests': 'write',
+            issues: 'write'
           }
         )
       )
