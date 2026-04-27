@@ -50,6 +50,7 @@
 |   build.yml       |
 |   dependencies.yml|
 |   docker.yml      |
+|   auto-merge.yml  |
 | .gitignore        |
 | Linter configs    |
 +-------------------+
