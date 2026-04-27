@@ -21,7 +21,8 @@ module GHB
       @auto_merge_workflow.permissions =
         {
           contents: 'write',
-          'pull-requests': 'write'
+          'pull-requests': 'write',
+          issues: 'write'
         }
 
       @auto_merge_workflow.do_job(:enable_automerge) do
