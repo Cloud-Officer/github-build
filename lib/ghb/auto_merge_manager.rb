@@ -106,18 +106,6 @@ module GHB
           )
           do_run('gh pr review --approve "$PR"')
         end
-
-        do_step('Enable auto-merge') do
-          do_if("steps.check.outputs.is_owner == 'true'")
-          do_shell('bash')
-          do_env(
-            {
-              GH_TOKEN: '${{secrets.GITHUB_TOKEN}}',
-              PR: '${{github.event.pull_request.number}}'
-            }
-          )
-          do_run('gh pr merge --auto --squash "$PR"')
-        end
       end
 
       @auto_merge_workflow.write('.github/workflows/auto-merge.yml')
