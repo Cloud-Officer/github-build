@@ -196,18 +196,18 @@ RSpec.describe(GHB::GitignoreManager) do
   end
 
   describe '#build_gitignore_excluded_paths (private)' do
-    it 'includes excluded_folders from --excluded_folders option' do
+    it 'includes excluded_folders from --excluded_folders option' do # rubocop:disable RSpec/ExampleLength
       options = instance_double(
         GHB::Options,
         skip_gitignore: false,
         gitignore_config_file: 'config/gitignore.yaml',
         languages_config_file: 'config/languages.yaml',
-        excluded_folders: ['var', 'tmp']
+        excluded_folders: %w[var tmp]
       )
       mgr = described_class.new(options: options, submodules: ['pnp-scripts'], file_cache: {})
       allow(mgr).to(receive(:excluded_dirs_from_config).and_return(['.git']))
 
-      expect(mgr.__send__(:build_gitignore_excluded_paths)).to(eq(['.git', 'pnp-scripts', 'var', 'tmp']))
+      expect(mgr.__send__(:build_gitignore_excluded_paths)).to(eq(%w[.git pnp-scripts var tmp]))
     end
   end
 
