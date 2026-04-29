@@ -131,9 +131,9 @@ module GHB
       templates.to_a.sort
     end
 
-    # Build excluded paths from languages.yaml config + submodules - pure Ruby approach (SEC-002)
+    # Build excluded paths from languages.yaml config + submodules + --excluded_folders (SEC-002)
     def build_gitignore_excluded_paths
-      excluded_dirs_from_config + @submodules
+      excluded_dirs_from_config + @submodules + @options.excluded_folders
     end
 
     def template_detected?(detection_config, excluded_paths)
