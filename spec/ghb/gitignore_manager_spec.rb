@@ -8,7 +8,8 @@ RSpec.describe(GHB::GitignoreManager) do
       GHB::Options,
       skip_gitignore: false,
       gitignore_config_file: 'config/gitignore.yaml',
-      languages_config_file: 'config/languages.yaml'
+      languages_config_file: 'config/languages.yaml',
+      excluded_folders: []
     )
   end
   let(:manager) { described_class.new(options: mock_options, submodules: submodules, file_cache: file_cache) }
@@ -191,6 +192,22 @@ RSpec.describe(GHB::GitignoreManager) do
       result = manager.__send__(:detect_gitignore_templates, config)
 
       expect(result).to(include('ruby'))
+    end
+  end
+
+  describe '#build_gitignore_excluded_paths (private)' do
+    it 'includes excluded_folders from --excluded_folders option' do # rubocop:disable RSpec/ExampleLength
+      options = instance_double(
+        GHB::Options,
+        skip_gitignore: false,
+        gitignore_config_file: 'config/gitignore.yaml',
+        languages_config_file: 'config/languages.yaml',
+        excluded_folders: %w[var tmp]
+      )
+      mgr = described_class.new(options: options, submodules: ['pnp-scripts'], file_cache: {})
+      allow(mgr).to(receive(:excluded_dirs_from_config).and_return(['.git']))
+
+      expect(mgr.__send__(:build_gitignore_excluded_paths)).to(eq(%w[.git pnp-scripts var tmp]))
     end
   end
 
