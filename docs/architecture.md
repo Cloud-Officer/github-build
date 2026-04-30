@@ -577,7 +577,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 1. Loads detection rules from `config/gitignore.yaml`
 2. Adds always-enabled templates (OS, IDEs)
-3. For each extension detection entry, checks file extensions using `find_files_matching` (with config-driven excluded paths from `languages.yaml` plus submodules), specific files that indicate the technology, and package dependencies in manifest files using pure Ruby regex
+3. For each extension detection entry, checks file extensions using `find_files_matching` (with excluded paths combining config-driven directories from `languages.yaml`, submodules, and the `--excluded_folders` option), specific files that indicate the technology, and package dependencies in manifest files using pure Ruby regex
 4. Fetches templates from gitignore.io API via HTTParty
 5. Applies project-specific modifications (uncomment JetBrains patterns, comment out conflicting directory patterns like `bin/`, `lib/`, `var/`)
 6. Always appends AI assistant ignore patterns (Claude Code, Cursor, Copilot, OpenAI Codex) via `detect_custom_patterns` to prevent accidental commits even if the tool isn't actively used
