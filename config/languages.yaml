@@ -57,7 +57,7 @@ go:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.26.2
+      value: 1.26.3
     - name: go-version-file
       value:
     - name: go-check-latest
@@ -93,7 +93,7 @@ js:
     - .nvmrc
   setup_options:
     - name: node-version
-      value: 25.9.0
+      value: 26.1.0
     - name: node-always-auth
       value:
     - name: node-version-file
@@ -253,7 +253,7 @@ php:
     - .php-version
   setup_options:
     - name: php-version
-      value: 8.5.5
+      value: 8.5.6
     - name: php-version-file
       value:
     - name: php-extensions
@@ -301,7 +301,7 @@ proto:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.26.2
+      value: 1.26.3
     - name: go-version-file
       value:
     - name: go-check-latest
