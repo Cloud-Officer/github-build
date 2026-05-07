@@ -514,6 +514,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+docs/code-review.md
 # End of https://www.toptal.com/developers/gitignore/api/eclipse,emacs,jetbrains,linux,macos,netbeans,nova,ruby,rubymine,sublimetext,vim,visualstudiocode,windows
 
 # BEGIN AI Assistants
