@@ -100,7 +100,7 @@ module GHB
           do_shell('bash')
           do_env(
             {
-              GH_TOKEN: '${{secrets.GITHUB_TOKEN}}',
+              GH_TOKEN: '${{secrets.GH_BOT_PAT}}',
               PR: '${{github.event.pull_request.number}}'
             }
           )

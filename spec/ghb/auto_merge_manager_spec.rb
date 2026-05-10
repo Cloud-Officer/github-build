@@ -93,6 +93,7 @@ RSpec.describe(GHB::AutoMergeManager) do
       expect(approve_step).not_to(be_nil)
       expect(approve_step.if).to(eq("steps.check.outputs.is_owner == 'true'"))
       expect(approve_step.run).to(eq('gh pr review --approve "$PR"'))
+      expect(approve_step.env[:GH_TOKEN]).to(eq('${{secrets.GH_BOT_PAT}}'))
     end
 
     it 'does not include an enable auto-merge step' do
