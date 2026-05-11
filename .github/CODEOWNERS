@@ -4,12 +4,12 @@
 
 # build/deploy related files
 
-.github/                 @Cloud-Officer/maintainers
-.gitignore               @Cloud-Officer/maintainers
-.markdownlint-cli2.yaml  @Cloud-Officer/maintainers
-.rubocop.yml             @Cloud-Officer/maintainers
-.ruby-version            @Cloud-Officer/maintainers
-.shellcheckrc            @Cloud-Officer/maintainers
-.yamllint.yml            @Cloud-Officer/maintainers
-bin/                     @Cloud-Officer/maintainers
-lib/                     @Cloud-Officer/maintainers
+.github/                 @Cloud-Officer/Maintainers
+.gitignore               @Cloud-Officer/Maintainers
+.markdownlint-cli2.yaml  @Cloud-Officer/Maintainers
+.rubocop.yml             @Cloud-Officer/Maintainers
+.ruby-version            @Cloud-Officer/Maintainers
+.shellcheckrc            @Cloud-Officer/Maintainers
+.yamllint.yml            @Cloud-Officer/Maintainers
+bin/                     @Cloud-Officer/Maintainers
+lib/                     @Cloud-Officer/Maintainers

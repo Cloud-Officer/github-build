@@ -343,7 +343,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(auto_merge_workflow:)`: Accepts auto-merge workflow object
-- `save`: Configures the auto-merge workflow with CODEOWNERS detection and auto-approval, and writes `.github/workflows/auto-merge.yml`
+- `save`: Configures the auto-merge workflow with CODEOWNERS detection and auto-approval, and writes `.github/workflows/auto-merge.yml`. The CODEOWNERS membership check uses `GH_PAT`, while the approval step uses `GH_BOT_PAT` so the bot identity satisfies the `require_code_owner_reviews` branch-protection rule
 
 ### GHB::DependabotManager
 
@@ -555,7 +555,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 6. Collects required status checks from generated workflow jobs
 7. Validates existing checks match expected checks (only for existing protection)
 8. Preserves existing dismissal restrictions and bypass allowances
-9. Configures branch protection with required status checks, pull request reviews, signed commits, and conversation resolution
+9. Configures branch protection with required status checks, code-owner review enforcement (`require_code_owner_reviews: true`), pull request reviews, signed commits, and conversation resolution
 10. Configures repository options: enables vulnerability alerts and automated security fixes, disables wiki and projects, configures merge strategies, and enables delete branch on merge
 11. Enables secret scanning features (push protection, validity checks, non-provider patterns, AI detection) for public repos; disables them for private repos (GHAS cost avoidance)
 12. Enables CodeQL default setup for public repos; disables it for private repos (GHAS cost avoidance)
@@ -589,14 +589,15 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 **Authentication:**
 
-- GitHub API calls use personal access tokens (GH_PAT secret)
-- SSH keys used for repository checkout (SSH_KEY secret)
+- GitHub API calls use personal access tokens (`GH_PAT` secret for most workflows; `GH_BOT_PAT` for auto-merge approvals so the bot identity satisfies the code-owner review rule)
+- Repository configuration uses `GITHUB_TOKEN` from the runtime environment
+- SSH keys used for repository checkout (`SSH_KEY` secret)
 - AWS credentials for CodeDeploy operations
 
 **Authorization:**
 
 - Repository settings only modifiable with appropriate token permissions
-- Branch protection enforces code review requirements
+- Branch protection enforces code review requirements, including code-owner reviews
 - Required status checks prevent merging broken code
 
 **Input Validation:**
