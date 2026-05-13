@@ -193,6 +193,11 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `skip_semgrep`: Skip semgrep linter
 - `skip_slack`: Skip Slack notification job
 - `strict_version_check`: Auto-update version files and env vars to recommended values on mismatch (default: true)
+- `sync_required_status_checks`: On branch protection check mismatch, overwrite the remote check list with the expected one instead of erroring (useful when renaming jobs or matrix values)
+
+**Constants:**
+
+- `EPHEMERAL_FLAGS`: One-shot flags (e.g. `--sync_required_status_checks`) that are stripped from `original_argv` so they are not persisted to the generated workflow header
 
 ### GHB::Status
 
@@ -553,7 +558,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 4. Detects Vercel integration (Next.js) and CodeQL languages, filtering redundant entries
 5. Discovers Xcode Cloud checks dynamically when `ci_scripts` directory exists: extracts from existing branch protection or from commit statuses on the default branch for new repos
 6. Collects required status checks from generated workflow jobs
-7. Validates existing checks match expected checks (only for existing protection)
+7. Validates existing checks match expected checks (only for existing protection); on mismatch, raises an error unless `--sync_required_status_checks` is set, in which case the remote check list is rebuilt from `expected_checks` while preserving `app_id` values for existing entries (so integration-specific configurations such as Xcode Cloud checks are not clobbered)
 8. Preserves existing dismissal restrictions and bypass allowances
 9. Configures branch protection with required status checks, code-owner review enforcement (`require_code_owner_reviews: true`), pull request reviews, signed commits, and conversation resolution
 10. Configures repository options: enables vulnerability alerts and automated security fixes, disables wiki and projects, configures merge strategies, and enables delete branch on merge

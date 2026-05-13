@@ -330,7 +330,7 @@ proto:
       dependabot_ecosystem: gomod
   unit_test_framework_name: Protoc
   unit_test_framework_default: protoc
-  runs-on: macos-latest
+  runs-on: macos-26
 python:
   short_name: python
   long_name: Python
@@ -376,7 +376,7 @@ swift:
   short_name: swift
   long_name: Swift
   file_extension: swift
-  runs-on: macos-latest
+  runs-on: macos-26
   dependencies:
     - dependency_file: Gemfile
       install_dirs:

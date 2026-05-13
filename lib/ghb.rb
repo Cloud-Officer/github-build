@@ -15,7 +15,7 @@ module GHB
   OPTIONS_REDIS_CONFIG_FILE = 'config/options/redis.yaml'
   OPTIONS_ELASTICSEARCH_CONFIG_FILE = 'config/options/elasticsearch.yaml'
   DEFAULT_UBUNTU_VERSION = 'ubuntu-latest'
-  DEFAULT_MACOS_VERSION = 'macos-latest'
+  DEFAULT_MACOS_VERSION = 'macos-26'
   DEFAULT_JOB_TIMEOUT_MINUTES = 30
 
   private_constant :CI_ACTIONS_VERSION
