@@ -432,8 +432,8 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       let(:current_protection) do
         {
           required_status_checks: {
-            contexts: ['Build', 'StaleCheck'],
-            checks: [{ 'context' => 'Build', 'app_id' => 42 }, { 'context' => 'StaleCheck', 'app_id' => nil }]
+            contexts: %w[Build StaleCheck],
+            checks: [{ context: 'Build', app_id: 42 }, { context: 'StaleCheck', app_id: nil }]
           },
           required_pull_request_reviews: {}
         }
@@ -459,31 +459,29 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
       end
 
+      let(:expected_checks_payload) do
+        hash_including(
+          required_status_checks: {
+            strict: false,
+            checks: [
+              { context: 'Build', app_id: 42 },
+              { context: 'Lint', app_id: nil }
+            ]
+          }
+        )
+      end
+
       before do
         allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
         allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
         allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
         allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
-        allow(github_client).to(receive(:put).and_return(empty_response))
-        allow(github_client).to(receive(:post).and_return(empty_response))
-        allow(github_client).to(receive(:patch).and_return(empty_response))
+        allow(github_client).to(receive_messages(put: empty_response, post: empty_response, patch: empty_response))
+        configurator.configure
       end
 
-      it 'does not raise and rewrites branch protection with expected checks while preserving app_ids' do
-        expect { configurator.configure }.not_to(raise_error)
-
-        expect(github_client).to(have_received(:put).with(
-          "#{repo_url}/branches/#{default_branch}/protection",
-          body: hash_including(
-            required_status_checks: {
-              strict: false,
-              checks: [
-                { context: 'Build', app_id: 42 },
-                { context: 'Lint', app_id: nil }
-              ]
-            }
-          )
-        ))
+      it 'rewrites branch protection with expected checks while preserving app_ids' do
+        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: expected_checks_payload))
       end
     end
 
