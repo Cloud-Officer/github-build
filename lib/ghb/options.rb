@@ -8,12 +8,15 @@ require_relative 'status'
 module GHB
   class Options
     ARGS_COMMENT_PREFIX = '# github-build'
+    # Flags that are one-shot in nature and must not be persisted to the generated workflow header.
+    EPHEMERAL_FLAGS = %w[--sync_required_status_checks].freeze
     private_constant :ARGS_COMMENT_PREFIX
+    private_constant :EPHEMERAL_FLAGS
 
     def initialize(argv = [])
       @application_name = Dir.pwd.split('/').last.split('-').last
       @argv = argv.empty? ? args_from_file(DEFAULT_BUILD_FILE) : argv.dup
-      @original_argv = @argv.dup
+      @original_argv = @argv.reject { |arg| EPHEMERAL_FLAGS.include?(arg) }
       @build_file = DEFAULT_BUILD_FILE
       @excluded_folders = []
       @force_codedeploy_setup = false
@@ -38,11 +41,12 @@ module GHB
       @get_ignored_folders = false
       @skip_slack = false
       @strict_version_check = true
+      @sync_required_status_checks = false
 
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :mono_repo, :only_dependabot, :options_config_file_apt, :options_config_file_elasticsearch, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :original_argv, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check
+    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :mono_repo, :only_dependabot, :options_config_file_apt, :options_config_file_elasticsearch, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :original_argv, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check, :sync_required_status_checks
 
     def parse
       @parser.parse!(@argv)
@@ -170,6 +174,10 @@ module GHB
 
       @parser.on('', '--no_strict_version_check', 'Do not auto-update when VERSION options do not match recommended defaults') do
         @strict_version_check = false
+      end
+
+      @parser.on('', '--sync_required_status_checks', 'On branch protection check mismatch, overwrite remote check list with the expected one instead of erroring (useful when renaming jobs/matrix values)') do
+        @sync_required_status_checks = true
       end
 
       @parser.on_tail('-h', '--help', 'Show this message') do

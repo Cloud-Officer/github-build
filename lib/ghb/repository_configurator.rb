@@ -107,11 +107,15 @@ module GHB
             extra_checks.each { |check| puts("          + #{check}") }
           end
 
-          raise('Error: branch protection checks mismatch!')
+          raise('Error: branch protection checks mismatch!') unless @options.sync_required_status_checks
+
+          puts('        --sync_required_status_checks set: overwriting remote check list with expected')
+          sync_required_status_checks = true
         end
       else
         puts('        No existing branch protection, will create with expected checks')
       end
+      sync_required_status_checks ||= false
 
       # Preserve existing dismissal restrictions or use empty defaults
       dismissal_users = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'users')&.map { |u| u['login'] } || []
@@ -121,10 +125,18 @@ module GHB
       bypass_users = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'users')&.map { |u| u['login'] } || []
       bypass_teams = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'teams')&.map { |t| t['slug'] } || []
 
-      # Use existing checks if protection exists, otherwise build from expected checks
+      # Use existing checks if protection exists, otherwise build from expected checks.
+      # When syncing, rebuild from expected_checks but preserve app_id from existing entries
+      # to avoid clobbering integration-specific check configurations (e.g. Xcode Cloud).
       status_checks =
-        if protection_exists
+        if protection_exists && !sync_required_status_checks
           current_protection.dig('required_status_checks', 'checks') || []
+        elsif protection_exists && sync_required_status_checks
+          existing_app_ids =
+            (current_protection.dig('required_status_checks', 'checks') || []).to_h do |check|
+              [check['context'], check['app_id']]
+            end
+          expected_checks.map { |check| { context: check, app_id: existing_app_ids.fetch(check, nil) } }
         else
           expected_checks.map { |check| { context: check, app_id: nil } }
         end

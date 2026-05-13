@@ -261,6 +261,18 @@ RSpec.describe(GHB::Options) do
 
       expect(comment).to(eq("# github-build --organization TestOrg --skip_slack\n"))
     end
+
+    it 'omits ephemeral flags from the persisted comment' do
+      options = described_class.new(['--organization', 'TestOrg', '--sync_required_status_checks', '--skip_slack']).parse
+
+      expect(options.args_comment).to(eq("# github-build --organization TestOrg --skip_slack\n"))
+    end
+
+    it 'still parses ephemeral flags into option state' do
+      options = described_class.new(['--sync_required_status_checks']).parse
+
+      expect(options.sync_required_status_checks).to(be(true))
+    end
   end
 
   describe 'args_from_file (private)' do
