@@ -169,6 +169,7 @@ swiftlint:
   long_name: Swift Linter
   uses: cloud-officer/ci-actions/linters/swiftlint
   config: ".swiftlint.yml"
+  preserve_config: true
   path: "."
   pattern: ".*\\.(swift)$"
 trivy:
