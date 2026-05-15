@@ -8,6 +8,9 @@ require_relative 'job'
 
 module GHB
   class Workflow
+    GITHUB_ENV_VAR_REGEX = /\$\{GITHUB_([A-Z_]+)\}/
+    private_constant :GITHUB_ENV_VAR_REGEX
+
     def initialize(name)
       @name = name
       @run_name = nil
@@ -114,13 +117,8 @@ module GHB
 
     def write(file, header: '')
       FileUtils.mkdir_p(File.dirname(file))
-      content = header + to_h.deep_stringify_keys.to_yaml({ line_width: -1 })
-
-      # Convert old-style ${GITHUB_*} patterns to new-style ${{github.*}}
-      content.gsub!(/\$\{GITHUB_([A-Z_]+)\}/) do |_match|
-        var_name = ::Regexp.last_match(1).downcase
-        "${{github.#{var_name}}}"
-      end
+      data = rewrite_github_refs(to_h.deep_stringify_keys)
+      content = header + data.to_yaml({ line_width: -1 })
 
       # Convert secrets.GITHUB_TOKEN to secrets.GH_PAT for higher rate limits
       content.gsub!('${{secrets.GITHUB_TOKEN}}', '${{secrets.GH_PAT}}') unless file.include?('auto-merge')
@@ -139,6 +137,26 @@ module GHB
       hash[:concurrency] = @concurrency unless @concurrency.empty?
       hash[:jobs] = @jobs.transform_values(&:to_h)
       hash
+    end
+
+    private
+
+    # Rewrite ${GITHUB_*} -> ${{github.*}} in YAML values, but skip shell `run:`
+    # bodies - there ${GITHUB_*} is the runner-exported env-var form and
+    # ${{github.*}} is opaque to shellcheck (SC2193).
+    def rewrite_github_refs(node)
+      case node
+      when Hash
+        node.each_with_object({}) do |(key, value), acc|
+          acc[key] = key.to_s == 'run' ? value : rewrite_github_refs(value)
+        end
+      when Array
+        node.map { |item| rewrite_github_refs(item) }
+      when String
+        node.gsub(GITHUB_ENV_VAR_REGEX) { "${{github.#{::Regexp.last_match(1).downcase}}}" }
+      else
+        node
+      end
     end
   end
 end
