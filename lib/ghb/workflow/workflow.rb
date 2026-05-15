@@ -116,11 +116,11 @@ module GHB
       FileUtils.mkdir_p(File.dirname(file))
       content = header + to_h.deep_stringify_keys.to_yaml({ line_width: -1 })
 
-      # Convert old-style ${GITHUB_*} patterns to new-style ${{github.*}}
-      content.gsub!(/\$\{GITHUB_([A-Z_]+)\}/) do |_match|
-        var_name = ::Regexp.last_match(1).downcase
-        "${{github.#{var_name}}}"
-      end
+      # NOTE: do NOT rewrite ${GITHUB_*} -> ${{github.*}}. Shell `run:` blocks
+      # legitimately use the ${GITHUB_*} env-var form (set by the runner), and
+      # ${{github.*}} inside a shell expression is opaque to shellcheck and
+      # trips SC2193. Authors writing if:/env:/with: should use ${{github.*}}
+      # directly; we won't auto-translate one form into the other.
 
       # Convert secrets.GITHUB_TOKEN to secrets.GH_PAT for higher rate limits
       content.gsub!('${{secrets.GITHUB_TOKEN}}', '${{secrets.GH_PAT}}') unless file.include?('auto-merge')
