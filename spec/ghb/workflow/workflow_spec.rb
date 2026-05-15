@@ -295,6 +295,21 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       end
     end
 
+    it 'preserves ${GITHUB_*} inside shell run: blocks' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      workflow.do_job(:build) do
+        do_runs_on('ubuntu-latest')
+        do_step('echo sha') do
+          do_run('echo "$GITHUB_SHA ${GITHUB_REF}"')
+        end
+      end
+      workflow.write(temp_file)
+
+      expect(File).to(have_received(:write)) do |_, content|
+        expect(content).to(include('${GITHUB_REF}'))
+        expect(content).not_to(include('${{github.ref}}'))
+      end
+    end
+
     it 'converts secrets.GITHUB_TOKEN to secrets.GH_PAT' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       workflow.do_env({ TOKEN: '${{secrets.GITHUB_TOKEN}}' })
       workflow.write(temp_file)
