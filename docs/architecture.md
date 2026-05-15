@@ -420,7 +420,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `initialize(name)`: Creates workflow with name
 - `read(file)`: Parses existing workflow YAML file
-- `write(file, header:)`: Writes workflow to YAML file
+- `write(file, header:)`: Writes workflow to YAML file, applying two transformations via `rewrite_github_refs`: rewrites `${GITHUB_*}` references to `${{github.*}}` in YAML values while preserving them in shell `run:` bodies (where they are runner-exported env vars), and substitutes `${{secrets.GITHUB_TOKEN}}` with `${{secrets.GH_PAT}}` for higher rate limits (except in the auto-merge workflow)
 - `do_job(id, &block)`: DSL method to define jobs
 - `to_h`: Converts workflow to hash for YAML serialization
 
