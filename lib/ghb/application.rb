@@ -131,8 +131,8 @@ module GHB
 
     def configure_options(argv)
       Options.new(argv).parse
-    rescue OptionParser::InvalidOption => e
-      puts("Error: #{e}")
+    rescue OptionParser::ParseError => e
+      warn("Error: #{e}")
       exit(Status::ERROR_EXIT_CODE)
     end
 
