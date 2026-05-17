@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'psych'
 require 'uri'
 
 require_relative 'github_api_client'
@@ -49,6 +50,18 @@ module GHB
     def configure_branch_protection(github_client, repo_url, current_protection, protection_exists)
       # Add Vercel check if Next.js project
       @required_status_checks << 'Vercel' if File.exist?('package.json') && File.read('package.json').include?('"next"')
+
+      # Add checks for a hand-maintained .github/workflows/smoke.yml. That
+      # workflow is intentionally NOT generated (e.g. ci-actions smoke-tests
+      # its own composite actions), so its jobs are absent from
+      # @required_status_checks; discover them here so they stay required
+      # across regenerations. Job names are read dynamically so renaming a
+      # smoke job needs no generator change.
+      smoke_workflow = '.github/workflows/smoke.yml'
+      if File.exist?(smoke_workflow)
+        smoke_jobs = (Psych.safe_load(File.read(smoke_workflow)) || {})['jobs'] || {}
+        smoke_jobs.each { |job_id, job| @required_status_checks << ((job && job['name']) || job_id.to_s) }
+      end
 
       # Check for CodeQL default setup
       codeql_response = github_client.get("#{repo_url}/code-scanning/default-setup", expected_codes: nil)

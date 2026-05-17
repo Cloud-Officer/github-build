@@ -26,6 +26,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
     allow(Dir).to(receive(:pwd).and_return("/home/user/#{repository}"))
     allow(GHB::GitHubAPIClient).to(receive(:new).with(github_token).and_return(github_client))
     allow(File).to(receive(:exist?).with('package.json').and_return(false))
+    allow(File).to(receive(:exist?).with('.github/workflows/smoke.yml').and_return(false))
     allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(false))
   end
 
@@ -592,6 +593,83 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
             body: hash_including(
               required_status_checks: hash_including(
                 checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }]
+              )
+            )
+          )
+        )
+      end
+    end
+
+    context 'when .github/workflows/smoke.yml exists (smoke-test detection)' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:repo_info_response) do
+        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
+      end
+
+      let(:protection_response) do
+        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
+      end
+
+      let(:codeql_default_setup_response) do
+        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
+      end
+
+      let(:codeql_get_response) do
+        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
+      end
+
+      let(:ok_response) do
+        instance_double(HTTParty::Response, code: 200, body: '{}')
+      end
+
+      let(:accepted_response) do
+        instance_double(HTTParty::Response, code: 202, body: '{}')
+      end
+
+      let(:smoke_yaml) do
+        <<~YAML
+          ---
+          name: Smoke
+          'on': [push]
+          jobs:
+            action-contracts:
+              name: Action contracts (all 28)
+            linters-smoke:
+              name: Linter actions (disabled path)
+            variables-smoke:
+        YAML
+      end
+
+      before do
+        allow(File).to(receive(:exist?).with('.github/workflows/smoke.yml').and_return(true))
+        allow(File).to(receive(:read).with('.github/workflows/smoke.yml').and_return(smoke_yaml))
+
+        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
+        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
+        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
+      end
+
+      it 'adds each smoke job (by name, falling back to job id) to the expected checks' do # rubocop:disable RSpec/ExampleLength
+        configurator.configure
+
+        expect(github_client).to(
+          have_received(:put).with(
+            "#{repo_url}/branches/#{default_branch}/protection",
+            body: hash_including(
+              required_status_checks: hash_including(
+                checks: [
+                  { context: 'Build', app_id: nil },
+                  { context: 'Lint', app_id: nil },
+                  { context: 'Action contracts (all 28)', app_id: nil },
+                  { context: 'Linter actions (disabled path)', app_id: nil },
+                  { context: 'variables-smoke', app_id: nil }
+                ]
               )
             )
           )
