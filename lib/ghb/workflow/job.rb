@@ -4,8 +4,13 @@ require_relative '../../ghb'
 require_relative 'step'
 
 module GHB
-  # Data model for GitHub Actions job - instance variables map to YAML schema
+  # Data model for GitHub Actions job - instance variables map to YAML schema.
+  # Any new copyable ivar must be added to COPYABLE_PROPERTIES.
   class Job
+    # Properties carried over from a previously-generated job by copy_properties.
+    COPYABLE_PROPERTIES = %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets].freeze
+    public_constant :COPYABLE_PROPERTIES
+
     def initialize(id)
       @id = id
       @name = nil
@@ -31,7 +36,7 @@ module GHB
 
     attr_accessor :id, :name, :permissions, :needs, :if, :runs_on, :environment, :concurrency, :outputs, :env, :defaults, :steps, :timeout_minutes, :strategy, :continue_on_error, :container, :services, :uses, :with, :secrets
 
-    def copy_properties(object, properties)
+    def copy_properties(object, properties = COPYABLE_PROPERTIES)
       return if object.nil?
 
       properties.each do |property|

@@ -15,21 +15,19 @@ module GHB
       return unless File.exist?('.aws')
 
       puts('    Adding aws commands...')
-      needs = @new_workflow.jobs.keys.map(&:to_s)
-      base_condition = "always() && (needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
-      job_conditions = @new_workflow.jobs.keys.map { |job_name| "needs.#{job_name}.result != 'failure'" }
-      if_statement = ([base_condition] + job_conditions).join(' && ')
+      needs = @new_workflow.deploy_needs
+      if_statement = @new_workflow.deploy_if_statement
       old_workflow = @old_workflow
 
       @new_workflow.do_job(:aws) do
-        copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
+        copy_properties(old_workflow.jobs[id])
         do_name('AWS')
         do_runs_on(DEFAULT_UBUNTU_VERSION)
         do_needs(needs)
-        do_if("${{#{if_statement}}}")
+        do_if(if_statement)
 
         do_step('AWS Commands') do
-          copy_properties(find_step(old_workflow.jobs[:aws]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+          copy_properties(find_step(old_workflow.jobs[:aws]&.steps, name))
           do_uses("cloud-officer/ci-actions/aws@#{CI_ACTIONS_VERSION}")
 
           if with.empty?

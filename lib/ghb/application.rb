@@ -234,12 +234,12 @@ module GHB
 
       @new_workflow.run_name = @old_workflow.run_name unless @old_workflow.run_name.nil?
       @new_workflow.permissions =
-        if @old_workflow.permissions.is_a?(Hash) && @old_workflow.permissions.any?
+        if @old_workflow.permissions.any?
           @old_workflow.permissions
         else
           { contents: 'read', 'pull-requests': 'read' }
         end
-      @new_workflow.env = @old_workflow.env.is_a?(Hash) ? @old_workflow.env : {}
+      @new_workflow.env = @old_workflow.env
       @new_workflow.defaults = @old_workflow.defaults || {}
       @new_workflow.concurrency = @old_workflow.concurrency || {}
     end
