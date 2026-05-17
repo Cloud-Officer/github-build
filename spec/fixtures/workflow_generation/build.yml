@@ -1,0 +1,133 @@
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+  pull-requests: read
+env:
+  RUBY-BUNDLER-CACHE: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v2
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{secrets.GH_PAT}}"
+  rubocop:
+    name: Ruby Linter
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Rubocop
+      uses: cloud-officer/ci-actions/linters/rubocop@v2
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{secrets.GH_PAT}}"
+  semgrep:
+    name: Semgrep Security Scanner
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Semgrep
+      uses: cloud-officer/ci-actions/linters/semgrep@v2
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{secrets.GH_PAT}}"
+  yamllint:
+    name: YAML Linter
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Yamllint
+      uses: cloud-officer/ci-actions/linters/yamllint@v2
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{secrets.GH_PAT}}"
+  licenses:
+    name: Licenses Check
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Licenses
+      uses: cloud-officer/ci-actions/soup@v2
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{secrets.GH_PAT}}"
+        parameters: "--no_prompt"
+  ruby_unit_tests:
+    name: Ruby Unit Tests
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v2
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{secrets.GH_PAT}}"
+        aws-access-key-id: "${{secrets.AWS_ACCESS_KEY_ID}}"
+        aws-secret-access-key: "${{secrets.AWS_SECRET_ACCESS_KEY}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        ruby-bundler-cache: "${{env.RUBY-BUNDLER-CACHE}}"
+    - name: Bundler
+      shell: bash
+      run: bundle install
+      env:
+        GITHUB_TOKEN: "${{secrets.GH_PAT}}"
+    - name: RSpec
+      shell: bash
+      run: bundle exec rspec
+      env:
+        GITHUB_TOKEN: "${{secrets.GH_PAT}}"

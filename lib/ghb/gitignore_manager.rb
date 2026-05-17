@@ -38,7 +38,13 @@ module GHB
       api_url = "https://www.toptal.com/developers/gitignore/api/#{templates_param}"
 
       puts("    Detected templates: #{detected_templates.join(', ')}")
-      response = HTTParty.get(api_url, timeout: 30)
+
+      response =
+        begin
+          HTTParty.get(api_url, timeout: 30)
+        rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNRESET, Errno::ECONNREFUSED, SocketError => e
+          raise("Cannot fetch gitignore templates: #{e.class}: #{e.message}")
+        end
 
       raise("Cannot fetch gitignore templates: #{response.message}") unless response.code == 200
 

@@ -355,6 +355,81 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       end
     end
 
+    context 'when GitHub returns dismissal/bypass users without a login key' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:current_protection) do
+        {
+          required_status_checks: {
+            contexts: %w[Build Lint],
+            checks: []
+          },
+          required_pull_request_reviews: {
+            dismissal_restrictions: {
+              users: [{}],
+              teams: [{}]
+            },
+            bypass_pull_request_allowances: {
+              users: [{ login: 'bot-user' }, {}],
+              teams: []
+            }
+          }
+        }
+      end
+
+      let(:repo_info_response) do
+        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
+      end
+
+      let(:protection_response) do
+        instance_double(HTTParty::Response, code: 200, body: current_protection.to_json)
+      end
+
+      let(:codeql_default_setup_response) do
+        instance_double(HTTParty::Response, code: 200, body: { state: 'configured', languages: %w[ruby] }.to_json)
+      end
+
+      let(:codeql_get_response) do
+        instance_double(HTTParty::Response, code: 200, body: { state: 'configured' }.to_json)
+      end
+
+      let(:ok_response) do
+        instance_double(HTTParty::Response, code: 200, body: '{}')
+      end
+
+      before do
+        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
+        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
+      end
+
+      it 'compacts malformed entries so the PUT body never contains a [null] list' do # rubocop:disable RSpec/ExampleLength
+        configurator.configure
+
+        expect(github_client).to(
+          have_received(:put).with(
+            "#{repo_url}/branches/#{default_branch}/protection",
+            body: hash_including(
+              required_pull_request_reviews: hash_including(
+                dismissal_restrictions: {
+                  users: [],
+                  teams: []
+                },
+                bypass_pull_request_allowances: {
+                  users: ['bot-user'],
+                  teams: []
+                }
+              )
+            )
+          )
+        )
+      end
+    end
+
     context 'when branch protection exists with mismatching checks' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:current_protection) do
         {

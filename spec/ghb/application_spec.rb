@@ -212,4 +212,52 @@ RSpec.describe(GHB::Application) do
         .to(raise_error(GHB::ConfigError, 'Missing required linters config file: custom/path/linters.yaml'))
     end
   end
+
+  describe 'private internals' do
+    let(:internals_class) do
+      Class.new(described_class) do
+        def initialize; end # rubocop:disable Lint/MissingSuper
+
+        public :detect_default_branch, :validate_entries
+      end
+    end
+    let(:app) { internals_class.new }
+
+    describe '#detect_default_branch' do
+      it 'returns the branch reported by git symbolic-ref' do
+        allow(app).to(receive(:`).with('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null').and_return("refs/remotes/origin/main\n"))
+
+        expect(app.detect_default_branch).to(eq('main'))
+      end
+
+      it "falls back to 'master' when origin/HEAD is not resolvable" do
+        allow(app).to(receive(:`).with('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null').and_return(''))
+
+        expect(app.detect_default_branch).to(eq('master'))
+      end
+
+      it "detects 'master' when that is the default branch" do
+        allow(app).to(receive(:`).with('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null').and_return("refs/remotes/origin/master\n"))
+
+        expect(app.detect_default_branch).to(eq('master'))
+      end
+    end
+
+    describe '#validate_entries' do
+      it 'is permissive: silently skips entry values that are not a Hash' do
+        expect { app.validate_entries({ rubocop: 'true' }, 'config/linters.yaml', 'linter', %w[short_name]) }
+          .not_to(raise_error)
+      end
+
+      it 'returns without error when the document root is not a Hash' do
+        expect { app.validate_entries([], 'config/linters.yaml', 'linter', %w[short_name]) }
+          .not_to(raise_error)
+      end
+
+      it 'still raises for a Hash entry missing required keys (skip is value-type only)' do
+        expect { app.validate_entries({ bad: { short_name: 'x' } }, 'config/linters.yaml', 'linter', %w[short_name long_name]) }
+          .to(raise_error(GHB::ConfigError, %r{Linter 'bad' in config/linters.yaml is missing required keys: long_name}))
+      end
+    end
+  end
 end
