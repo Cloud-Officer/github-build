@@ -36,7 +36,7 @@ module GHB
       @exit_code = Status::SUCCESS_EXIT_CODE
       @dependencies_steps = []
       @file_cache = {}
-      @auto_merge_workflow = Workflow.new('Auto-merge for code owners')
+      @auto_merge_workflow = Workflow.new('Auto-approve for code owners')
       @cron_workflow = Workflow.new('Cron Dependencies')
       @dockerhub_workflow = Workflow.new('Publish Docker image')
       @new_workflow = Workflow.new('Build')
