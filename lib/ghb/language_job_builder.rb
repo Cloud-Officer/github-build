@@ -15,13 +15,13 @@ module GHB
 
     attr_reader :code_deploy_pre_steps, :dependencies_steps, :dependencies_commands
 
-    def initialize(options:, submodules:, old_workflow:, new_workflow:, unit_tests_conditions:, file_cache:, dependencies_commands:)
-      @options = options
-      @submodules = submodules
-      @old_workflow = old_workflow
-      @new_workflow = new_workflow
+    def initialize(context:, unit_tests_conditions:, dependencies_commands:)
+      @options = context.options
+      @submodules = context.submodules
+      @old_workflow = context.old_workflow
+      @new_workflow = context.new_workflow
       @unit_tests_conditions = unit_tests_conditions
-      @file_cache = file_cache
+      @file_cache = context.file_cache
       @code_deploy_pre_steps = []
       @dependencies_steps = []
       @dependencies_commands = dependencies_commands

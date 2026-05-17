@@ -12,7 +12,7 @@ RSpec.describe(GHB::GitignoreManager) do
       excluded_folders: []
     )
   end
-  let(:manager) { described_class.new(options: mock_options, submodules: submodules, file_cache: file_cache) }
+  let(:manager) { described_class.new(context: GHB::BuildContext.new(options: mock_options, submodules: submodules, file_cache: file_cache)) }
 
   let(:minimal_gitignore_config) do
     {
@@ -32,7 +32,7 @@ RSpec.describe(GHB::GitignoreManager) do
   describe '#update' do
     it 'returns early when skip_gitignore is true' do
       skip_options = instance_double(GHB::Options, skip_gitignore: true)
-      skip_manager = described_class.new(options: skip_options, submodules: [], file_cache: {})
+      skip_manager = described_class.new(context: GHB::BuildContext.new(options: skip_options, submodules: [], file_cache: {}))
 
       allow(File).to(receive(:exist?).with('.gitignore'))
 
@@ -204,7 +204,7 @@ RSpec.describe(GHB::GitignoreManager) do
         languages_config_file: 'config/languages.yaml',
         excluded_folders: %w[var tmp]
       )
-      mgr = described_class.new(options: options, submodules: ['pnp-scripts'], file_cache: {})
+      mgr = described_class.new(context: GHB::BuildContext.new(options: options, submodules: ['pnp-scripts'], file_cache: {}))
       allow(mgr).to(receive(:excluded_dirs_from_config).and_return(['.git']))
 
       expect(mgr.__send__(:build_gitignore_excluded_paths)).to(eq(%w[.git pnp-scripts var tmp]))

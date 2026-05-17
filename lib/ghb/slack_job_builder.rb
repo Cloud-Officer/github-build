@@ -3,10 +3,10 @@
 module GHB
   # Builds the "Publish Statuses" (Slack) job in the workflow.
   class SlackJobBuilder
-    def initialize(options:, old_workflow:, new_workflow:)
-      @options = options
-      @old_workflow = old_workflow
-      @new_workflow = new_workflow
+    def initialize(context:)
+      @options = context.options
+      @old_workflow = context.old_workflow
+      @new_workflow = context.new_workflow
     end
 
     def build

@@ -17,9 +17,11 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
 
       it 'returns early without adding jobs' do # rubocop:disable RSpec/ExampleLength
         builder = described_class.new(
-          options: options,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
+          context: GHB::BuildContext.new(
+            options: options,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow
+          ),
           code_deploy_pre_steps: code_deploy_pre_steps
         )
 
@@ -38,9 +40,11 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
         allow(File).to(receive(:exist?).with('appspec.yml').and_return(false))
 
         builder = described_class.new(
-          options: options,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
+          context: GHB::BuildContext.new(
+            options: options,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow
+          ),
           code_deploy_pre_steps: code_deploy_pre_steps
         )
 
@@ -66,9 +70,11 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
 
       it 'adds codedeploy and environment jobs' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         builder = described_class.new(
-          options: options,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
+          context: GHB::BuildContext.new(
+            options: options,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow
+          ),
           code_deploy_pre_steps: code_deploy_pre_steps
         )
 
@@ -82,9 +88,11 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
 
       it 'creates the codedeploy job with correct name and needs' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         builder = described_class.new(
-          options: options,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
+          context: GHB::BuildContext.new(
+            options: options,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow
+          ),
           code_deploy_pre_steps: code_deploy_pre_steps
         )
 
@@ -97,9 +105,11 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
 
       it 'creates beta_deploy, rc_deploy, and prod_deploy environment jobs' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         builder = described_class.new(
-          options: options,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
+          context: GHB::BuildContext.new(
+            options: options,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow
+          ),
           code_deploy_pre_steps: code_deploy_pre_steps
         )
 
@@ -142,9 +152,11 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
         end
 
         builder = described_class.new(
-          options: options,
-          old_workflow: old_wf,
-          new_workflow: new_workflow,
+          context: GHB::BuildContext.new(
+            options: options,
+            old_workflow: old_wf,
+            new_workflow: new_workflow
+          ),
           code_deploy_pre_steps: code_deploy_pre_steps
         )
 
@@ -164,9 +176,11 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
         pre_steps = [pre_step]
 
         builder = described_class.new(
-          options: options,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
+          context: GHB::BuildContext.new(
+            options: options,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow
+          ),
           code_deploy_pre_steps: pre_steps
         )
 
@@ -199,9 +213,11 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
         end
 
         builder = described_class.new(
-          options: options,
-          old_workflow: old_wf,
-          new_workflow: new_workflow,
+          context: GHB::BuildContext.new(
+            options: options,
+            old_workflow: old_wf,
+            new_workflow: new_workflow
+          ),
           code_deploy_pre_steps: code_deploy_pre_steps
         )
 

@@ -3,10 +3,10 @@
 module GHB
   # Builds the "Code Deploy" jobs in the workflow.
   class CodeDeployJobBuilder
-    def initialize(options:, old_workflow:, new_workflow:, code_deploy_pre_steps:)
-      @options = options
-      @old_workflow = old_workflow
-      @new_workflow = new_workflow
+    def initialize(context:, code_deploy_pre_steps:)
+      @options = context.options
+      @old_workflow = context.old_workflow
+      @new_workflow = context.new_workflow
       @code_deploy_pre_steps = code_deploy_pre_steps
     end
 

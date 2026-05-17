@@ -16,7 +16,7 @@ RSpec.describe(GHB::AwsJobBuilder) do
     it 'returns early when only_dependabot is true' do
       options = instance_double(GHB::Options, only_dependabot: true)
       new_workflow = GHB::Workflow.new('Test')
-      builder = described_class.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow)
+      builder = described_class.new(context: GHB::BuildContext.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow))
 
       builder.build
 
@@ -26,7 +26,7 @@ RSpec.describe(GHB::AwsJobBuilder) do
     it 'returns early when .aws file missing' do # rubocop:disable RSpec/ExampleLength
       options = instance_double(GHB::Options, only_dependabot: false)
       new_workflow = GHB::Workflow.new('Test')
-      builder = described_class.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow)
+      builder = described_class.new(context: GHB::BuildContext.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow))
 
       allow(File).to(receive(:exist?).with('.aws').and_return(false))
 
@@ -44,7 +44,7 @@ RSpec.describe(GHB::AwsJobBuilder) do
         do_name('Prepare Variables')
       end
 
-      builder = described_class.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow)
+      builder = described_class.new(context: GHB::BuildContext.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow))
 
       allow(File).to(receive(:exist?).with('.aws').and_return(true))
 
@@ -85,7 +85,7 @@ RSpec.describe(GHB::AwsJobBuilder) do
         do_name('Prepare Variables')
       end
 
-      builder = described_class.new(options: options, old_workflow: old_wf, new_workflow: new_workflow)
+      builder = described_class.new(context: GHB::BuildContext.new(options: options, old_workflow: old_wf, new_workflow: new_workflow))
 
       allow(File).to(receive(:exist?).with('.aws').and_return(true))
 

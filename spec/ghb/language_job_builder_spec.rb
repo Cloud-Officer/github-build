@@ -28,12 +28,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
 
   let(:builder) do
     described_class.new(
-      options: mock_options,
-      submodules: submodules,
-      old_workflow: old_workflow,
-      new_workflow: new_workflow,
+      context: GHB::BuildContext.new(
+        options: mock_options,
+        submodules: submodules,
+        old_workflow: old_workflow,
+        new_workflow: new_workflow,
+        file_cache: file_cache
+      ),
       unit_tests_conditions: unit_tests_conditions,
-      file_cache: file_cache,
       dependencies_commands: dependencies_commands
     )
   end
@@ -88,12 +90,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'returns early when only_dependabot is true' do # rubocop:disable RSpec/ExampleLength
       dependabot_options = instance_double(GHB::Options, only_dependabot: true)
       dependabot_builder = described_class.new(
-        options: dependabot_options,
-        submodules: [],
-        old_workflow: old_workflow,
-        new_workflow: new_workflow,
+        context: GHB::BuildContext.new(
+          options: dependabot_options,
+          submodules: [],
+          old_workflow: old_workflow,
+          new_workflow: new_workflow,
+          file_cache: {}
+        ),
         unit_tests_conditions: unit_tests_conditions,
-        file_cache: {},
         dependencies_commands: +''
       )
 
@@ -329,12 +333,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       )
 
       non_strict_builder = described_class.new(
-        options: non_strict_options,
-        submodules: submodules,
-        old_workflow: old_workflow,
-        new_workflow: new_workflow,
+        context: GHB::BuildContext.new(
+          options: non_strict_options,
+          submodules: submodules,
+          old_workflow: old_workflow,
+          new_workflow: new_workflow,
+          file_cache: {}
+        ),
         unit_tests_conditions: unit_tests_conditions,
-        file_cache: {},
         dependencies_commands: +''
       )
 
@@ -370,12 +376,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       )
 
       codedeploy_builder = described_class.new(
-        options: codedeploy_options,
-        submodules: submodules,
-        old_workflow: old_workflow,
-        new_workflow: new_workflow,
+        context: GHB::BuildContext.new(
+          options: codedeploy_options,
+          submodules: submodules,
+          old_workflow: old_workflow,
+          new_workflow: new_workflow,
+          file_cache: {}
+        ),
         unit_tests_conditions: unit_tests_conditions,
-        file_cache: {},
         dependencies_commands: +''
       )
 
@@ -414,12 +422,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       env_mismatch_workflow.env[:'MONGODB-VERSION'] = '7.0'
 
       env_mismatch_builder = described_class.new(
-        options: non_strict_options,
-        submodules: submodules,
-        old_workflow: old_workflow,
-        new_workflow: env_mismatch_workflow,
+        context: GHB::BuildContext.new(
+          options: non_strict_options,
+          submodules: submodules,
+          old_workflow: old_workflow,
+          new_workflow: env_mismatch_workflow,
+          file_cache: {}
+        ),
         unit_tests_conditions: unit_tests_conditions,
-        file_cache: {},
         dependencies_commands: +''
       )
 
@@ -459,12 +469,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       version_mismatch_workflow.env[:'MONGODB-VERSION'] = '7.0'
 
       version_mismatch_builder = described_class.new(
-        options: mock_options,
-        submodules: submodules,
-        old_workflow: old_workflow,
-        new_workflow: version_mismatch_workflow,
+        context: GHB::BuildContext.new(
+          options: mock_options,
+          submodules: submodules,
+          old_workflow: old_workflow,
+          new_workflow: version_mismatch_workflow,
+          file_cache: {}
+        ),
         unit_tests_conditions: unit_tests_conditions,
-        file_cache: {},
         dependencies_commands: +''
       )
 
@@ -500,12 +512,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       )
 
       license_builder = described_class.new(
-        options: license_options,
-        submodules: submodules,
-        old_workflow: old_workflow,
-        new_workflow: new_workflow,
+        context: GHB::BuildContext.new(
+          options: license_options,
+          submodules: submodules,
+          old_workflow: old_workflow,
+          new_workflow: new_workflow,
+          file_cache: {}
+        ),
         unit_tests_conditions: unit_tests_conditions,
-        file_cache: {},
         dependencies_commands: +''
       )
 
@@ -545,12 +559,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       )
 
       mono_builder = described_class.new(
-        options: mono_options,
-        submodules: submodules,
-        old_workflow: old_workflow,
-        new_workflow: new_workflow,
+        context: GHB::BuildContext.new(
+          options: mono_options,
+          submodules: submodules,
+          old_workflow: old_workflow,
+          new_workflow: new_workflow,
+          file_cache: {}
+        ),
         unit_tests_conditions: unit_tests_conditions,
-        file_cache: {},
         dependencies_commands: +''
       )
 
@@ -588,12 +604,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       )
 
       mono_svc_builder = described_class.new(
-        options: mono_options,
-        submodules: submodules,
-        old_workflow: old_workflow,
-        new_workflow: new_workflow,
+        context: GHB::BuildContext.new(
+          options: mono_options,
+          submodules: submodules,
+          old_workflow: old_workflow,
+          new_workflow: new_workflow,
+          file_cache: {}
+        ),
         unit_tests_conditions: unit_tests_conditions,
-        file_cache: {},
         dependencies_commands: +''
       )
 

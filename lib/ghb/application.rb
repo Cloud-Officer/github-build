@@ -9,6 +9,7 @@ require 'psych'
 
 require_relative 'auto_merge_manager'
 require_relative 'aws_job_builder'
+require_relative 'build_context'
 require_relative 'code_deploy_job_builder'
 require_relative 'dependabot_manager'
 require_relative 'dockerhub_manager'
@@ -65,27 +66,25 @@ module GHB
       workflow_read
       workflow_set_defaults
 
-      VariablesJobBuilder.new(options: @options, new_workflow: @new_workflow).build
-
-      LinterJobBuilder.new(
+      context = BuildContext.new(
         options: @options,
-        submodules: @submodules,
         old_workflow: @old_workflow,
         new_workflow: @new_workflow,
-        file_cache: @file_cache
-      ).build
+        file_cache: @file_cache,
+        submodules: @submodules
+      )
 
-      licenses_builder = LicensesJobBuilder.new(options: @options, old_workflow: @old_workflow, new_workflow: @new_workflow)
+      VariablesJobBuilder.new(context: context).build
+
+      LinterJobBuilder.new(context: context).build
+
+      licenses_builder = LicensesJobBuilder.new(context: context)
       licenses_builder.build
       @unit_tests_conditions = licenses_builder.unit_tests_conditions
 
       language_builder = LanguageJobBuilder.new(
-        options: @options,
-        submodules: @submodules,
-        old_workflow: @old_workflow,
-        new_workflow: @new_workflow,
+        context: context,
         unit_tests_conditions: @unit_tests_conditions,
-        file_cache: @file_cache,
         dependencies_commands: @dependencies_commands
       )
       language_builder.build
@@ -95,15 +94,10 @@ module GHB
 
       collect_required_status_checks
 
-      CodeDeployJobBuilder.new(
-        options: @options,
-        old_workflow: @old_workflow,
-        new_workflow: @new_workflow,
-        code_deploy_pre_steps: @code_deploy_pre_steps
-      ).build
+      CodeDeployJobBuilder.new(context: context, code_deploy_pre_steps: @code_deploy_pre_steps).build
 
-      AwsJobBuilder.new(options: @options, old_workflow: @old_workflow, new_workflow: @new_workflow).build
-      SlackJobBuilder.new(options: @options, old_workflow: @old_workflow, new_workflow: @new_workflow).build
+      AwsJobBuilder.new(context: context).build
+      SlackJobBuilder.new(context: context).build
 
       workflow_write
 
@@ -116,7 +110,7 @@ module GHB
 
       AutoMergeManager.new(auto_merge_workflow: @auto_merge_workflow).save
       DockerhubManager.new(dockerhub_workflow: @dockerhub_workflow).save
-      GitignoreManager.new(options: @options, submodules: @submodules, file_cache: @file_cache).update
+      GitignoreManager.new(context: context).update
       RepositoryConfigurator.new(options: @options, required_status_checks: @required_status_checks, default_branch: @default_branch).configure
 
       @exit_code
