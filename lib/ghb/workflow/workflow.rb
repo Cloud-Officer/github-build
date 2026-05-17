@@ -79,8 +79,17 @@ module GHB
       # Convert github_token to github-token on load for consistency
       content.gsub!('github_token:', 'github-token:')
 
-      workflow_data = Psych.safe_load(content)&.deep_symbolize_keys
-      return if workflow_data.nil?
+      begin
+        parsed = Psych.safe_load(content)
+      rescue Psych::SyntaxError => e
+        raise(ConfigError, "Invalid YAML in #{file}: #{e.message}")
+      end
+
+      return if parsed.nil?
+
+      raise(ConfigError, "Invalid workflow file #{file}: expected a mapping at the document root, got #{parsed.class}") unless parsed.is_a?(Hash)
+
+      workflow_data = parsed.deep_symbolize_keys
 
       @name = workflow_data[:name]
       @run_name = workflow_data[:'run-name']

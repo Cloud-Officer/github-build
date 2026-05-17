@@ -123,6 +123,36 @@ RSpec.describe(GHB::GitignoreManager) do
       expect { manager.update }
         .to(raise_error(RuntimeError, /Cannot fetch gitignore templates/))
     end
+
+    [503, 504].each do |status|
+      it "raises a clear error on a #{status} response" do # rubocop:disable RSpec/ExampleLength
+        config_yaml = Psych.dump(minimal_gitignore_config.deep_stringify_keys)
+
+        allow(manager).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
+        allow(File).to(receive(:exist?).with('.gitignore').and_return(false))
+        allow(File).to(receive(:exist?).with(anything).and_return(false))
+
+        api_response = double('HTTParty::Response', code: status, message: 'Service Unavailable') # rubocop:disable RSpec/VerifiedDoubles
+        allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
+
+        expect { manager.update }
+          .to(raise_error(RuntimeError, /Cannot fetch gitignore templates/))
+      end
+    end
+
+    [Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNRESET, SocketError].each do |error|
+      it "wraps a transient #{error} into an actionable error instead of a raw stack trace" do # rubocop:disable RSpec/ExampleLength
+        config_yaml = Psych.dump(minimal_gitignore_config.deep_stringify_keys)
+
+        allow(manager).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
+        allow(File).to(receive(:exist?).with('.gitignore').and_return(false))
+        allow(File).to(receive(:exist?).with(anything).and_return(false))
+        allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_raise(error))
+
+        expect { manager.update }
+          .to(raise_error(RuntimeError, /Cannot fetch gitignore templates: #{error}/))
+      end
+    end
   end
 
   describe '#detect_gitignore_templates (private)' do

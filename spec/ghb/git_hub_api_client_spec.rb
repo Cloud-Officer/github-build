@@ -188,6 +188,20 @@ RSpec.describe(GHB::GitHubAPIClient) do
       expect(response.code).to(eq(200))
     end
 
+    it 'sleeps with a linear back-off (1s, 2s, 3s) between 5xx retries' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      stub_request(:get, base_url)
+        .to_return(status: 503, body: '{}')
+        .then.to_return(status: 503, body: '{}')
+        .then.to_return(status: 503, body: '{}')
+        .then.to_return(status: 200, body: '{"ok":true}')
+
+      client.get(base_url)
+
+      expect(client).to(have_received(:sleep).with(1).ordered)
+      expect(client).to(have_received(:sleep).with(2).ordered)
+      expect(client).to(have_received(:sleep).with(3).ordered)
+    end
+
     it 'raises after exhausting retries on 5xx' do
       stub_request(:get, base_url)
         .to_return(status: 503, body: '{}')

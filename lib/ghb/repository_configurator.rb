@@ -152,11 +152,13 @@ module GHB
     end
 
     def build_branch_protection_payload(current_protection, expected_checks, protection_exists, sync_required_status_checks)
-      # Preserve existing dismissal restrictions / bypass allowances or use empty defaults
-      dismissal_users = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'users')&.map { |u| u['login'] } || []
-      dismissal_teams = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'teams')&.map { |t| t['slug'] } || []
-      bypass_users = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'users')&.map { |u| u['login'] } || []
-      bypass_teams = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'teams')&.map { |t| t['slug'] } || []
+      # Preserve existing dismissal restrictions / bypass allowances or use empty defaults.
+      # filter_map drops entries GitHub returns without a login/slug so the PUT body
+      # never contains a [null] users/teams array (which GitHub rejects with 422).
+      dismissal_users = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'users')&.filter_map { |u| u['login'] } || []
+      dismissal_teams = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'teams')&.filter_map { |t| t['slug'] } || []
+      bypass_users = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'users')&.filter_map { |u| u['login'] } || []
+      bypass_teams = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'teams')&.filter_map { |t| t['slug'] } || []
 
       # Use existing checks if protection exists, otherwise build from expected checks.
       # When syncing, rebuild from expected_checks but preserve app_id from existing entries

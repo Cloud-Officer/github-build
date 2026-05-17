@@ -303,33 +303,33 @@ RSpec.describe(GHB::Options) do
     end
   end
 
-  describe 'args_from_file (private)' do
+  describe 'args from build file' do
     it 'returns empty array when file does not exist' do
       allow(File).to(receive(:exist?).and_return(false))
       options = described_class.new([])
 
-      expect(options.instance_variable_get(:@argv)).to(eq([]))
+      expect(options.original_argv).to(eq([]))
     end
 
     it 'returns empty array when first line does not start with prefix' do
       allow(File).to(receive_messages(exist?: true, foreach: ["name: CI\n", "on: push\n"].each))
 
       options = described_class.new([])
-      expect(options.instance_variable_get(:@argv)).to(eq([]))
+      expect(options.original_argv).to(eq([]))
     end
 
     it 'handles empty file gracefully' do
       allow(File).to(receive_messages(exist?: true, foreach: [].each))
 
       options = described_class.new([])
-      expect(options.instance_variable_get(:@argv)).to(eq([]))
+      expect(options.original_argv).to(eq([]))
     end
 
     it 'parses arguments with shellwords' do
       allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --organization 'My Org' --skip_slack\n"].each))
 
       options = described_class.new([])
-      expect(options.instance_variable_get(:@argv)).to(eq(['--organization', 'My Org', '--skip_slack']))
+      expect(options.original_argv).to(eq(['--organization', 'My Org', '--skip_slack']))
     end
 
     it 'raises a clear ConfigError on malformed quoting instead of a raw Shellwords stack trace' do

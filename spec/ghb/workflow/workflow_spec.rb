@@ -245,6 +245,20 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       expect(workflow.name).to(eq('CI'))
       expect(workflow.jobs).to(eq({}))
     end
+
+    it 'raises a clear ConfigError on malformed YAML instead of a raw Psych::SyntaxError' do
+      allow(File).to(receive(:read).and_return("name: 'unterminated\n".dup))
+
+      expect { workflow.read('broken.yml') }
+        .to(raise_error(GHB::ConfigError, /Invalid YAML in broken\.yml/))
+    end
+
+    it 'raises a clear ConfigError when the document root is not a mapping' do
+      allow(File).to(receive(:read).and_return("---\n- 1\n- 2\n".dup))
+
+      expect { workflow.read('list.yml') }
+        .to(raise_error(GHB::ConfigError, /expected a mapping at the document root, got Array/))
+    end
   end
 
   describe '#write' do
