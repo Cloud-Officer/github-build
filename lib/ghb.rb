@@ -4,6 +4,9 @@ module GHB
   # Custom error for configuration validation failures
   class ConfigError < StandardError; end
 
+  # Custom error for failed GitHub REST API calls (carries the response body for diagnosis)
+  class GitHubAPIError < StandardError; end
+
   CI_ACTIONS_VERSION = 'v2'
   DEFAULT_BUILD_FILE = '.github/workflows/build.yml'
   DEFAULT_GITIGNORE_CONFIG_FILE = 'config/gitignore.yaml'

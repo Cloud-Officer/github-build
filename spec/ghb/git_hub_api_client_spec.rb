@@ -30,7 +30,7 @@ RSpec.describe(GHB::GitHubAPIClient) do
         .to_return(status: 404, body: '{"message":"Not Found"}')
 
       expect { client.get(base_url) }
-        .to(raise_error(RuntimeError, /HTTP GET.*failed.*404/))
+        .to(raise_error(GHB::GitHubAPIError, /HTTP GET.*failed.*404/))
     end
 
     it 'accepts custom expected_codes' do
@@ -82,7 +82,23 @@ RSpec.describe(GHB::GitHubAPIClient) do
         .to_return(status: 422, body: '{"message":"Unprocessable"}')
 
       expect { client.put(base_url) }
-        .to(raise_error(RuntimeError, /HTTP PUT.*failed.*422/))
+        .to(raise_error(GHB::GitHubAPIError, /HTTP PUT.*failed.*422/))
+    end
+
+    it 'includes the response body in the error for diagnosis' do
+      stub_request(:put, base_url)
+        .to_return(status: 422, body: '{"message":"Invalid request","errors":[{"field":"required_status_checks"}]}')
+
+      expect { client.put(base_url) }
+        .to(raise_error(GHB::GitHubAPIError, /Invalid request.*required_status_checks/))
+    end
+
+    it 'truncates an oversized response body to 1000 characters' do
+      stub_request(:put, base_url)
+        .to_return(status: 422, body: "#{'x' * 5000}END")
+
+      expect { client.put(base_url) }
+        .to(raise_error(GHB::GitHubAPIError, /— x{1000}\z/))
     end
   end
 
@@ -149,7 +165,7 @@ RSpec.describe(GHB::GitHubAPIClient) do
         .to_return(status: 500, body: '{"message":"Internal Server Error"}')
 
       expect { client.patch(base_url) }
-        .to(raise_error(RuntimeError, /HTTP PATCH.*failed.*500/))
+        .to(raise_error(GHB::GitHubAPIError, /HTTP PATCH.*failed.*500/))
     end
 
     it 'skips validation when expected_codes is nil' do
@@ -177,7 +193,7 @@ RSpec.describe(GHB::GitHubAPIClient) do
         .to_return(status: 503, body: '{}')
 
       expect { client.get(base_url) }
-        .to(raise_error(RuntimeError, /HTTP GET.*failed.*503/))
+        .to(raise_error(GHB::GitHubAPIError, /HTTP GET.*failed.*503/))
     end
 
     it 'retries on Net::OpenTimeout' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
@@ -237,7 +253,7 @@ RSpec.describe(GHB::GitHubAPIClient) do
         .to_return(status: 422, body: '{"message":"Unprocessable"}')
 
       expect { client.get(base_url) }
-        .to(raise_error(RuntimeError, /HTTP GET.*failed.*422/))
+        .to(raise_error(GHB::GitHubAPIError, /HTTP GET.*failed.*422/))
 
       expect(a_request(:get, base_url)).to(have_been_made.once)
     end

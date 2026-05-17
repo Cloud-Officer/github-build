@@ -8,6 +8,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
 
   before do
     allow($stdout).to(receive(:puts))
+    # Filesystem safety net. LinterJobBuilder#delete_linter_config /
+    # #copy_linter_config operate on relative paths in the CWD. Without these
+    # default stubs, contexts that let File.exist? call_original delete this
+    # repo's own root linter configs (.rubocop.yml, .yamllint.yml, etc.) when
+    # the suite is run from the repo root. Inner allow/have_received still work.
+    allow(File).to(receive(:delete))
+    allow(FileUtils).to(receive(:ln_s))
   end
 
   describe '#build' do

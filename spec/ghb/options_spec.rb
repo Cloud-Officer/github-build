@@ -245,6 +245,34 @@ RSpec.describe(GHB::Options) do
     end
   end
 
+  describe '#parse (invalid input)' do
+    before do
+      allow(File).to(receive(:exist?).and_return(false))
+    end
+
+    it 'raises InvalidOption on an unknown flag' do
+      expect { described_class.new(['--bogus']).parse }
+        .to(raise_error(OptionParser::InvalidOption))
+    end
+
+    it 'raises MissingArgument when a value-taking flag has no value' do
+      expect { described_class.new(['--organization']).parse }
+        .to(raise_error(OptionParser::MissingArgument))
+    end
+
+    it 'normalizes an empty --excluded_folders value to []' do
+      options = described_class.new(['--excluded_folders', '']).parse
+
+      expect(options.excluded_folders).to(eq([]))
+    end
+
+    it 'drops blank entries from a partially-empty --excluded_folders value' do
+      options = described_class.new(['--excluded_folders', 'vendor,,tmp,']).parse
+
+      expect(options.excluded_folders).to(eq(%w[vendor tmp]))
+    end
+  end
+
   describe '#args_comment' do
     before do
       allow(File).to(receive(:exist?).and_return(false))
@@ -302,6 +330,13 @@ RSpec.describe(GHB::Options) do
 
       options = described_class.new([])
       expect(options.instance_variable_get(:@argv)).to(eq(['--organization', 'My Org', '--skip_slack']))
+    end
+
+    it 'raises a clear ConfigError on malformed quoting instead of a raw Shellwords stack trace' do
+      allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --organization 'unterminated\n"].each))
+
+      expect { described_class.new([]) }
+        .to(raise_error(GHB::ConfigError, /Malformed github-build args/))
     end
   end
 end

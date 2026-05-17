@@ -3,6 +3,8 @@
 require 'httparty'
 require 'json'
 
+require_relative '../ghb'
+
 module GHB
   # Centralized GitHub API client with shared headers, retry logic, and error handling.
   # Extracts duplicated HTTParty calls from Application#check_repository_settings.
@@ -44,7 +46,10 @@ module GHB
 
       response = with_retries { HTTParty.public_send(method, url, options) }
 
-      raise("HTTP #{method.upcase} #{url} failed: #{response.message} (#{response.code})") if expected_codes && !expected_codes.include?(response.code)
+      if expected_codes && !expected_codes.include?(response.code)
+        body = response.body.to_s.strip[0, 1000]
+        raise(GitHubAPIError, "HTTP #{method.upcase} #{url} failed: #{response.code} #{response.message}#{" — #{body}" unless body.to_s.empty?}")
+      end
 
       response
     end

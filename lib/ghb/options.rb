@@ -71,6 +71,8 @@ module GHB
       args_string = first_line.sub(ARGS_COMMENT_PREFIX, '').strip
       require('shellwords')
       Shellwords.split(args_string)
+    rescue ArgumentError => e
+      raise(ConfigError, "Malformed github-build args in #{file}: #{e.message}")
     end
 
     def setup_parser
@@ -87,7 +89,7 @@ module GHB
       end
 
       @parser.on('', '--excluded_folders excluded_folders', 'Comma separated list of folders to ignore') do |excluded_folders|
-        @excluded_folders = excluded_folders.split(',')
+        @excluded_folders = excluded_folders.split(',').reject(&:empty?)
       end
 
       @parser.on('', '--force_codedeploy_setup', 'Force executing the setup step in CodeDeploy even if not technically required') do
