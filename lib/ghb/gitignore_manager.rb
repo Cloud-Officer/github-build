@@ -9,10 +9,10 @@ module GHB
   class GitignoreManager
     include FileScanner
 
-    def initialize(options:, submodules:, file_cache:)
-      @options = options
-      @submodules = submodules
-      @file_cache = file_cache
+    def initialize(context:)
+      @options = context.options
+      @submodules = context.submodules
+      @file_cache = context.file_cache
     end
 
     def update

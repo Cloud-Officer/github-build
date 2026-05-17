@@ -25,11 +25,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
 
       it 'returns early without adding jobs' do # rubocop:disable RSpec/ExampleLength
         builder = described_class.new(
-          options: options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         builder.build
@@ -57,11 +59,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
         builder = described_class.new(
-          options: options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         # Mock find_files_matching: return matches for rubocop pattern, empty for others
@@ -105,11 +109,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
         builder = described_class.new(
-          options: options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         # Return matches for everything to prove ignored linters are skipped
@@ -140,11 +146,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
         builder = described_class.new(
-          options: options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         # Return matches for everything to prove semgrep is skipped
@@ -187,11 +195,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         local_submodules = []
 
         builder = described_class.new(
-          options: options,
-          submodules: local_submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: local_submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         allow(builder).to(receive(:find_files_matching).and_return([]))
@@ -220,11 +230,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
         builder = described_class.new(
-          options: options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         # Only match eslint pattern (js files)
@@ -268,11 +280,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:delete))
 
         builder = described_class.new(
-          options: options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         # Only match semgrep pattern
@@ -331,11 +345,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
         builder = described_class.new(
-          options: options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: {}
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: {}
+          )
         )
 
         # Override cached_file_read to return our custom config
@@ -379,11 +395,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
         builder = described_class.new(
-          options: options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         # Only match rubocop pattern (Fastfile)
@@ -437,11 +455,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:delete))
 
         builder = described_class.new(
-          options: options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         # No files match any linter
@@ -475,11 +495,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:delete))
 
         builder = described_class.new(
-          options: options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         # Return matches for non-ignored linters so they proceed normally
@@ -513,11 +535,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:delete))
 
         builder = described_class.new(
-          options: options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         # No files match any linter pattern
@@ -559,11 +583,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:delete))
 
         builder = described_class.new(
-          options: options,
-          submodules: [],
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: [],
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         # Only match semgrep pattern
@@ -616,11 +642,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         local_submodules = []
 
         builder = described_class.new(
-          options: options,
-          submodules: local_submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: local_submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         # Only match golangci pattern (go files)
@@ -662,11 +690,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
         builder = described_class.new(
-          options: options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: file_cache
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
         )
 
         # Only match eslint pattern (js files)

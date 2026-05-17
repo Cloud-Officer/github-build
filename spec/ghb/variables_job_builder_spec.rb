@@ -5,7 +5,7 @@ RSpec.describe(GHB::VariablesJobBuilder) do
     it 'returns early when only_dependabot is true' do
       options = instance_double(GHB::Options, only_dependabot: true)
       workflow = GHB::Workflow.new('Test')
-      builder = described_class.new(options: options, new_workflow: workflow)
+      builder = described_class.new(context: GHB::BuildContext.new(options: options, new_workflow: workflow))
 
       builder.build
 
@@ -15,7 +15,7 @@ RSpec.describe(GHB::VariablesJobBuilder) do
     it 'adds variables job to workflow' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       options = instance_double(GHB::Options, only_dependabot: false)
       workflow = GHB::Workflow.new('Test')
-      builder = described_class.new(options: options, new_workflow: workflow)
+      builder = described_class.new(context: GHB::BuildContext.new(options: options, new_workflow: workflow))
 
       builder.build
 

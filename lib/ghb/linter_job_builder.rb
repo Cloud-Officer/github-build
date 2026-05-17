@@ -7,12 +7,12 @@ module GHB
   class LinterJobBuilder
     include FileScanner
 
-    def initialize(options:, submodules:, old_workflow:, new_workflow:, file_cache:)
-      @options = options
-      @submodules = submodules
-      @old_workflow = old_workflow
-      @new_workflow = new_workflow
-      @file_cache = file_cache
+    def initialize(context:)
+      @options = context.options
+      @submodules = context.submodules
+      @old_workflow = context.old_workflow
+      @new_workflow = context.new_workflow
+      @file_cache = context.file_cache
     end
 
     def build

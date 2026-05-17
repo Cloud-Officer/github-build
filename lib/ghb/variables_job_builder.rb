@@ -3,9 +3,9 @@
 module GHB
   # Builds the "Prepare Variables" job in the workflow.
   class VariablesJobBuilder
-    def initialize(options:, new_workflow:)
-      @options = options
-      @new_workflow = new_workflow
+    def initialize(context:)
+      @options = context.options
+      @new_workflow = context.new_workflow
     end
 
     def build
