@@ -1,8 +1,13 @@
 # frozen_string_literal: true
 
 module GHB
-  # Data model for GitHub Actions step - instance variables map to YAML schema
+  # Data model for GitHub Actions step - instance variables map to YAML schema.
+  # Any new copyable ivar must be added to COPYABLE_PROPERTIES.
   class Step
+    # Properties carried over from a previously-generated step by copy_properties.
+    COPYABLE_PROPERTIES = %i[id if uses run shell with env continue_on_error timeout_minutes].freeze
+    public_constant :COPYABLE_PROPERTIES
+
     def initialize(name, options = {})
       @id = options[:id]
       @if = options[:if]
@@ -18,7 +23,7 @@ module GHB
 
     attr_accessor :id, :if, :name, :uses, :run, :shell, :with, :env, :continue_on_error, :timeout_minutes
 
-    def copy_properties(object, properties)
+    def copy_properties(object, properties = COPYABLE_PROPERTIES)
       return if object.nil?
 
       properties.each do |property|

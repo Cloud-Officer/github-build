@@ -17,14 +17,14 @@ module GHB
       old_workflow = @old_workflow
 
       @new_workflow.do_job(:slack) do
-        copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
+        copy_properties(old_workflow.jobs[id])
         do_name('Publish Statuses')
         do_runs_on(DEFAULT_UBUNTU_VERSION)
         do_needs(needs)
         do_if('always()')
 
         do_step('Publish Statuses') do
-          copy_properties(find_step(old_workflow.jobs[:slack]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+          copy_properties(find_step(old_workflow.jobs[:slack]&.steps, name))
           do_uses("cloud-officer/ci-actions/slack@#{CI_ACTIONS_VERSION}")
 
           if with.empty?

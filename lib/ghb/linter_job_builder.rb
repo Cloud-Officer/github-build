@@ -138,7 +138,7 @@ module GHB
       old_workflow = @old_workflow
 
       @new_workflow.do_job(short_name) do
-        copy_properties(old_workflow.jobs[id], %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets])
+        copy_properties(old_workflow.jobs[id])
         do_name(linter[:long_name])
         do_runs_on(old_workflow.jobs[short_name]&.runs_on || DEFAULT_UBUNTU_VERSION)
         do_needs(%w[variables])
@@ -151,7 +151,7 @@ module GHB
         end
 
         do_step(linter[:short_name]) do
-          copy_properties(find_step(old_workflow.jobs[short_name]&.steps, name), %i[id if uses run shell with env continue_on_error timeout_minutes])
+          copy_properties(find_step(old_workflow.jobs[short_name]&.steps, name))
           do_uses("#{linter[:uses]}@#{CI_ACTIONS_VERSION}")
 
           if with.empty?

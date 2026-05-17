@@ -48,6 +48,32 @@ module GHB
     private
 
     def configure_branch_protection(github_client, repo_url, current_protection, protection_exists)
+      augment_required_status_checks
+      log_codeql_languages(github_client, repo_url)
+
+      # CodeQL checks are NOT included because they use "smart mode" which only runs
+      # when relevant files change. CodeQL still blocks PRs through code scanning alerts.
+      expected_checks = @required_status_checks.dup
+      actual_checks = current_protection.dig('required_status_checks', 'contexts') || []
+      xcode_checks = discover_xcode_cloud_checks(github_client, repo_url, actual_checks, expected_checks, protection_exists)
+      expected_checks.concat(xcode_checks)
+
+      validate_required_checks!(expected_checks, actual_checks, protection_exists)
+      sync = protection_exists && @options.sync_required_status_checks && required_checks_differ?(expected_checks, actual_checks)
+      branch_protection = build_branch_protection_payload(current_protection, expected_checks, protection_exists, sync)
+
+      puts('    Setting branch protection...')
+      github_client.put("#{repo_url}/branches/#{@default_branch}/protection", body: branch_protection)
+
+      # Enable required signatures (separate endpoint)
+      puts('    Enabling required signatures...')
+      github_client.post(
+        "#{repo_url}/branches/#{@default_branch}/protection/required_signatures",
+        expected_codes: [200, 204]
+      )
+    end
+
+    def augment_required_status_checks
       # Add Vercel check if Next.js project
       @required_status_checks << 'Vercel' if File.exist?('package.json') && File.read('package.json').include?('"next"')
 
@@ -58,83 +84,77 @@ module GHB
       # across regenerations. Job names are read dynamically so renaming a
       # smoke job needs no generator change.
       smoke_workflow = '.github/workflows/smoke.yml'
-      if File.exist?(smoke_workflow)
-        smoke_jobs = (Psych.safe_load(File.read(smoke_workflow)) || {})['jobs'] || {}
-        smoke_jobs.each { |job_id, job| @required_status_checks << ((job && job['name']) || job_id.to_s) }
-      end
+      return unless File.exist?(smoke_workflow)
 
-      # Check for CodeQL default setup
+      smoke_jobs = (Psych.safe_load(File.read(smoke_workflow)) || {})['jobs'] || {}
+      smoke_jobs.each { |job_id, job| @required_status_checks << ((job && job['name']) || job_id.to_s) }
+    end
+
+    def log_codeql_languages(github_client, repo_url)
       codeql_response = github_client.get("#{repo_url}/code-scanning/default-setup", expected_codes: nil)
+      return unless codeql_response.code == 200
 
-      if codeql_response.code == 200
-        codeql_setup = JSON.parse(codeql_response.body)
+      codeql_setup = JSON.parse(codeql_response.body)
+      return unless codeql_setup['state'] == 'configured' && codeql_setup['languages'].is_a?(Array)
 
-        if codeql_setup['state'] == 'configured' && codeql_setup['languages'].is_a?(Array)
-          # Filter out redundant languages from API response
-          # The API returns 'javascript', 'javascript-typescript', and 'typescript' but
-          # only 'javascript' check actually runs (it covers both JS and TS)
-          redundant_languages = %w[javascript-typescript typescript]
-          languages = codeql_setup['languages'].reject { |lang| redundant_languages.include?(lang) }
-          puts("    CodeQL languages detected: #{languages.join(', ')} (#{languages.length})")
-        end
+      # Filter out redundant languages from API response: the API returns 'javascript',
+      # 'javascript-typescript', and 'typescript' but only 'javascript' check actually
+      # runs (it covers both JS and TS).
+      redundant_languages = %w[javascript-typescript typescript]
+      languages = codeql_setup['languages'].reject { |lang| redundant_languages.include?(lang) }
+      puts("    CodeQL languages detected: #{languages.join(', ')} (#{languages.length})")
+    end
+
+    def discover_xcode_cloud_checks(github_client, repo_url, actual_checks, expected_checks, protection_exists)
+      return [] unless Dir.exist?('ci_scripts')
+
+      if protection_exists
+        # Extract Xcode Cloud checks from existing protection (checks not from GitHub Actions workflows)
+        discover_xcode_cloud_checks_from_protection(actual_checks, expected_checks)
+      else
+        # For new repos, try to discover from commit statuses on the default branch
+        discover_xcode_cloud_checks_from_statuses(github_client, repo_url)
       end
+    end
 
-      # Build complete list of expected checks
-      # Note: CodeQL checks are NOT included because they use "smart mode" which only runs
-      # when relevant files change. CodeQL still blocks PRs through code scanning alerts.
-      expected_checks = @required_status_checks.dup
+    # True when expected and actual required-check lists differ in either direction.
+    def required_checks_differ?(expected_checks, actual_checks)
+      (expected_checks - actual_checks).any? || (actual_checks - expected_checks).any?
+    end
 
-      # Get actual checks from branch protection
-      actual_checks = current_protection.dig('required_status_checks', 'contexts') || []
-
-      # Discover Xcode Cloud checks when ci_scripts directory exists
-      if Dir.exist?('ci_scripts')
-        xcode_checks =
-          if protection_exists
-            # Extract Xcode Cloud checks from existing protection (checks not from GitHub Actions workflows)
-            discover_xcode_cloud_checks_from_protection(actual_checks, expected_checks)
-          else
-            # For new repos, try to discover from commit statuses on the default branch
-            discover_xcode_cloud_checks_from_statuses(github_client, repo_url)
-          end
-
-        expected_checks.concat(xcode_checks)
-      end
-
+    # Prints the check status and raises on an unsynced mismatch. No return value.
+    def validate_required_checks!(expected_checks, actual_checks, protection_exists)
       puts('    Checking required status checks...')
 
-      # Only validate mismatch if protection already exists (skip for new repos)
-      if protection_exists
-        # Compare expected vs actual
-        missing_checks = expected_checks - actual_checks
-        extra_checks = actual_checks - expected_checks
-
-        if missing_checks.any? || extra_checks.any?
-          if missing_checks.any?
-            puts('        MISSING (expected but not in branch protection):')
-            missing_checks.each { |check| puts("          ✗ #{check}") }
-          end
-
-          if extra_checks.any?
-            puts('        EXTRA (in branch protection but not expected):')
-            extra_checks.each { |check| puts("          + #{check}") }
-          end
-
-          raise('Error: branch protection checks mismatch!') unless @options.sync_required_status_checks
-
-          puts('        --sync_required_status_checks set: overwriting remote check list with expected')
-          sync_required_status_checks = true
-        end
-      else
+      unless protection_exists
         puts('        No existing branch protection, will create with expected checks')
+        return
       end
-      sync_required_status_checks ||= false
 
-      # Preserve existing dismissal restrictions or use empty defaults
+      missing_checks = expected_checks - actual_checks
+      extra_checks = actual_checks - expected_checks
+      return if missing_checks.none? && extra_checks.none?
+
+      if missing_checks.any?
+        warn('        MISSING (expected but not in branch protection):')
+        missing_checks.each { |check| warn("          ✗ #{check}") }
+      end
+
+      if extra_checks.any?
+        warn('        EXTRA (in branch protection but not expected):')
+        extra_checks.each { |check| warn("          + #{check}") }
+      end
+
+      raise('Error: branch protection checks mismatch!') unless @options.sync_required_status_checks
+
+      puts('        --sync_required_status_checks set: overwriting remote check list with expected')
+      nil
+    end
+
+    def build_branch_protection_payload(current_protection, expected_checks, protection_exists, sync_required_status_checks)
+      # Preserve existing dismissal restrictions / bypass allowances or use empty defaults
       dismissal_users = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'users')&.map { |u| u['login'] } || []
       dismissal_teams = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'teams')&.map { |t| t['slug'] } || []
-
-      # Preserve existing bypass allowances or use empty defaults
       bypass_users = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'users')&.map { |u| u['login'] } || []
       bypass_teams = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'teams')&.map { |t| t['slug'] } || []
 
@@ -154,9 +174,7 @@ module GHB
           expected_checks.map { |check| { context: check, app_id: nil } }
         end
 
-      # Set branch protection
-      puts('    Setting branch protection...')
-      branch_protection = {
+      {
         required_status_checks: {
           strict: false,
           checks: status_checks
@@ -183,15 +201,6 @@ module GHB
         block_creations: false,
         required_conversation_resolution: true
       }
-
-      github_client.put("#{repo_url}/branches/#{@default_branch}/protection", body: branch_protection)
-
-      # Enable required signatures (separate endpoint)
-      puts('    Enabling required signatures...')
-      github_client.post(
-        "#{repo_url}/branches/#{@default_branch}/protection/required_signatures",
-        expected_codes: [200, 204]
-      )
     end
 
     def discover_xcode_cloud_checks_from_protection(actual_checks, expected_checks)

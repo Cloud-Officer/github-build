@@ -94,7 +94,7 @@ module GHB
         end
 
         do_step('Licenses') do
-          copy_properties(new_workflow.jobs[:licenses]&.steps&.first, %i[id if uses run shell with env continue_on_error timeout_minutes])
+          copy_properties(new_workflow.jobs[:licenses]&.steps&.first)
           do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
 
           if with.empty?

@@ -12,12 +12,6 @@ module GHB
       @file_cache[path] ||= File.read(path)
     end
 
-    # Pure Ruby file finder - avoids shell command injection (SEC-001, SEC-002)
-    # @param path [String] starting directory path
-    # @param pattern [Regexp] file pattern to match
-    # @param excluded_paths [Array<String>] paths to exclude (partial matches)
-    # @param max_depth [Integer, nil] maximum directory depth (nil for unlimited)
-    # @return [Array<String>] list of matching file paths
     # Builds the list of excluded directory patterns from languages.yaml.
     # Combines install_dirs from all dependency entries with the top-level excluded_dirs.
     # @return [Array<String>] directory names to exclude (e.g., ['node_modules', 'vendor', '.git'])
@@ -42,6 +36,12 @@ module GHB
         end
     end
 
+    # Pure Ruby file finder - avoids shell command injection (SEC-001, SEC-002)
+    # @param path [String] starting directory path
+    # @param pattern [Regexp] file pattern to match
+    # @param excluded_paths [Array<String>] paths to exclude (partial matches)
+    # @param max_depth [Integer, nil] maximum directory depth (nil for unlimited)
+    # @return [Array<String>] list of matching file paths
     def find_files_matching(path, pattern, excluded_paths = [], max_depth: nil)
       matches = []
       base_depth = path.count(File::SEPARATOR)

@@ -58,6 +58,21 @@ module GHB
       @jobs[id] = job
     end
 
+    # Job names this workflow's deploy jobs must wait on (all current jobs).
+    def deploy_needs
+      @jobs.keys.map(&:to_s)
+    end
+
+    # The shared `if:` expression gating deploy jobs (aws / codedeploy):
+    # run on a deploy trigger, only if no prior job failed. Returns the
+    # ${{ }}-wrapped expression ready to pass to do_if.
+    def deploy_if_statement
+      base_condition = "always() && (needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
+      job_conditions = @jobs.keys.map { |job_name| "needs.#{job_name}.result != 'failure'" }
+
+      "${{#{([base_condition] + job_conditions).join(' && ')}}}"
+    end
+
     def read(file)
       content = File.read(file)
 
@@ -69,9 +84,9 @@ module GHB
 
       @name = workflow_data[:name]
       @run_name = workflow_data[:'run-name']
-      @on = workflow_data[:on] || []
-      @permissions = workflow_data[:permissions] || []
-      @env = workflow_data[:env] || []
+      @on = workflow_data[:on] || {}
+      @permissions = workflow_data[:permissions] || {}
+      @env = workflow_data[:env] || {}
       @defaults = workflow_data[:defaults] || {}
       @concurrency = workflow_data[:concurrency] || {}
       @jobs = {}
