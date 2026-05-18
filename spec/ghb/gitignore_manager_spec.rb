@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe(GHB::GitignoreManager) do
-  let(:file_cache) { {} }
-  let(:submodules) { [] }
   let(:mock_options) do
     instance_double(
       GHB::Options,
@@ -12,7 +10,12 @@ RSpec.describe(GHB::GitignoreManager) do
       excluded_folders: []
     )
   end
-  let(:manager) { described_class.new(context: GHB::BuildContext.new(options: mock_options, submodules: submodules, file_cache: file_cache)) }
+  let(:gitignore_rules) do
+    GHB::GitignoreRules.new(context: GHB::BuildContext.new(options: mock_options, submodules: [], file_cache: {}))
+  end
+  let(:manager) do
+    described_class.new(context: GHB::BuildContext.new(options: mock_options, submodules: [], file_cache: {}), rules: gitignore_rules)
+  end
 
   let(:minimal_gitignore_config) do
     {
@@ -44,7 +47,9 @@ RSpec.describe(GHB::GitignoreManager) do
     it 'creates a new .gitignore when none exists' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       config_yaml = Psych.dump(minimal_gitignore_config.deep_stringify_keys)
 
-      allow(manager).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
+      allow(manager).to(receive(:cached_file_read).and_return(config_yaml))
+
+      allow(gitignore_rules).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
       allow(File).to(receive(:exist?).with('.gitignore').and_return(false))
       allow(File).to(receive(:exist?).with(anything).and_return(false))
 
@@ -66,7 +71,9 @@ RSpec.describe(GHB::GitignoreManager) do
       existing_gitignore = +"# Created by gitignore.io\n# End of gitignore.io\n\n# My custom pattern\nmy-custom-dir/\n"
       config_yaml = Psych.dump(minimal_gitignore_config.deep_stringify_keys)
 
-      allow(manager).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
+      allow(manager).to(receive(:cached_file_read).and_return(config_yaml))
+
+      allow(gitignore_rules).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
       allow(File).to(receive(:exist?).and_return(false))
       allow(File).to(receive(:exist?).with('.gitignore').and_return(true))
       allow(File).to(receive(:read).with('.gitignore').and_return(existing_gitignore))
@@ -92,7 +99,9 @@ RSpec.describe(GHB::GitignoreManager) do
       }
       config_yaml = Psych.dump(config_without_custom.deep_stringify_keys)
 
-      allow(manager).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
+      allow(manager).to(receive(:cached_file_read).and_return(config_yaml))
+
+      allow(gitignore_rules).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
       allow(File).to(receive(:exist?).with('.gitignore').and_return(false))
       allow(File).to(receive(:exist?).with(anything).and_return(false))
 
@@ -113,7 +122,9 @@ RSpec.describe(GHB::GitignoreManager) do
     it 'raises an error when the API returns a non-200 response' do # rubocop:disable RSpec/ExampleLength
       config_yaml = Psych.dump(minimal_gitignore_config.deep_stringify_keys)
 
-      allow(manager).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
+      allow(manager).to(receive(:cached_file_read).and_return(config_yaml))
+
+      allow(gitignore_rules).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
       allow(File).to(receive(:exist?).with('.gitignore').and_return(false))
       allow(File).to(receive(:exist?).with(anything).and_return(false))
 
@@ -128,7 +139,9 @@ RSpec.describe(GHB::GitignoreManager) do
       it "raises a clear error on a #{status} response" do # rubocop:disable RSpec/ExampleLength
         config_yaml = Psych.dump(minimal_gitignore_config.deep_stringify_keys)
 
-        allow(manager).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
+        allow(manager).to(receive(:cached_file_read).and_return(config_yaml))
+
+        allow(gitignore_rules).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
         allow(File).to(receive(:exist?).with('.gitignore').and_return(false))
         allow(File).to(receive(:exist?).with(anything).and_return(false))
 
@@ -144,7 +157,9 @@ RSpec.describe(GHB::GitignoreManager) do
       it "wraps a transient #{error} into an actionable error instead of a raw stack trace" do # rubocop:disable RSpec/ExampleLength
         config_yaml = Psych.dump(minimal_gitignore_config.deep_stringify_keys)
 
-        allow(manager).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
+        allow(manager).to(receive(:cached_file_read).and_return(config_yaml))
+
+        allow(gitignore_rules).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
         allow(File).to(receive(:exist?).with('.gitignore').and_return(false))
         allow(File).to(receive(:exist?).with(anything).and_return(false))
         allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_raise(error))
@@ -152,217 +167,6 @@ RSpec.describe(GHB::GitignoreManager) do
         expect { manager.update }
           .to(raise_error(RuntimeError, /Cannot fetch gitignore templates: #{error}/))
       end
-    end
-  end
-
-  describe '#detect_gitignore_templates (private)' do
-    before do
-      allow(manager).to(receive(:find_files_matching).and_return([]))
-      allow(File).to(receive(:exist?).and_return(false))
-    end
-
-    it 'returns always_enabled templates' do
-      config = { always_enabled: %w[linux macos windows], extension_detection: {} }
-
-      result = manager.__send__(:detect_gitignore_templates, config)
-
-      expect(result).to(eq(%w[linux macos windows]))
-    end
-
-    it 'returns sorted templates' do
-      config = { always_enabled: %w[windows linux macos], extension_detection: {} }
-
-      result = manager.__send__(:detect_gitignore_templates, config)
-
-      expect(result).to(eq(%w[linux macos windows]))
-    end
-
-    it 'includes extension-detected templates when files match' do
-      allow(manager).to(receive(:find_files_matching).and_return(['./app.rb']))
-
-      config = { always_enabled: %w[linux], extension_detection: { ruby: { extensions: ['rb'] } } }
-
-      result = manager.__send__(:detect_gitignore_templates, config)
-
-      expect(result).to(include('ruby'))
-    end
-
-    it 'includes file-detected templates when specific files exist' do
-      allow(File).to(receive(:exist?).with('Gemfile').and_return(true))
-
-      config = { always_enabled: %w[linux], extension_detection: { ruby: { files: ['Gemfile'] } } }
-
-      result = manager.__send__(:detect_gitignore_templates, config)
-
-      expect(result).to(include('ruby'))
-    end
-
-    it 'handles nil always_enabled gracefully' do
-      config = { always_enabled: nil, extension_detection: {} }
-
-      result = manager.__send__(:detect_gitignore_templates, config)
-
-      expect(result).to(eq([]))
-    end
-
-    it 'includes package-detected templates when package patterns match' do # rubocop:disable RSpec/ExampleLength
-      allow(File).to(receive(:exist?).with('Gemfile').and_return(true))
-      allow(File).to(receive(:read).and_call_original)
-      allow(File).to(receive(:read).with('Gemfile').and_return("gem 'rails'\ngem 'rspec'"))
-
-      config = {
-        always_enabled: %w[linux],
-        extension_detection: {
-          ruby: {
-            packages: { Gemfile: ['rails'] }
-          }
-        }
-      }
-
-      result = manager.__send__(:detect_gitignore_templates, config)
-
-      expect(result).to(include('ruby'))
-    end
-  end
-
-  describe '#build_gitignore_excluded_paths (private)' do
-    it 'includes excluded_folders from --excluded_folders option' do # rubocop:disable RSpec/ExampleLength
-      options = instance_double(
-        GHB::Options,
-        skip_gitignore: false,
-        gitignore_config_file: 'config/gitignore.yaml',
-        languages_config_file: 'config/languages.yaml',
-        excluded_folders: %w[var tmp]
-      )
-      mgr = described_class.new(context: GHB::BuildContext.new(options: options, submodules: ['pnp-scripts'], file_cache: {}))
-      allow(mgr).to(receive(:excluded_dirs_from_config).and_return(['.git']))
-
-      expect(mgr.__send__(:build_gitignore_excluded_paths)).to(eq(%w[.git pnp-scripts var tmp]))
-    end
-  end
-
-  describe '#uncomment_jetbrains_patterns (private)' do
-    it 'uncomments matching JetBrains patterns' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      content = +"# *.iml\n# modules.xml\n# .idea/misc.xml\nsomething else\n"
-
-      manager.__send__(:uncomment_jetbrains_patterns, content)
-
-      expect(content).to(include("*.iml\n"))
-      expect(content).to(include("modules.xml\n"))
-      expect(content).to(include(".idea/misc.xml\n"))
-      expect(content).to(include("something else\n"))
-    end
-
-    it 'does not modify non-matching lines' do
-      content = +"# some-other-pattern\n*.log\n"
-
-      manager.__send__(:uncomment_jetbrains_patterns, content)
-
-      expect(content).to(eq("# some-other-pattern\n*.log\n"))
-    end
-
-    it 'handles patterns with leading whitespace' do
-      content = +"  # *.iml\n"
-
-      manager.__send__(:uncomment_jetbrains_patterns, content)
-
-      expect(content).to(eq("*.iml\n"))
-    end
-  end
-
-  describe '#comment_conflicting_patterns (private)' do
-    it 'comments out bin/, lib/, and var/' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      content = +"bin/\nlib/\nvar/\nother/\n"
-
-      manager.__send__(:comment_conflicting_patterns, content)
-
-      expect(content).to(include("# bin/\n"))
-      expect(content).to(include("# lib/\n"))
-      expect(content).to(include("# var/\n"))
-      expect(content).to(include("other/\n"))
-    end
-
-    it 'does not comment patterns that are substrings of longer paths' do
-      content = +"mybin/\nlibrary/\n"
-
-      manager.__send__(:comment_conflicting_patterns, content)
-
-      expect(content).to(eq("mybin/\nlibrary/\n"))
-    end
-
-    it 'does not double-comment already commented patterns' do
-      content = +"# bin/\n"
-
-      manager.__send__(:comment_conflicting_patterns, content)
-
-      expect(content).to(eq("# bin/\n"))
-    end
-  end
-
-  describe '#preserve_custom_entries (private)' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-    let(:custom_patterns) { ['# Claude Code', '.claude/', '# Cursor', '.cursor/'] }
-
-    it 'extracts lines after "# End of" marker' do
-      git_ignore = "# some content\n# End of https://www.toptal.com/developers/gitignore\n\n# My custom entry\nmy-dir/\n"
-
-      result = manager.__send__(:preserve_custom_entries, git_ignore, [])
-
-      expect(result).to(eq(["\n", "# My custom entry\n", "my-dir/\n"]))
-    end
-
-    it 'returns empty array when no "# End of" marker is found' do
-      git_ignore = "# some content\n*.log\n"
-
-      result = manager.__send__(:preserve_custom_entries, git_ignore, [])
-
-      expect(result).to(eq([]))
-    end
-
-    it 'skips AI Assistants section with BEGIN/END markers' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      git_ignore = "# End of gitignore.io\n\n# BEGIN AI Assistants\n\n# Claude Code\n.claude/\n\n# END AI Assistants\n\n# My custom\nmy-dir/\n"
-
-      result = manager.__send__(:preserve_custom_entries, git_ignore, custom_patterns)
-
-      expect(result).to(include("# My custom\n"))
-      expect(result).to(include("my-dir/\n"))
-      expect(result).not_to(include("# Claude Code\n"))
-      expect(result).not_to(include(".claude/\n"))
-    end
-
-    it 'skips old-style AI Assistants section without END marker' do # rubocop:disable RSpec/MultipleExpectations
-      git_ignore = "# End of gitignore.io\n\n# AI Assistants\n# Claude Code\n.claude/\n# Cursor\n.cursor/\n\n# My custom\nmy-dir/\n"
-
-      result = manager.__send__(:preserve_custom_entries, git_ignore, custom_patterns)
-
-      expect(result).not_to(include("# Claude Code\n"))
-      expect(result).not_to(include(".claude/\n"))
-    end
-  end
-
-  describe '#detect_custom_patterns (private)' do
-    it 'returns patterns from config custom_patterns' do # rubocop:disable RSpec/ExampleLength
-      config = {
-        custom_patterns: {
-          claudecode: { patterns: ['# Claude Code', '.claude/'] },
-          cursor: { patterns: ['# Cursor', '.cursor/'] }
-        }
-      }
-
-      result = manager.__send__(:detect_custom_patterns, config)
-
-      expect(result).to(eq(['# Claude Code', '.claude/', '# Cursor', '.cursor/']))
-    end
-
-    it 'returns empty array when no custom_patterns configured' do
-      result = manager.__send__(:detect_custom_patterns, { custom_patterns: nil })
-
-      expect(result).to(eq([]))
-    end
-
-    it 'returns empty array when custom_patterns is empty' do
-      result = manager.__send__(:detect_custom_patterns, { custom_patterns: {} })
-
-      expect(result).to(eq([]))
     end
   end
 end
