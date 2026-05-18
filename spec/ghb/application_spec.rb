@@ -138,12 +138,9 @@ RSpec.describe(GHB::Application) do
           file_extension: bad
       YAML
 
-      call_count = 0
       allow(File).to(receive(:exist?).and_return(true))
-      allow(File).to(receive(:read)) do
-        call_count += 1
-        call_count == 1 ? linters_yaml : languages_yaml
-      end
+      allow(File).to(receive(:read).with(/linters\.yaml/).and_return(linters_yaml))
+      allow(File).to(receive(:read).with(/languages\.yaml/).and_return(languages_yaml))
 
       config_app = config_test_class.new(mock_options)
 
@@ -158,13 +155,8 @@ RSpec.describe(GHB::Application) do
           - value: some_value
       YAML
 
-      call_count = 0
-      allow(File).to(receive(:exist?).and_return(true))
-      allow(File).to(receive(:read)) do
-        call_count += 1
-        # linters (1), languages (2), apt_options (3)
-        call_count == 3 ? options_yaml : valid_yaml
-      end
+      allow(File).to(receive_messages(exist?: true, read: valid_yaml))
+      allow(File).to(receive(:read).with(%r{options/apt\.yaml}).and_return(options_yaml))
 
       config_app = config_test_class.new(mock_options)
 

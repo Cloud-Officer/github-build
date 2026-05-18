@@ -217,7 +217,7 @@ RSpec.describe(GHB::GitHubAPIClient) do
         call_count += 1
         raise(Net::OpenTimeout, 'execution expired') if call_count < 3
 
-        double('response', code: 200, body: '{}', message: 'OK') # rubocop:disable RSpec/VerifiedDoubles
+        instance_double(HTTParty::Response, code: 200, body: '{}')
       end
 
       response = client.get(base_url)
@@ -232,7 +232,7 @@ RSpec.describe(GHB::GitHubAPIClient) do
         call_count += 1
         raise(Net::ReadTimeout, 'execution expired') if call_count < 2
 
-        double('response', code: 200, body: '{}', message: 'OK') # rubocop:disable RSpec/VerifiedDoubles
+        instance_double(HTTParty::Response, code: 200, body: '{}')
       end
 
       response = client.get(base_url)
@@ -247,7 +247,7 @@ RSpec.describe(GHB::GitHubAPIClient) do
         call_count += 1
         raise(Errno::ECONNRESET, 'Connection reset by peer') if call_count < 2
 
-        double('response', code: 200, body: '{}', message: 'OK') # rubocop:disable RSpec/VerifiedDoubles
+        instance_double(HTTParty::Response, code: 200, body: '{}')
       end
 
       response = client.get(base_url)

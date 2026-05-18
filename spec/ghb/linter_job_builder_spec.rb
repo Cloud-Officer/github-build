@@ -69,13 +69,8 @@ RSpec.describe(GHB::LinterJobBuilder) do
         )
 
         # Mock find_files_matching: return matches for rubocop pattern, empty for others
-        allow(builder).to(receive(:find_files_matching)) do |_path, pattern, _excluded|
-          if pattern.source.include?('Fastfile')
-            ['app.rb']
-          else
-            []
-          end
-        end
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('Fastfile')), anything).and_return(['app.rb']))
 
         # Allow copy_linter_config internals
         allow(File).to(receive(:exist?).with('/linters/.rubocop.yml').and_return(false))
@@ -240,13 +235,8 @@ RSpec.describe(GHB::LinterJobBuilder) do
         )
 
         # Only match eslint pattern (js files)
-        allow(builder).to(receive(:find_files_matching)) do |_path, pattern, _excluded|
-          if pattern.source.include?('js')
-            ['app.js']
-          else
-            []
-          end
-        end
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('js')), anything).and_return(['app.js']))
 
         allow(builder).to(receive(:copy_linter_config))
 
@@ -290,13 +280,8 @@ RSpec.describe(GHB::LinterJobBuilder) do
         )
 
         # Only match semgrep pattern
-        allow(builder).to(receive(:find_files_matching)) do |_path, pattern, _excluded|
-          if pattern.source.include?('swift') && pattern.source.include?('py')
-            ['app.py']
-          else
-            []
-          end
-        end
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        allow(builder).to(receive(:find_files_matching).with(anything, satisfy { |p| p.source.include?('swift') && p.source.include?('py') }, anything).and_return(['app.py']))
 
         # Semgrep config is .semgrepignore with preserve_config: true
         # No script_path (no .gitmodules), so script_path is nil
@@ -355,15 +340,8 @@ RSpec.describe(GHB::LinterJobBuilder) do
         )
 
         # Override cached_file_read to return our custom config
-        allow(builder).to(receive(:cached_file_read).and_return(custom_linters_yaml))
-
-        allow(builder).to(receive(:find_files_matching)) do |_path, pattern, _excluded|
-          if pattern.source.include?('custom')
-            ['test.custom']
-          else
-            []
-          end
-        end
+        allow(builder).to(receive_messages(cached_file_read: custom_linters_yaml, find_files_matching: []))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('custom')), anything).and_return(['test.custom']))
 
         builder.build
 
@@ -405,13 +383,8 @@ RSpec.describe(GHB::LinterJobBuilder) do
         )
 
         # Only match rubocop pattern (Fastfile)
-        allow(builder).to(receive(:find_files_matching)) do |_path, pattern, _excluded|
-          if pattern.source.include?('Fastfile')
-            ['Fastfile']
-          else
-            []
-          end
-        end
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('Fastfile')), anything).and_return(['Fastfile']))
 
         # No script_path, no preserve_config -> falls through to atomic_copy_config
         allow(File).to(receive(:exist?).with('/linters/.rubocop.yml').and_return(false))
@@ -593,13 +566,8 @@ RSpec.describe(GHB::LinterJobBuilder) do
         )
 
         # Only match semgrep pattern
-        allow(builder).to(receive(:find_files_matching)) do |_path, pattern, _excluded|
-          if pattern.source.include?('swift') && pattern.source.include?('py')
-            ['app.py']
-          else
-            []
-          end
-        end
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        allow(builder).to(receive(:find_files_matching).with(anything, satisfy { |p| p.source.include?('swift') && p.source.include?('py') }, anything).and_return(['app.py']))
 
         # script_path has the config
         allow(File).to(receive(:exist?).with('scripts-repo/linters/.semgrepignore').and_return(true))
@@ -652,13 +620,8 @@ RSpec.describe(GHB::LinterJobBuilder) do
         )
 
         # Only match golangci pattern (go files)
-        allow(builder).to(receive(:find_files_matching)) do |_path, pattern, _excluded|
-          if pattern.source.include?('go')
-            ['main.go']
-          else
-            []
-          end
-        end
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('go')), anything).and_return(['main.go']))
 
         # script_path will be 'scripts-repo' (contains 'scripts')
         # Config file is .golangci.yml
@@ -700,13 +663,8 @@ RSpec.describe(GHB::LinterJobBuilder) do
         )
 
         # Only match eslint pattern (js files)
-        allow(builder).to(receive(:find_files_matching)) do |_path, pattern, _excluded|
-          if pattern.source.include?('js')
-            ['app.js']
-          else
-            []
-          end
-        end
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('js')), anything).and_return(['app.js']))
 
         # No script_path, but local linters/ directory has the config
         allow(File).to(receive(:exist?).with('linters/.eslintrc.json').and_return(true))
