@@ -8,7 +8,54 @@ module GHB
   class AutoMergeManager
     OLD_WORKFLOW_FILE = '.github/workflows/auto-merge.yml'
     WORKFLOW_FILE = '.github/workflows/auto-approve.yml'
-    private_constant :OLD_WORKFLOW_FILE, :WORKFLOW_FILE
+
+    # Bash run by the "Check if PR author is a code owner" step. Resolves the
+    # CODEOWNERS file, collects @handles from the catch-all (*) line, and sets
+    # step output is_owner=true when the PR author matches a user or team.
+    CODEOWNERS_CHECK_SCRIPT = <<~BASH
+      set -euo pipefail
+
+      # Find the CODEOWNERS file (GitHub checks these three locations)
+      for path in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
+        if [ -f "$path" ]; then CODEOWNERS="$path"; break; fi
+      done
+      if [ -z "${CODEOWNERS:-}" ]; then
+        echo "No CODEOWNERS file found"
+        echo "is_owner=false" >> "$GITHUB_OUTPUT"
+        exit 0
+      fi
+
+      # Collect @handles only from the catch-all (*) line — the repo-wide code owners
+      handles=$(grep -E '^\\*\\s' "$CODEOWNERS" \\
+        | grep -oE '@[A-Za-z0-9_.\\-]+(/[A-Za-z0-9_.\\-]+)?' \\
+        | sort -u)
+
+      is_owner=false
+      for h in $handles; do
+        entry="${h#@}"
+        if [[ "$entry" == */* ]]; then
+          # Team handle: org/team-slug
+          team_org="${entry%/*}"
+          team_slug="${entry#*/}"
+          if gh api "orgs/${team_org}/teams/${team_slug}/memberships/${AUTHOR}" \\
+               --jq '.state' 2>/dev/null | grep -q active; then
+            is_owner=true
+            break
+          fi
+        else
+          # Individual user handle
+          if [ "$entry" = "$AUTHOR" ]; then
+            is_owner=true
+            break
+          fi
+        fi
+      done
+
+      echo "is_owner=${is_owner}" >> "$GITHUB_OUTPUT"
+      echo "PR author ${AUTHOR} is_owner=${is_owner}"
+    BASH
+
+    private_constant :OLD_WORKFLOW_FILE, :WORKFLOW_FILE, :CODEOWNERS_CHECK_SCRIPT
 
     def initialize(auto_merge_workflow:)
       @auto_merge_workflow = auto_merge_workflow
@@ -65,50 +112,7 @@ module GHB
               ORG: '${{github.repository_owner}}'
             }
           )
-          do_run(
-            <<~BASH
-              set -euo pipefail
-
-              # Find the CODEOWNERS file (GitHub checks these three locations)
-              for path in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
-                if [ -f "$path" ]; then CODEOWNERS="$path"; break; fi
-              done
-              if [ -z "${CODEOWNERS:-}" ]; then
-                echo "No CODEOWNERS file found"
-                echo "is_owner=false" >> "$GITHUB_OUTPUT"
-                exit 0
-              fi
-
-              # Collect @handles only from the catch-all (*) line — the repo-wide code owners
-              handles=$(grep -E '^\\*\\s' "$CODEOWNERS" \\
-                | grep -oE '@[A-Za-z0-9_.\\-]+(/[A-Za-z0-9_.\\-]+)?' \\
-                | sort -u)
-
-              is_owner=false
-              for h in $handles; do
-                entry="${h#@}"
-                if [[ "$entry" == */* ]]; then
-                  # Team handle: org/team-slug
-                  team_org="${entry%/*}"
-                  team_slug="${entry#*/}"
-                  if gh api "orgs/${team_org}/teams/${team_slug}/memberships/${AUTHOR}" \\
-                       --jq '.state' 2>/dev/null | grep -q active; then
-                    is_owner=true
-                    break
-                  fi
-                else
-                  # Individual user handle
-                  if [ "$entry" = "$AUTHOR" ]; then
-                    is_owner=true
-                    break
-                  fi
-                fi
-              done
-
-              echo "is_owner=${is_owner}" >> "$GITHUB_OUTPUT"
-              echo "PR author ${AUTHOR} is_owner=${is_owner}"
-            BASH
-          )
+          do_run(CODEOWNERS_CHECK_SCRIPT)
         end
 
         do_step('Approve PR') do
