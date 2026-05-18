@@ -74,16 +74,7 @@ module GHB
     end
 
     def find_step(steps, step_name)
-      matching_step = nil
-
-      steps&.each do |step|
-        if step.name == step_name
-          matching_step = step
-          break
-        end
-      end
-
-      matching_step
+      steps&.find { |step| step.name == step_name }
     end
 
     def to_h

@@ -337,7 +337,6 @@ module GHB
           next
         end
 
-        # Original logic preserved exactly for all other options
         existing_value = @new_workflow.env[option[:name].upcase.to_sym]
         option_value = option[:value]
         value = existing_value || option_value
@@ -346,22 +345,18 @@ module GHB
 
         if existing_value && option_value && existing_value.to_s != option_value.to_s
           puts("\e[31m\n#{'*' * 80}")
+          puts("WARNING: Value mismatch for #{option[:name].upcase}")
+          puts("Existing value: #{existing_value}")
+          puts("Recommended value: #{option_value}")
 
           if @options.strict_version_check && option[:name].upcase.include?('VERSION')
-            puts("WARNING: Value mismatch for #{option[:name].upcase}")
-            puts("Existing value: #{existing_value}")
-            puts("Recommended value: #{option_value}")
             puts("Updating #{option[:name].upcase} to #{option_value}.")
-            puts("#{'*' * 80}\n\e[0m")
             @new_workflow.env[option[:name].upcase.to_sym] = option_value
           else
-            puts("\e[31m\n#{'*' * 80}")
-            puts("WARNING: Value mismatch for #{option[:name].upcase}")
-            puts("Existing value: #{existing_value}")
-            puts("Recommended value: #{option_value}")
             puts('Using existing value.')
-            puts("#{'*' * 80}\n\e[0m")
           end
+
+          puts("#{'*' * 80}\n\e[0m")
         end
 
         @new_workflow.env[option[:name].upcase.to_sym] = value unless @new_workflow.env[option[:name].upcase.to_sym]
