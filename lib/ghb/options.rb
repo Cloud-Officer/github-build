@@ -80,10 +80,18 @@ module GHB
       @parser.separator('')
       @parser.separator('options')
 
-      @parser.on('', '--application_name application_name', 'Name of the CodeDeploy application') do |application_name|
-        @application_name = application_name
-      end
+      setup_path_options
+      setup_behavior_options
+      setup_skip_options
 
+      @parser.on_tail('-h', '--help', 'Show this message') do
+        puts(@parser)
+        exit(Status::SUCCESS_EXIT_CODE)
+      end
+    end
+
+    # File / config path overrides.
+    def setup_path_options
       @parser.on('', '--build_file file', 'Path to build file') do |file|
         @build_file = file
       end
@@ -92,22 +100,8 @@ module GHB
         @excluded_folders = excluded_folders.split(',').reject(&:empty?)
       end
 
-      @parser.on('', '--force_codedeploy_setup', 'Force executing the setup step in CodeDeploy even if not technically required') do
-        @force_codedeploy_setup = true
-      end
-
-      @parser.on('', '--get_ignored_folders', 'Output ignored folders as JSON and exit') do
-        @get_ignored_folders = true
-      end
-
       @parser.on('', '--gitignore_config_file file', 'Path to gitignore config file') do |file|
         @gitignore_config_file = file
-      end
-
-      @parser.on('', '--ignored_linters ignored_linters', 'Ignore linter keys in linter config file') do |ignored_linters|
-        ignored_linters.split(',').each do |key|
-          @ignored_linters[key.to_sym] = true
-        end
       end
 
       @parser.on('', '--languages_config_file file', 'Path to languages config file') do |file|
@@ -116,14 +110,6 @@ module GHB
 
       @parser.on('', '--linters_config_file file', 'Path to linters config file') do |file|
         @linters_config_file = file
-      end
-
-      @parser.on('', '--mono_repo', 'Scan one level deep for language dependency files') do
-        @mono_repo = true
-      end
-
-      @parser.on('', '--only_dependabot', 'Just do Dependabot and nothing else') do
-        @only_dependabot = true
       end
 
       @parser.on('', '--options-apt file', 'Path to APT options file') do |file|
@@ -145,11 +131,51 @@ module GHB
       @parser.on('', '--options-elasticsearch file', 'Path to Elasticsearch options file') do |file|
         @options_config_file_elasticsearch = file
       end
+    end
+
+    # Identity and behavior toggles.
+    def setup_behavior_options
+      @parser.on('', '--application_name application_name', 'Name of the CodeDeploy application') do |application_name|
+        @application_name = application_name
+      end
 
       @parser.on('', '--organization organization', 'GitHub organization') do |organization|
         @organization = organization
       end
 
+      @parser.on('', '--force_codedeploy_setup', 'Force executing the setup step in CodeDeploy even if not technically required') do
+        @force_codedeploy_setup = true
+      end
+
+      @parser.on('', '--get_ignored_folders', 'Output ignored folders as JSON and exit') do
+        @get_ignored_folders = true
+      end
+
+      @parser.on('', '--ignored_linters ignored_linters', 'Ignore linter keys in linter config file') do |ignored_linters|
+        ignored_linters.split(',').each do |key|
+          @ignored_linters[key.to_sym] = true
+        end
+      end
+
+      @parser.on('', '--mono_repo', 'Scan one level deep for language dependency files') do
+        @mono_repo = true
+      end
+
+      @parser.on('', '--only_dependabot', 'Just do Dependabot and nothing else') do
+        @only_dependabot = true
+      end
+
+      @parser.on('', '--no_strict_version_check', 'Do not auto-update when VERSION options do not match recommended defaults') do
+        @strict_version_check = false
+      end
+
+      @parser.on('', '--sync_required_status_checks', 'On branch protection check mismatch, overwrite remote check list with the expected one instead of erroring (useful when renaming jobs/matrix values)') do
+        @sync_required_status_checks = true
+      end
+    end
+
+    # Skip flags.
+    def setup_skip_options
       @parser.on('', '--skip_semgrep', 'Skip Semgrep') do
         @skip_semgrep = true
       end
@@ -172,19 +198,6 @@ module GHB
 
       @parser.on('', '--skip_slack', 'Skip slack') do
         @skip_slack = true
-      end
-
-      @parser.on('', '--no_strict_version_check', 'Do not auto-update when VERSION options do not match recommended defaults') do
-        @strict_version_check = false
-      end
-
-      @parser.on('', '--sync_required_status_checks', 'On branch protection check mismatch, overwrite remote check list with the expected one instead of erroring (useful when renaming jobs/matrix values)') do
-        @sync_required_status_checks = true
-      end
-
-      @parser.on_tail('-h', '--help', 'Show this message') do
-        puts(@parser)
-        exit(Status::SUCCESS_EXIT_CODE)
       end
     end
   end

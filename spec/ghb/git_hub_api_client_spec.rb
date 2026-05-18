@@ -271,5 +271,58 @@ RSpec.describe(GHB::GitHubAPIClient) do
 
       expect(a_request(:get, base_url)).to(have_been_made.once)
     end
+
+    it 'retries on a 429 rate-limit response' do
+      stub_request(:get, base_url)
+        .to_return(status: 429, body: '{}')
+        .then.to_return(status: 200, body: '{"ok":true}')
+
+      expect(client.get(base_url).code).to(eq(200))
+    end
+
+    it 'retries on a 403 with X-RateLimit-Remaining: 0 (secondary limit)' do
+      stub_request(:get, base_url)
+        .to_return(status: 403, headers: { 'X-RateLimit-Remaining': '0' }, body: '{}')
+        .then.to_return(status: 200, body: '{"ok":true}')
+
+      expect(client.get(base_url).code).to(eq(200))
+    end
+
+    it 'honors the Retry-After header for the back-off' do
+      stub_request(:get, base_url)
+        .to_return(status: 429, headers: { 'Retry-After': '7' }, body: '{}')
+        .then.to_return(status: 200, body: '{"ok":true}')
+
+      client.get(base_url)
+
+      expect(client).to(have_received(:sleep).with(7))
+    end
+
+    it 'does not treat a plain 403 (no rate-limit header) as retryable' do # rubocop:disable RSpec/MultipleExpectations
+      stub_request(:get, base_url)
+        .to_return(status: 403, body: '{"message":"Forbidden"}')
+
+      expect { client.get(base_url) }
+        .to(raise_error(GHB::GitHubAPIError, /HTTP GET.*failed.*403/))
+
+      expect(a_request(:get, base_url)).to(have_been_made.once)
+    end
+
+    [Errno::ECONNREFUSED, SocketError, OpenSSL::SSL::SSLError].each do |error|
+      it "retries on #{error}" do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        call_count = 0
+
+        allow(HTTParty).to(receive(:get)) do
+          call_count += 1
+          raise(error) if call_count < 2
+
+          instance_double(HTTParty::Response, code: 200, body: '{}')
+        end
+
+        response = client.get(base_url)
+        expect(response.code).to(eq(200))
+        expect(call_count).to(eq(2))
+      end
+    end
   end
 end
