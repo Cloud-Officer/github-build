@@ -7,6 +7,7 @@
 * [Usage](#usage)
   * [Examples](#examples)
   * [Argument Persistence](#argument-persistence)
+  * [Configuration Files](#configuration-files)
   * [Feature Triggers](#feature-triggers)
   * [Required Secrets](#required-secrets)
 * [Contributing](#contributing)
@@ -118,6 +119,80 @@ To change the persisted arguments, either:
 
 * Run `github-build` again with the new set of flags, or
 * Edit the `# github-build ...` comment at the top of the build file directly
+
+### Configuration Files
+
+`github-build` ships sensible defaults under `config/`. Each file can be overridden with a CLI flag pointing at your
+own copy. Required top-level keys are validated at startup — a missing key fails fast with a clear `ConfigError`.
+
+#### Linters (`--linters_config_file`, default `config/linters.yaml`)
+
+A map of linter id → definition. Each entry **must** define `short_name`, `long_name`, `uses`, `path`, and
+`pattern`. Optional keys: `condition` (a GitHub Actions `if:` expression), `config` (linter config file to copy).
+
+```yaml
+actionlint:
+  short_name: Actionlint
+  long_name: Github Actions Linter
+  uses: cloud-officer/ci-actions/linters/actionlint
+  path: ".github/workflows"
+  pattern: ".*\\.(yml|yaml)$"
+  condition: "github.event_name == 'pull_request'" # optional
+  config:                                           # optional
+```
+
+#### Languages (`--languages_config_file`, default `config/languages.yaml`)
+
+A map of language id → definition. Each entry **must** define `short_name` and `long_name`. Common optional keys:
+`file_extension`, `version_files[]`, `setup_options[]` (each `{ name, value }`), `dependencies[]` (each with at
+least `dependency_file`, plus `package_manager_name`/`package_manager_default`/`package_manager_update`,
+optional `install_dirs[]` and `*_dependency` service markers), `unit_test_framework_name`,
+`unit_test_framework_default`. A top-level `excluded_dirs[]` lists directories to skip during file scanning.
+
+```yaml
+ruby:
+  short_name: ruby
+  long_name: Ruby
+  file_extension: rb
+  version_files:
+    - .ruby-version
+  dependencies:
+    - dependency_file: Gemfile
+      package_manager_name: Bundler
+      package_manager_default: bundle install
+      package_manager_update: bundle update
+  unit_test_framework_name: RSpec
+  unit_test_framework_default: bundle exec rspec
+```
+
+#### Service options (`--options-apt`, `--options-mongodb`, `--options-mysql`, `--options-redis`, `--options-elasticsearch`)
+
+Each file has a top-level `options:` list; every entry **must** define `name` (an optional `value` becomes the
+default). These map to environment variables consumed by the generated setup step.
+
+```yaml
+options:
+  - name: apt-packages
+    value:
+```
+
+#### Gitignore (`--gitignore_config_file`, default `config/gitignore.yaml`)
+
+* `always_enabled:` — list of [gitignore.io](https://gitignore.io) template names always included.
+* `extension_detection:` — map of template → detection rule (`extensions[]`, `files[]`, and/or
+  `packages: { <file>: [<regex>...] }`); the template is added when the project matches.
+* `custom_patterns:` — map of tool → `{ patterns: [...] }`, always appended under an AI-Assistants section.
+
+```yaml
+always_enabled:
+  - linux
+  - macos
+custom_patterns:
+  claudecode:
+    patterns:
+      - "# Claude Code"
+      - ".claude/"
+```
 
 ### Feature Triggers
 
