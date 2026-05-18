@@ -235,7 +235,13 @@ module GHB
         end
       @new_workflow.env = @old_workflow.env
       @new_workflow.defaults = @old_workflow.defaults || {}
-      @new_workflow.concurrency = @old_workflow.concurrency || {}
+      @new_workflow.concurrency =
+        if @old_workflow.concurrency.any?
+          @old_workflow.concurrency
+        else
+          # Cancel superseded full builds when a PR branch is pushed again.
+          { group: 'build-${{github.ref}}', 'cancel-in-progress': true }
+        end
     end
 
     def collect_required_status_checks
