@@ -7,7 +7,6 @@ require_relative '../ghb'
 
 module GHB
   # Centralized GitHub API client with shared headers, retry logic, and error handling.
-  # Extracts duplicated HTTParty calls from Application#check_repository_settings.
   class GitHubAPIClient
     MAX_RETRIES = 3
     RETRYABLE_ERRORS = [Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNRESET].freeze

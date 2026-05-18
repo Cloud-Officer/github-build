@@ -89,13 +89,8 @@ module GHB
       add_linter_job(short_name, linter)
     end
 
-    def delete_linter_config(linter)
-      return unless linter[:config]
-      return if linter[:preserve_config] && File.exist?(linter[:config]) && !File.symlink?(linter[:config])
-
-      File.delete(linter[:config]) if File.exist?(linter[:config]) || File.symlink?(linter[:config])
-
-      # Clean up deprecated config files that were renamed
+    # Clean up deprecated config files that were renamed
+    def cleanup_renamed_configs(linter)
       RENAMED_CONFIGS.each do |old_name, new_name|
         next if linter[:config] != new_name.to_s
         next unless File.exist?(old_name.to_s) || File.symlink?(old_name.to_s)
@@ -104,16 +99,19 @@ module GHB
       end
     end
 
+    def delete_linter_config(linter)
+      return unless linter[:config]
+      return if linter[:preserve_config] && File.exist?(linter[:config]) && !File.symlink?(linter[:config])
+
+      File.delete(linter[:config]) if File.exist?(linter[:config]) || File.symlink?(linter[:config])
+
+      cleanup_renamed_configs(linter)
+    end
+
     def copy_linter_config(linter, script_path)
       return unless linter[:config]
 
-      # Clean up deprecated config files that were renamed
-      RENAMED_CONFIGS.each do |old_name, new_name|
-        next if linter[:config] != new_name.to_s
-        next unless File.exist?(old_name.to_s) || File.symlink?(old_name.to_s)
-
-        File.delete(old_name.to_s)
-      end
+      cleanup_renamed_configs(linter)
 
       if linter[:preserve_config] && File.exist?(linter[:config]) && !File.symlink?(linter[:config])
         puts("            Preserving existing #{linter[:config]} (project-specific config)")

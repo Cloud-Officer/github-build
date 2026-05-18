@@ -39,8 +39,13 @@ module GHB
 
       configure_branch_protection(github_client, repo_url, current_protection, protection_exists)
       configure_repository_options(github_client, repo_url)
-      configure_security_features(github_client, repo_url, is_private)
-      configure_codeql(github_client, repo_url, is_private)
+      if is_private
+        disable_security_features(github_client, repo_url)
+        disable_codeql_default_setup(github_client, repo_url)
+      else
+        enable_security_features(github_client, repo_url)
+        enable_codeql_default_setup(github_client, repo_url)
+      end
 
       puts('    Repository settings configured successfully!')
     end
@@ -263,87 +268,87 @@ module GHB
       github_client.patch(repo_url, body: repo_settings)
     end
 
-    def configure_security_features(github_client, repo_url, is_private)
-      if is_private
-        puts('    Disabling Advanced Security features (private repository - GHAS incurs charges)...')
-        security_settings = {
-          security_and_analysis: {
-            secret_scanning: { status: 'disabled' },
-            secret_scanning_push_protection: { status: 'disabled' },
-            secret_scanning_validity_checks: { status: 'disabled' },
-            secret_scanning_non_provider_patterns: { status: 'disabled' },
-            secret_scanning_ai_detection: { status: 'disabled' }
-          }
+    def disable_security_features(github_client, repo_url)
+      puts('    Disabling Advanced Security features (private repository - GHAS incurs charges)...')
+      security_settings = {
+        security_and_analysis: {
+          secret_scanning: { status: 'disabled' },
+          secret_scanning_push_protection: { status: 'disabled' },
+          secret_scanning_validity_checks: { status: 'disabled' },
+          secret_scanning_non_provider_patterns: { status: 'disabled' },
+          secret_scanning_ai_detection: { status: 'disabled' }
         }
+      }
 
-        response = github_client.patch(repo_url, body: security_settings, expected_codes: nil)
+      response = github_client.patch(repo_url, body: security_settings, expected_codes: nil)
 
-        if response.code == 200
-          puts('        Secret scanning disabled')
-          puts('        Secret scanning push protection disabled')
-          puts('        Secret scanning validity checks disabled')
-          puts('        Secret scanning non-provider patterns disabled')
-          puts('        Secret scanning AI detection disabled')
-        end
-      else
-        puts('    Enabling Advanced Security features...')
-        security_settings = {
-          security_and_analysis: {
-            secret_scanning: { status: 'enabled' },
-            secret_scanning_push_protection: { status: 'enabled' },
-            secret_scanning_validity_checks: { status: 'enabled' },
-            secret_scanning_non_provider_patterns: { status: 'enabled' },
-            secret_scanning_ai_detection: { status: 'enabled' }
-          }
-        }
+      return unless response.code == 200
 
-        github_client.patch(repo_url, body: security_settings)
-
-        puts('        Secret scanning enabled')
-        puts('        Secret scanning push protection enabled')
-        puts('        Secret scanning validity checks enabled')
-        puts('        Secret scanning non-provider patterns enabled')
-        puts('        Secret scanning AI detection (generic passwords) enabled')
-      end
+      puts('        Secret scanning disabled')
+      puts('        Secret scanning push protection disabled')
+      puts('        Secret scanning validity checks disabled')
+      puts('        Secret scanning non-provider patterns disabled')
+      puts('        Secret scanning AI detection disabled')
     end
 
-    def configure_codeql(github_client, repo_url, is_private)
-      if is_private
-        puts('    Disabling CodeQL default setup (private repository - GHAS incurs charges)...')
+    def enable_security_features(github_client, repo_url)
+      puts('    Enabling Advanced Security features...')
+      security_settings = {
+        security_and_analysis: {
+          secret_scanning: { status: 'enabled' },
+          secret_scanning_push_protection: { status: 'enabled' },
+          secret_scanning_validity_checks: { status: 'enabled' },
+          secret_scanning_non_provider_patterns: { status: 'enabled' },
+          secret_scanning_ai_detection: { status: 'enabled' }
+        }
+      }
+
+      github_client.patch(repo_url, body: security_settings)
+
+      puts('        Secret scanning enabled')
+      puts('        Secret scanning push protection enabled')
+      puts('        Secret scanning validity checks enabled')
+      puts('        Secret scanning non-provider patterns enabled')
+      puts('        Secret scanning AI detection (generic passwords) enabled')
+    end
+
+    def disable_codeql_default_setup(github_client, repo_url)
+      puts('    Disabling CodeQL default setup (private repository - GHAS incurs charges)...')
+      code_scanning_config = {
+        state: 'not-configured'
+      }
+
+      response = github_client.patch(
+        "#{repo_url}/code-scanning/default-setup",
+        body: code_scanning_config,
+        expected_codes: nil
+      )
+
+      puts('        CodeQL default setup disabled') if [200, 202].include?(response.code)
+    end
+
+    def enable_codeql_default_setup(github_client, repo_url)
+      puts('    Enabling CodeQL default setup...')
+
+      # First check current status
+      response = github_client.get("#{repo_url}/code-scanning/default-setup")
+      current_setup = JSON.parse(response.body)
+
+      if current_setup['state'] == 'configured'
+        puts('        CodeQL default setup already configured')
+      else
         code_scanning_config = {
-          state: 'not-configured'
+          state: 'configured',
+          query_suite: 'default'
         }
 
-        response = github_client.patch(
+        github_client.patch(
           "#{repo_url}/code-scanning/default-setup",
           body: code_scanning_config,
-          expected_codes: nil
+          expected_codes: [200, 202]
         )
 
-        puts('        CodeQL default setup disabled') if [200, 202].include?(response.code)
-      else
-        puts('    Enabling CodeQL default setup...')
-
-        # First check current status
-        response = github_client.get("#{repo_url}/code-scanning/default-setup")
-        current_setup = JSON.parse(response.body)
-
-        if current_setup['state'] == 'configured'
-          puts('        CodeQL default setup already configured')
-        else
-          code_scanning_config = {
-            state: 'configured',
-            query_suite: 'default'
-          }
-
-          github_client.patch(
-            "#{repo_url}/code-scanning/default-setup",
-            body: code_scanning_config,
-            expected_codes: [200, 202]
-          )
-
-          puts('        CodeQL default setup enabled')
-        end
+        puts('        CodeQL default setup enabled')
       end
     end
   end
