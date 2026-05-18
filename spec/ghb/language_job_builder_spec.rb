@@ -672,17 +672,12 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
   private
 
   def stub_config_file_reads(languages_yaml)
-    allow(builder).to(receive(:cached_file_read)) do |path|
-      case path
-      when /languages\.yaml/ then languages_yaml
-      when /apt\.yaml/ then apt_config_yaml
-      when /mongodb\.yaml/ then mongodb_config_yaml
-      when /mysql\.yaml/ then mysql_config_yaml
-      when /redis\.yaml/ then redis_config_yaml
-      when /elasticsearch\.yaml/ then elasticsearch_config_yaml
-      else raise("Unexpected config file read: #{path}")
-      end
-    end
+    allow(builder).to(receive(:cached_file_read).with(/languages\.yaml/).and_return(languages_yaml))
+    allow(builder).to(receive(:cached_file_read).with(/apt\.yaml/).and_return(apt_config_yaml))
+    allow(builder).to(receive(:cached_file_read).with(/mongodb\.yaml/).and_return(mongodb_config_yaml))
+    allow(builder).to(receive(:cached_file_read).with(/mysql\.yaml/).and_return(mysql_config_yaml))
+    allow(builder).to(receive(:cached_file_read).with(/redis\.yaml/).and_return(redis_config_yaml))
+    allow(builder).to(receive(:cached_file_read).with(/elasticsearch\.yaml/).and_return(elasticsearch_config_yaml))
   end
 
   def stub_go_language_detection
@@ -693,16 +688,11 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
   end
 
   def stub_non_strict_config_file_reads(target_builder, languages_yaml)
-    allow(target_builder).to(receive(:cached_file_read)) do |path|
-      case path
-      when /languages\.yaml/ then languages_yaml
-      when /apt\.yaml/ then apt_config_yaml
-      when /mongodb\.yaml/ then mongodb_config_yaml
-      when /mysql\.yaml/ then mysql_config_yaml
-      when /redis\.yaml/ then redis_config_yaml
-      when /elasticsearch\.yaml/ then elasticsearch_config_yaml
-      else raise("Unexpected config file read: #{path}")
-      end
-    end
+    allow(target_builder).to(receive(:cached_file_read).with(/languages\.yaml/).and_return(languages_yaml))
+    allow(target_builder).to(receive(:cached_file_read).with(/apt\.yaml/).and_return(apt_config_yaml))
+    allow(target_builder).to(receive(:cached_file_read).with(/mongodb\.yaml/).and_return(mongodb_config_yaml))
+    allow(target_builder).to(receive(:cached_file_read).with(/mysql\.yaml/).and_return(mysql_config_yaml))
+    allow(target_builder).to(receive(:cached_file_read).with(/redis\.yaml/).and_return(redis_config_yaml))
+    allow(target_builder).to(receive(:cached_file_read).with(/elasticsearch\.yaml/).and_return(elasticsearch_config_yaml))
   end
 end

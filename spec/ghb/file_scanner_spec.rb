@@ -158,8 +158,8 @@ RSpec.describe(GHB::FileScanner) do
     end
 
     it 'does not execute shell commands in patterns' do
-      malicious_pattern = '$(touch /tmp/pwned)'
-      pwned_file = '/tmp/pwned'
+      pwned_file = File.join(temp_dir, 'pwned')
+      malicious_pattern = "$(touch #{pwned_file})"
       FileUtils.rm_f(pwned_file)
 
       # This should not create the file
