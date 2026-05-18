@@ -109,7 +109,7 @@ js:
     - name: node-token
       value:
     - name: node-cache
-      value:
+      value: npm
     - name: node-cache-dependency-path
       value:
   dependencies:
