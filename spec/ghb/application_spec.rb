@@ -163,7 +163,7 @@ RSpec.describe(GHB::Application) do
       Class.new(described_class) do
         def initialize; end # rubocop:disable Lint/MissingSuper
 
-        public :detect_default_branch, :validate_entries
+        public :detect_default_branch, :validate_entries, :collect_required_status_checks
       end
     end
     let(:app) { internals_class.new }
@@ -202,6 +202,71 @@ RSpec.describe(GHB::Application) do
       it 'still raises for a Hash entry missing required keys (skip is value-type only)' do
         expect { app.validate_entries({ bad: { short_name: 'x' } }, 'config/linters.yaml', 'linter', %w[short_name long_name]) }
           .to(raise_error(GHB::ConfigError, %r{Linter 'bad' in config/linters.yaml is missing required keys: long_name}))
+      end
+    end
+
+    describe '#collect_required_status_checks' do
+      def checks_for
+        workflow = GHB::Workflow.new('Build')
+        yield(workflow)
+        app.instance_variable_set(:@new_workflow, workflow)
+        app.instance_variable_set(:@required_status_checks, [])
+        app.collect_required_status_checks
+        app.instance_variable_get(:@required_status_checks)
+      end
+
+      it 'adds the bare job name for a non-matrix job' do
+        expect(checks_for { |w| w.do_job(:lint) { do_name('Ruby Linter') } })
+          .to(eq(['Ruby Linter']))
+      end
+
+      it 'expands a matrix job into one check per matrix value' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:tests) do
+              do_name('Ruby Unit Tests')
+              do_strategy({ matrix: { os: %w[ubuntu-latest macos-26] } })
+            end
+          end
+
+        expect(result).to(eq(['Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (macos-26)']))
+      end
+
+      it 'expands every axis when the matrix has multiple keys' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:tests) do
+              do_name('Ruby Unit Tests')
+              do_strategy({ matrix: { os: %w[ubuntu-latest], ruby: %w[3.3 3.4] } })
+            end
+          end
+
+        expect(result).to(eq(['Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (3.3)', 'Ruby Unit Tests (3.4)']))
+      end
+
+      it 'mixes bare and expanded names across jobs and preserves job order' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:variables) { do_name('Prepare Variables') }
+            w.do_job(:tests) do
+              do_name('Ruby Unit Tests')
+              do_strategy({ matrix: { os: %w[ubuntu-latest macos-26] } })
+            end
+            w.do_job(:licenses) { do_name('Licenses Check') }
+          end
+
+        expect(result).to(eq(['Prepare Variables', 'Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (macos-26)', 'Licenses Check']))
+      end
+
+      it 'returns an empty list when the workflow has no jobs' do
+        expect(checks_for { |_w| nil }).to(eq([]))
+      end
+
+      it "treats a job whose strategy is the default empty hash as non-matrix (no '(value)' suffix)" do # rubocop:disable RSpec/MultipleExpectations
+        result = checks_for { |w| w.do_job(:lint) { do_name('Ruby Linter') } }
+
+        expect(result.first).to(eq('Ruby Linter'))
+        expect(result.first).not_to(include('('))
       end
     end
   end
