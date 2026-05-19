@@ -21,7 +21,7 @@
 |                      GHB::Application (Orchestrator)                    |
 |  - Config validation   - Workflow read/write   - Default detection     |
 +------------------------------------------------------------------------+
-         |  delegates to
+         |  builds GHB::BuildContext, delegates to
          v
 +------------------------------------------------------------------------+
 |                         Job Builders & Managers                         |
@@ -64,11 +64,13 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 1. The CLI entry point (`bin/github-build.rb`) instantiates `GHB::Application`
 2. `Application` parses command-line options via `GHB::Options` and validates configuration
-3. `Application` delegates workflow generation to specialized builders: `VariablesJobBuilder`, `LinterJobBuilder`, `LicensesJobBuilder`, `LanguageJobBuilder`, `CodeDeployJobBuilder`, `AwsJobBuilder`, and `SlackJobBuilder`
-4. Post-generation managers handle output: `DependabotManager`, `AutoMergeManager`, `DockerhubManager`, `GitignoreManager`, and `RepositoryConfigurator`
-5. `FileScanner` mixin provides shared pure-Ruby file operations to builders that need file pattern matching
-6. `GitHubAPIClient` centralizes GitHub REST API calls with retry logic for `RepositoryConfigurator`
-7. `Workflow`, `Job`, and `Step` classes model the GitHub Actions YAML structure
+3. `Application` bundles the shared inputs (options, old/new workflow, file cache, submodules) into an immutable `GHB::BuildContext` that is passed to every builder
+4. `Application` delegates workflow generation to specialized builders: `VariablesJobBuilder`, `LinterJobBuilder`, `LicensesJobBuilder`, `LanguageJobBuilder`, `CodeDeployJobBuilder`, `AwsJobBuilder`, and `SlackJobBuilder`
+5. Post-generation managers handle output: `DependabotManager`, `AutoMergeManager`, `DockerhubManager`, `GitignoreManager`, and `RepositoryConfigurator`
+6. `GitignoreManager` delegates pure rule logic (template detection, content transforms) to `GHB::GitignoreRules`
+7. `FileScanner` mixin provides shared pure-Ruby file operations to builders that need file pattern matching
+8. `GitHubAPIClient` centralizes GitHub REST API calls with retry logic for `RepositoryConfigurator`
+9. `Workflow`, `Job`, and `Step` classes model the GitHub Actions YAML structure
 
 ## Software units
 
@@ -81,6 +83,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `ConfigError`: Custom exception class for configuration validation failures
+- `GitHubAPIError`: Custom exception class for failed GitHub REST API calls (carries the response body for diagnosis)
 - `CI_ACTIONS_VERSION`: Version tag for ci-actions references
 - `DEFAULT_BUILD_FILE`: Default path for workflow output
 - `DEFAULT_GITIGNORE_CONFIG_FILE`: Path to gitignore configuration
@@ -127,6 +130,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `GHB::Options`
 - `GHB::Status`
+- `GHB::BuildContext`
 - `GHB::Workflow`
 - `GHB::VariablesJobBuilder`
 - `GHB::LinterJobBuilder`
@@ -209,6 +213,20 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `ERROR_EXIT_CODE`: 1
 - `FAILURE_EXIT_CODE`: 2
 
+### GHB::BuildContext
+
+**Purpose:** Immutable bundle of the values shared across job builders (`options`, `old_workflow`, `new_workflow`, `file_cache`, `submodules`), replacing the recurring keyword-argument clump. The container itself is frozen, though the referenced workflow/cache/submodules objects are still mutated in place by the pipeline.
+
+**Location:** `lib/ghb/build_context.rb`
+
+**Key Components:**
+
+- `initialize(options:, new_workflow:, old_workflow:, file_cache:, submodules:)`: Stores shared inputs and freezes the instance
+
+**Attributes:**
+
+- `options`, `old_workflow`, `new_workflow`, `file_cache`, `submodules` (all read-only)
+
 ### GHB::FileScanner (Module)
 
 **Purpose:** Shared utility module providing pure-Ruby file operations to avoid shell command injection. Included as a mixin by Application, LinterJobBuilder, LanguageJobBuilder, and GitignoreManager. Provides config-driven directory exclusions sourced from `languages.yaml`.
@@ -254,7 +272,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Key Components:**
 
-- `initialize(options:, new_workflow:)`: Accepts options and new workflow
+- `initialize(context:)`: Accepts a `GHB::BuildContext`
 - `build`: Creates the variables preparation job with outputs
 
 ### GHB::LinterJobBuilder
@@ -267,7 +285,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Key Components:**
 
-- `initialize(options:, submodules:, old_workflow:, new_workflow:, file_cache:)`: Accepts configuration and workflow objects
+- `initialize(context:)`: Accepts a `GHB::BuildContext`
 - `build`: Loads linter config, parses `.gitmodules`, scans for matching files, and creates linter jobs with config file copying
 
 ### GHB::LicensesJobBuilder
@@ -278,7 +296,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Key Components:**
 
-- `initialize(options:, old_workflow:, new_workflow:)`: Accepts options and workflow objects
+- `initialize(context:)`: Accepts a `GHB::BuildContext`
 - `build`: Creates the licenses check job if not skipped
 
 **Attributes:**
@@ -295,7 +313,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Key Components:**
 
-- `initialize(options:, submodules:, old_workflow:, new_workflow:, unit_tests_conditions:, file_cache:, dependencies_commands:)`: Accepts comprehensive configuration
+- `initialize(context:, unit_tests_conditions:, dependencies_commands:)`: Accepts a `GHB::BuildContext` plus the unit-test conditions and accumulated dependency commands
 - `build`: Detects languages, checks for database dependencies (MongoDB, MySQL, Redis, Elasticsearch), validates versions, and creates test jobs. For Swift projects with Xcode Cloud (`ci_scripts` directory), removes the unit test job from the workflow while still collecting dependency info
 
 **Attributes:**
@@ -312,7 +330,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Key Components:**
 
-- `initialize(options:, old_workflow:, new_workflow:, code_deploy_pre_steps:)`: Accepts options, workflows, and pre-deployment steps
+- `initialize(context:, code_deploy_pre_steps:)`: Accepts a `GHB::BuildContext` and the collected pre-deployment steps
 - `build`: Creates CodeDeploy packaging and per-environment deployment jobs
 
 ### GHB::AwsJobBuilder
@@ -323,7 +341,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Key Components:**
 
-- `initialize(options:, old_workflow:, new_workflow:)`: Accepts options and workflow objects
+- `initialize(context:)`: Accepts a `GHB::BuildContext`
 - `build`: Creates the AWS job if `.aws` file exists
 
 ### GHB::SlackJobBuilder
@@ -334,7 +352,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Key Components:**
 
-- `initialize(options:, old_workflow:, new_workflow:)`: Accepts options and workflow objects
+- `initialize(context:)`: Accepts a `GHB::BuildContext`
 - `build`: Creates the Slack notification job if not skipped
 
 ### GHB::AutoMergeManager
@@ -380,12 +398,33 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Key Components:**
 
-- `initialize(options:, submodules:, file_cache:)`: Accepts options, submodules list, and file cache
+- `initialize(context:, rules:)`: Accepts a `GHB::BuildContext` and an optional `GHB::GitignoreRules` (defaults to one built from the context)
 - `update`: Detects templates, fetches from API, applies modifications, and writes `.gitignore`
+
+**Internal Dependencies:**
+
+- `GHB::GitignoreRules`
 
 **External Dependencies:**
 
 - `httparty`
+
+### GHB::GitignoreRules
+
+**Purpose:** Pure rule logic for `.gitignore` generation — template detection, excluded-path building, and content transforms. Extracted from `GitignoreManager` so the logic has a public, directly-testable API while `GitignoreManager` retains the I/O orchestration (HTTP fetch and file writes).
+
+**Location:** `lib/ghb/gitignore_rules.rb`
+
+**Includes:** `GHB::FileScanner`
+
+**Key Components:**
+
+- `initialize(context:)`: Accepts a `GHB::BuildContext`
+- `detect_gitignore_templates(config)`: Returns the sorted list of detected gitignore templates
+- `build_gitignore_excluded_paths`: Builds excluded paths from `languages.yaml` config, submodules, and `--excluded_folders`
+- `uncomment_jetbrains_patterns(content)`: Uncomments JetBrains IDE patterns
+- `comment_conflicting_patterns(content)`: Comments out directory patterns (`bin/`, `lib/`, `var/`) that conflict with common project directories
+- `preserve_custom_entries(git_ignore, custom_patterns)`: Preserves custom entries from an existing `.gitignore`
 
 ### GHB::RepositoryConfigurator
 
@@ -574,7 +613,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 **Purpose:** Detects project types to generate comprehensive .gitignore files.
 
-**Location:** `lib/ghb/gitignore_manager.rb` in `GHB::GitignoreManager#update`, `GHB::GitignoreManager#detect_gitignore_templates`, and `GHB::GitignoreManager#detect_custom_patterns`
+**Location:** `lib/ghb/gitignore_manager.rb` in `GHB::GitignoreManager#update`; rule logic in `lib/ghb/gitignore_rules.rb` in `GHB::GitignoreRules#detect_gitignore_templates` and `GHB::GitignoreRules#detect_custom_patterns`
 
 **Implementation:**
 
