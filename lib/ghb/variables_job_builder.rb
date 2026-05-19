@@ -9,8 +9,6 @@ module GHB
     end
 
     def build
-      return if @options.only_dependabot
-
       @new_workflow.do_job(:variables) do
         do_name('Prepare Variables')
         do_runs_on(DEFAULT_UBUNTU_VERSION)

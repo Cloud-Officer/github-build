@@ -13,19 +13,8 @@ RSpec.describe(GHB::LicensesJobBuilder) do
       workflow
     end
 
-    it 'returns early when only_dependabot is true' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      options = instance_double(GHB::Options, only_dependabot: true)
-      new_workflow = GHB::Workflow.new('Test')
-      builder = described_class.new(context: GHB::BuildContext.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow))
-
-      builder.build
-
-      expect(new_workflow.jobs).to(be_empty)
-      expect(builder.unit_tests_conditions).to(be_nil)
-    end
-
     it 'sets unit_tests_conditions with Podfile.lock present' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      options = instance_double(GHB::Options, only_dependabot: false)
+      options = instance_double(GHB::Options)
       new_workflow = GHB::Workflow.new('Test')
       builder = described_class.new(context: GHB::BuildContext.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow))
 
@@ -38,7 +27,7 @@ RSpec.describe(GHB::LicensesJobBuilder) do
     end
 
     it 'sets unit_tests_conditions without Podfile.lock' do # rubocop:disable RSpec/ExampleLength
-      options = instance_double(GHB::Options, only_dependabot: false, skip_license_check: false)
+      options = instance_double(GHB::Options, skip_license_check: false)
       new_workflow = GHB::Workflow.new('Test')
       builder = described_class.new(context: GHB::BuildContext.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow))
 
@@ -50,7 +39,7 @@ RSpec.describe(GHB::LicensesJobBuilder) do
     end
 
     it 'adds licenses job when skip_license_check is false and no Podfile.lock' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      options = instance_double(GHB::Options, only_dependabot: false, skip_license_check: false)
+      options = instance_double(GHB::Options, skip_license_check: false)
       new_workflow = GHB::Workflow.new('Test')
       builder = described_class.new(context: GHB::BuildContext.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow))
 
@@ -66,7 +55,7 @@ RSpec.describe(GHB::LicensesJobBuilder) do
     end
 
     it 'skips licenses job when skip_license_check is true' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      options = instance_double(GHB::Options, only_dependabot: false, skip_license_check: true)
+      options = instance_double(GHB::Options, skip_license_check: true)
       new_workflow = GHB::Workflow.new('Test')
       builder = described_class.new(context: GHB::BuildContext.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow))
 
@@ -96,7 +85,7 @@ RSpec.describe(GHB::LicensesJobBuilder) do
         end
       end
 
-      options = instance_double(GHB::Options, only_dependabot: false, skip_license_check: false)
+      options = instance_double(GHB::Options, skip_license_check: false)
       new_workflow = GHB::Workflow.new('Test')
       builder = described_class.new(context: GHB::BuildContext.new(options: options, old_workflow: old_wf, new_workflow: new_workflow))
 

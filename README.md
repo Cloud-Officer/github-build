@@ -59,7 +59,6 @@ options
         --languages_config_file file Path to languages config file
         --linters_config_file file   Path to linters config file
         --mono_repo                  Scan one level deep for language dependency files
-        --only_dependabot            Just do Dependabot and nothing else
         --options-apt file           Path to APT options file
         --options-mongodb file       Path to MongoDB options file
         --options-mysql file         Path to MySQL options file
@@ -67,7 +66,6 @@ options
         --options-elasticsearch file Path to Elasticsearch options file
         --organization organization  GitHub organization
         --skip_semgrep               Skip Semgrep
-        --skip_dependabot            Skip dependabot
         --skip_gitignore             Skip update of gitignore file
         --skip_license_check         Skip license check
         --skip_repository_settings   Skip check of repository settings
@@ -86,7 +84,7 @@ environment variable to enable the repository settings check.
 On this repository.
 
 ```bash
-./bin/github-build.rb --skip_dependabot  --skip_slack
+./bin/github-build.rb --skip_slack
 
 Generating build file...
 Reading current build file .github/workflows/build.yml...
@@ -108,7 +106,7 @@ When you run `github-build` with command-line arguments, they are saved as a com
 generated build file:
 
 ```yaml
-# github-build --skip_dependabot --skip_slack
+# github-build --skip_slack
 name: CI
 ```
 

@@ -10,30 +10,9 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
   end
 
   describe '#build' do
-    context 'when only_dependabot is true' do
-      let(:options) do
-        instance_double(GHB::Options, only_dependabot: true)
-      end
-
-      it 'returns early without adding jobs' do # rubocop:disable RSpec/ExampleLength
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow
-          ),
-          code_deploy_pre_steps: code_deploy_pre_steps
-        )
-
-        builder.build
-
-        expect(new_workflow.jobs).to(be_empty)
-      end
-    end
-
     context 'when appspec.yml is missing' do
       let(:options) do
-        instance_double(GHB::Options, only_dependabot: false)
+        instance_double(GHB::Options)
       end
 
       it 'returns early without adding jobs' do # rubocop:disable RSpec/ExampleLength
@@ -56,7 +35,7 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
 
     context 'when appspec.yml exists' do
       let(:options) do
-        instance_double(GHB::Options, only_dependabot: false, application_name: 'myapp')
+        instance_double(GHB::Options, application_name: 'myapp')
       end
 
       before do

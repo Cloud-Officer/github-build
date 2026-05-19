@@ -24,7 +24,6 @@ module GHB
       @ignored_linters = {}
       @languages_config_file = DEFAULT_LANGUAGES_CONFIG_FILE
       @linters_config_file = DEFAULT_LINTERS_CONFIG_FILE
-      @only_dependabot = false
       @options_config_file_apt = OPTIONS_APT_CONFIG_FILE
       @options_config_file_mongodb = OPTIONS_MONGODB_CONFIG_FILE
       @options_config_file_mysql = OPTIONS_MYSQL_CONFIG_FILE
@@ -32,7 +31,6 @@ module GHB
       @options_config_file_elasticsearch = OPTIONS_ELASTICSEARCH_CONFIG_FILE
       @organization = Dir.pwd.split('/')[-2]
       @parser = OptionParser.new
-      @skip_dependabot = false
       @skip_semgrep = false
       @skip_gitignore = false
       @skip_license_check = false
@@ -46,7 +44,7 @@ module GHB
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :mono_repo, :only_dependabot, :options_config_file_apt, :options_config_file_elasticsearch, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :original_argv, :skip_dependabot, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check, :sync_required_status_checks
+    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :mono_repo, :options_config_file_apt, :options_config_file_elasticsearch, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :original_argv, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check, :sync_required_status_checks
 
     def parse
       @parser.parse!(@argv)
@@ -161,10 +159,6 @@ module GHB
         @mono_repo = true
       end
 
-      @parser.on('', '--only_dependabot', 'Just do Dependabot and nothing else') do
-        @only_dependabot = true
-      end
-
       @parser.on('', '--no_strict_version_check', 'Do not auto-update when VERSION options do not match recommended defaults') do
         @strict_version_check = false
       end
@@ -178,10 +172,6 @@ module GHB
     def setup_skip_options
       @parser.on('', '--skip_semgrep', 'Skip Semgrep') do
         @skip_semgrep = true
-      end
-
-      @parser.on('', '--skip_dependabot', 'Skip dependabot') do
-        @skip_dependabot = true
       end
 
       @parser.on('', '--skip_gitignore', 'Skip update of gitignore file') do
