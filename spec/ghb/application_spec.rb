@@ -2,7 +2,6 @@
 
 RSpec.describe(GHB::Application) do
   describe '#validate_config!' do
-    let(:temp_dir) { Dir.mktmpdir('ghb-config-test') }
     let(:config_test_class) do
       Class.new(described_class) do
         def initialize(options) # rubocop:disable Lint/MissingSuper
@@ -26,10 +25,6 @@ RSpec.describe(GHB::Application) do
         options_config_file_elasticsearch: 'config/options/elasticsearch.yaml',
         gitignore_config_file: 'config/gitignore.yaml'
       )
-    end
-
-    after do
-      FileUtils.rm_rf(temp_dir)
     end
 
     it 'does not raise when all config files exist and are valid YAML' do
@@ -58,62 +53,20 @@ RSpec.describe(GHB::Application) do
     end
 
     it 'raises ConfigError when a config file has invalid YAML' do # rubocop:disable RSpec/ExampleLength
-      # Create a temp config structure
-      FileUtils.mkdir_p("#{temp_dir}/config/options")
-      File.write("#{temp_dir}/config/linters.yaml", "valid: yaml\n")
-      File.write("#{temp_dir}/config/languages.yaml", 'invalid: yaml: syntax: [')
-      File.write("#{temp_dir}/config/options/apt.yaml", "valid: yaml\n")
-      File.write("#{temp_dir}/config/options/mongodb.yaml", "valid: yaml\n")
-      File.write("#{temp_dir}/config/options/mysql.yaml", "valid: yaml\n")
-      File.write("#{temp_dir}/config/options/redis.yaml", "valid: yaml\n")
-      File.write("#{temp_dir}/config/gitignore.yaml", "valid: yaml\n")
+      config_app = config_test_class.new(mock_options)
 
-      # Stub __dir__ to point to our temp directory
-      temp_options = instance_double(
-        GHB::Options,
-        linters_config_file: "#{temp_dir}/config/linters.yaml",
-        languages_config_file: "#{temp_dir}/config/languages.yaml",
-        options_config_file_apt: "#{temp_dir}/config/options/apt.yaml",
-        options_config_file_mongodb: "#{temp_dir}/config/options/mongodb.yaml",
-        options_config_file_mysql: "#{temp_dir}/config/options/mysql.yaml",
-        options_config_file_redis: "#{temp_dir}/config/options/redis.yaml",
-        gitignore_config_file: "#{temp_dir}/config/gitignore.yaml"
+      # Drive the real #validate_config! and exercise its real
+      # Psych::SyntaxError rescue: return malformed YAML only for the
+      # languages config (parsed after the valid linters config), letting
+      # every other file read through to the real on-disk config.
+      allow(config_app).to(
+        receive(:cached_file_read).and_wrap_original do |original, path|
+          path.end_with?('languages.yaml') ? 'invalid: yaml: syntax: [' : original.call(path)
+        end
       )
 
-      # Create a custom test class that uses absolute paths directly
-      absolute_path_test_class =
-        Class.new do
-          def initialize(options)
-            @options = options
-          end
-
-          def validate_config!
-            config_files = {
-              'linters config': @options.linters_config_file,
-              'languages config': @options.languages_config_file,
-              'APT options': @options.options_config_file_apt,
-              'MongoDB options': @options.options_config_file_mongodb,
-              'MySQL options': @options.options_config_file_mysql,
-              'Redis options': @options.options_config_file_redis,
-              'gitignore config': @options.gitignore_config_file
-            }
-
-            config_files.each do |name, path|
-              raise(GHB::ConfigError, "Missing required #{name} file: #{path}") unless File.exist?(path)
-
-              begin
-                Psych.safe_load(File.read(path), permitted_classes: [Symbol])
-              rescue Psych::SyntaxError => e
-                raise(GHB::ConfigError, "Invalid YAML in #{name} file (#{path}): #{e.message}")
-              end
-            end
-          end
-        end
-
-      config_app = absolute_path_test_class.new(temp_options)
-
       expect { config_app.validate_config! }
-        .to(raise_error(GHB::ConfigError, /Invalid YAML in languages config file/))
+        .to(raise_error(GHB::ConfigError, %r{Invalid YAML in languages config file \(config/languages\.yaml\)}))
     end
 
     it 'raises ConfigError when a linter entry is missing required keys' do # rubocop:disable RSpec/ExampleLength
