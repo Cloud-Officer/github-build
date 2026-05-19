@@ -44,16 +44,20 @@ module GHB
         }
 
       @cron_workflow.env = @new_workflow.env
+      # Every step authenticates with secrets.GH_PAT (gh CLI, git push,
+      # ci-actions, peter-evans/create-pull-request), so the ambient
+      # GITHUB_TOKEN only needs read access. Creating the PR with the PAT
+      # is also what lets CI run on the resulting PR (GITHUB_TOKEN-opened
+      # PRs are blocked from triggering workflows by anti-recursion).
+      @cron_workflow.permissions = { contents: 'read', 'pull-requests': 'read' }
 
       @cron_workflow.do_job(:update_dependencies) do
         do_name('Update Dependencies')
         do_runs_on(DEFAULT_UBUNTU_VERSION)
         do_permissions(
           {
-            actions: 'write',
-            checks: 'write',
-            contents: 'write',
-            'pull-requests': 'write'
+            contents: 'read',
+            'pull-requests': 'read'
           }
         )
 
