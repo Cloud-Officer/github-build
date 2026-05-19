@@ -21,13 +21,11 @@ RSpec.describe(GHB::Options) do
       expect(options.gitignore_config_file).to(eq(default_gitignore_config))
       expect(options.excluded_folders).to(eq([]))
       expect(options.ignored_linters).to(eq({}))
-      expect(options.skip_dependabot).to(be(false))
       expect(options.skip_semgrep).to(be(false))
       expect(options.skip_gitignore).to(be(false))
       expect(options.skip_license_check).to(be(false))
       expect(options.skip_repository_settings).to(be(false))
       expect(options.skip_slack).to(be(false))
-      expect(options.only_dependabot).to(be(false))
       expect(options.force_codedeploy_setup).to(be(false))
       expect(options.get_ignored_folders).to(be(false))
       expect(options.strict_version_check).to(be(true))
@@ -99,13 +97,6 @@ RSpec.describe(GHB::Options) do
       expect(options.ignored_linters).to(eq({ rubocop: true, eslint: true }))
     end
 
-    it 'parses --skip_dependabot' do
-      options = described_class.new(['--skip_dependabot'])
-      options.parse
-
-      expect(options.skip_dependabot).to(be(true))
-    end
-
     it 'parses --skip_semgrep' do
       options = described_class.new(['--skip_semgrep'])
       options.parse
@@ -139,13 +130,6 @@ RSpec.describe(GHB::Options) do
       options.parse
 
       expect(options.skip_slack).to(be(true))
-    end
-
-    it 'parses --only_dependabot' do
-      options = described_class.new(['--only_dependabot'])
-      options.parse
-
-      expect(options.only_dependabot).to(be(true))
     end
 
     it 'parses --force_codedeploy_setup' do
@@ -224,7 +208,6 @@ RSpec.describe(GHB::Options) do
           '--organization',
           'TestOrg',
           '--skip_slack',
-          '--skip_dependabot',
           '--excluded_folders',
           'vendor,tmp'
         ]
@@ -233,7 +216,6 @@ RSpec.describe(GHB::Options) do
 
       expect(options.organization).to(eq('TestOrg'))
       expect(options.skip_slack).to(be(true))
-      expect(options.skip_dependabot).to(be(true))
       expect(options.excluded_folders).to(eq(%w[vendor tmp]))
     end
 

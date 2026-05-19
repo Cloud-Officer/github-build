@@ -29,8 +29,6 @@ module GHB
     end
 
     def build
-      return if @options.only_dependabot
-
       puts('    Detecting languages...')
       languages = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.languages_config_file}"))&.deep_symbolize_keys
       options_apt = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_apt}"))&.deep_symbolize_keys&.[](:options)

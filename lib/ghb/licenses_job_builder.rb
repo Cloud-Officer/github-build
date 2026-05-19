@@ -13,8 +13,6 @@ module GHB
     end
 
     def build
-      return if @options.only_dependabot
-
       if File.exist?('Podfile.lock')
         @unit_tests_conditions = "needs.variables.outputs.SKIP_LICENSES != '1' || needs.variables.outputs.SKIP_TESTS != '1'"
       else

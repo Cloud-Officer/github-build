@@ -18,33 +18,10 @@ RSpec.describe(GHB::LinterJobBuilder) do
   end
 
   describe '#build' do
-    context 'when only_dependabot is true' do
-      let(:options) do
-        instance_double(GHB::Options, only_dependabot: true)
-      end
-
-      it 'returns early without adding jobs' do # rubocop:disable RSpec/ExampleLength
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            submodules: submodules,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow,
-            file_cache: file_cache
-          )
-        )
-
-        builder.build
-
-        expect(new_workflow.jobs).to(be_empty)
-      end
-    end
-
     context 'when detecting linters' do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: {},
           excluded_folders: [],
@@ -91,7 +68,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: { rubocop: true, eslint: true },
           excluded_folders: [],
@@ -128,7 +104,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: true,
           ignored_linters: {},
           excluded_folders: [],
@@ -164,7 +139,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: {},
           excluded_folders: [],
@@ -212,7 +186,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: {},
           excluded_folders: [],
@@ -254,7 +227,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: {},
           excluded_folders: [],
@@ -303,7 +275,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: {},
           excluded_folders: [],
@@ -360,7 +331,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: {},
           excluded_folders: [],
@@ -413,7 +383,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: {},
           excluded_folders: [],
@@ -453,7 +422,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: { eslint: true },
           excluded_folders: [],
@@ -493,7 +461,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: {},
           excluded_folders: [],
@@ -533,7 +500,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: {},
           excluded_folders: [],
@@ -587,7 +553,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: {},
           excluded_folders: [],
@@ -639,7 +604,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
       let(:options) do
         instance_double(
           GHB::Options,
-          only_dependabot: false,
           skip_semgrep: false,
           ignored_linters: {},
           excluded_folders: [],

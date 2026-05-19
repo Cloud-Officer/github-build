@@ -11,7 +11,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
   let(:mock_options) do
     instance_double(
       GHB::Options,
-      only_dependabot: false,
       mono_repo: false,
       excluded_folders: [],
       skip_license_check: true,
@@ -87,27 +86,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
   let(:swift_language_yaml) { Psych.dump(swift_only_config.deep_stringify_keys) }
 
   describe '#build' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-    it 'returns early when only_dependabot is true' do # rubocop:disable RSpec/ExampleLength
-      dependabot_options = instance_double(GHB::Options, only_dependabot: true)
-      dependabot_builder = described_class.new(
-        context: GHB::BuildContext.new(
-          options: dependabot_options,
-          submodules: [],
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: {}
-        ),
-        unit_tests_conditions: unit_tests_conditions,
-        dependencies_commands: +''
-      )
-
-      allow(dependabot_builder).to(receive(:cached_file_read))
-
-      dependabot_builder.build
-
-      expect(dependabot_builder).not_to(have_received(:cached_file_read))
-    end
-
     it 'skips languages with nil file_extension' do
       stub_config_file_reads(swift_language_yaml)
 
@@ -318,7 +296,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'prints warning but does not exit when version file mismatches and strict_version_check is false' do # rubocop:disable RSpec/ExampleLength
       non_strict_options = instance_double(
         GHB::Options,
-        only_dependabot: false,
         mono_repo: false,
         excluded_folders: [],
         skip_license_check: true,
@@ -361,7 +338,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'populates code_deploy_pre_steps when force_codedeploy_setup is true' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       codedeploy_options = instance_double(
         GHB::Options,
-        only_dependabot: false,
         mono_repo: false,
         excluded_folders: [],
         skip_license_check: true,
@@ -404,7 +380,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'prints warning when existing env value differs from option value' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       non_strict_options = instance_double(
         GHB::Options,
-        only_dependabot: false,
         mono_repo: false,
         excluded_folders: [],
         skip_license_check: true,
@@ -497,7 +472,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'adds Licenses step when Podfile.lock exists and skip_license_check is false' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       license_options = instance_double(
         GHB::Options,
-        only_dependabot: false,
         mono_repo: false,
         excluded_folders: [],
         skip_license_check: false,
@@ -544,7 +518,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'detects mono_repo subdirectory dependencies and adds per-subdir steps' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       mono_options = instance_double(
         GHB::Options,
-        only_dependabot: false,
         mono_repo: true,
         excluded_folders: [],
         skip_license_check: true,
@@ -589,7 +562,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'detects services in mono_repo subdirectory dependency files' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       mono_options = instance_double(
         GHB::Options,
-        only_dependabot: false,
         mono_repo: true,
         excluded_folders: [],
         skip_license_check: true,

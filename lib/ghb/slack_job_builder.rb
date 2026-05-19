@@ -10,7 +10,7 @@ module GHB
     end
 
     def build
-      return if @options.only_dependabot or @options.skip_slack
+      return if @options.skip_slack
 
       puts('    Adding slack...')
       needs = @new_workflow.jobs.keys.map(&:to_s)

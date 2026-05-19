@@ -178,7 +178,6 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `languages_config_file`: Path to languages config file
 - `linters_config_file`: Path to linters config file
 - `mono_repo`: Scan one level deep for language dependency files
-- `only_dependabot`: Only generate dependabot workflow
 - `options_config_file_apt`: Path to APT options config
 - `options_config_file_mongodb`: Path to MongoDB options config
 - `options_config_file_mysql`: Path to MySQL options config
@@ -186,7 +185,6 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `options_config_file_elasticsearch`: Path to Elasticsearch options config
 - `organization`: GitHub organization name
 - `original_argv`: Original command-line arguments for reproducibility
-- `skip_dependabot`: Skip dependabot workflow generation
 - `skip_gitignore`: Skip gitignore updates
 - `skip_license_check`: Skip license checking job
 - `skip_repository_settings`: Skip GitHub repository settings configuration

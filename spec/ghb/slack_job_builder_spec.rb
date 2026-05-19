@@ -13,18 +13,8 @@ RSpec.describe(GHB::SlackJobBuilder) do
       workflow
     end
 
-    it 'returns early when only_dependabot is true' do
-      options = instance_double(GHB::Options, only_dependabot: true, skip_slack: false)
-      new_workflow = GHB::Workflow.new('Test')
-      builder = described_class.new(context: GHB::BuildContext.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow))
-
-      builder.build
-
-      expect(new_workflow.jobs).to(be_empty)
-    end
-
     it 'returns early when skip_slack is true' do
-      options = instance_double(GHB::Options, only_dependabot: false, skip_slack: true)
+      options = instance_double(GHB::Options, skip_slack: true)
       new_workflow = GHB::Workflow.new('Test')
       builder = described_class.new(context: GHB::BuildContext.new(options: options, old_workflow: old_workflow, new_workflow: new_workflow))
 
@@ -34,7 +24,7 @@ RSpec.describe(GHB::SlackJobBuilder) do
     end
 
     it 'adds slack job to workflow' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      options = instance_double(GHB::Options, only_dependabot: false, skip_slack: false)
+      options = instance_double(GHB::Options, skip_slack: false)
       new_workflow = GHB::Workflow.new('Test')
 
       # Add a pre-existing job so needs has something to reference
@@ -70,7 +60,7 @@ RSpec.describe(GHB::SlackJobBuilder) do
         end
       end
 
-      options = instance_double(GHB::Options, only_dependabot: false, skip_slack: false)
+      options = instance_double(GHB::Options, skip_slack: false)
       new_workflow = GHB::Workflow.new('Test')
 
       new_workflow.do_job(:variables) do

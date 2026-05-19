@@ -10,8 +10,6 @@ module GHB
     end
 
     def build
-      return if @options.only_dependabot
-
       return unless File.exist?('.aws')
 
       puts('    Adding aws commands...')

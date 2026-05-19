@@ -16,8 +16,6 @@ module GHB
     end
 
     def build
-      return if @options.only_dependabot
-
       puts('    Detecting linters...')
       linters = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.linters_config_file}"))&.deep_symbolize_keys
       script_path = nil
