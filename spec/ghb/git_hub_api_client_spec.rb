@@ -298,6 +298,30 @@ RSpec.describe(GHB::GitHubAPIClient) do
       expect(client).to(have_received(:sleep).with(7))
     end
 
+    it 'honors the X-RateLimit-Reset header (reset minus now) for the back-off' do # rubocop:disable RSpec/ExampleLength
+      now = 1_700_000_000
+      allow(Time).to(receive(:now).and_return(Time.at(now)))
+      stub_request(:get, base_url)
+        .to_return(status: 429, headers: { 'X-RateLimit-Reset': (now + 5).to_s }, body: '{}')
+        .then.to_return(status: 200, body: '{"ok":true}')
+
+      client.get(base_url)
+
+      expect(client).to(have_received(:sleep).with(5))
+    end
+
+    it 'caps the X-RateLimit-Reset back-off at MAX_RETRY_WAIT (60s)' do # rubocop:disable RSpec/ExampleLength
+      now = 1_700_000_000
+      allow(Time).to(receive(:now).and_return(Time.at(now)))
+      stub_request(:get, base_url)
+        .to_return(status: 429, headers: { 'X-RateLimit-Reset': (now + 9999).to_s }, body: '{}')
+        .then.to_return(status: 200, body: '{"ok":true}')
+
+      client.get(base_url)
+
+      expect(client).to(have_received(:sleep).with(60))
+    end
+
     it 'does not treat a plain 403 (no rate-limit header) as retryable' do # rubocop:disable RSpec/MultipleExpectations
       stub_request(:get, base_url)
         .to_return(status: 403, body: '{"message":"Forbidden"}')
