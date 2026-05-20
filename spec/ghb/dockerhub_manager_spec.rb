@@ -26,7 +26,13 @@ RSpec.describe(GHB::DockerhubManager) do
       expect(workflow.on).to(eq({ push: { tags: %w[**] } }))
       expect(workflow.jobs).to(have_key(:push_to_registry))
       expect(workflow.jobs[:push_to_registry].name).to(eq('Push Docker Image to Docker Hub'))
-      expect(workflow.jobs[:push_to_registry].permissions).to(include(packages: 'write'))
+      # Regression test for CI-01 (soup#docs/code-review.md): packages:write is for
+      # GHCR; cloud-officer/ci-actions/docker@v2 pushes to Docker Hub via
+      # DOCKER_USERNAME/DOCKER_PASSWORD and never touches GHCR, so the scope must
+      # NOT be requested. attestations:write and id-token:write are required by
+      # actions/attest-build-provenance, so they stay.
+      expect(workflow.jobs[:push_to_registry].permissions).to(eq(contents: 'read', attestations: 'write', 'id-token': 'write'))
+      expect(workflow.jobs[:push_to_registry].permissions).not_to(include(packages: 'write'))
       expect(workflow.jobs[:push_to_registry].steps.length).to(eq(1))
       expect(workflow.jobs[:push_to_registry].steps.first.name).to(eq('Publish Docker image'))
     end
