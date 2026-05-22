@@ -41,16 +41,14 @@ RSpec.describe(GHB::AutoMergeManager) do
       )
     end
 
-    it 'sets the correct permissions' do # rubocop:disable RSpec/ExampleLength
+    it 'sets least-privilege permissions (contents: read only)' do # rubocop:disable RSpec/ExampleLength
       manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
       manager.save
 
       expect(auto_merge_workflow.permissions).to(
         eq(
           {
-            contents: 'write',
-            'pull-requests': 'write',
-            issues: 'write'
+            contents: 'read'
           }
         )
       )
