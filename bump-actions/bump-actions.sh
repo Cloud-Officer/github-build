@@ -38,7 +38,7 @@ function esc_re()            { printf '%s' "$1" | sed 's/[.[\*^$/]/\\&/g'; }
 function version_gt()
 {
   local a="${1#v}" b="${2#v}"
-  [ "${a}" != "${b}" ] && [ "$(printf '%s\n%s\n' "${a}" "${b}" | sort -V | tail -1)" = "${a}" ]
+  [ "${a}" != "${b}" ] && [ "$(printf '%s\n%s\n' "${a}" "${b}" | sort -V | tail -1)" == "${a}" ]
 }
 
 # Emit "owner/repo version" for each entry in the manifest, skipping comments,
@@ -57,7 +57,7 @@ function latest_version()
 {
   local or="$1" tag
   tag="$(gh api "repos/${or}/releases/latest" --jq '.tag_name' 2>/dev/null || true)"
-  if [ -z "${tag}" ] || [ "${tag}" = "null" ]; then
+  if [ -z "${tag}" ] || [ "${tag}" == "null" ]; then
     tag="$(gh api "repos/${or}/tags?per_page=100" --jq '.[].name' 2>/dev/null \
             | grep -E '^v?[0-9]+(\.[0-9]+)*$' | sort -V | tail -1 || true)"
   fi
@@ -165,13 +165,13 @@ function main()
 
   local i
   for i in "${!bump_repo[@]}"; do
-    printf 'BUMP\t%s\t%s -> %s\n' "${bump_repo[$i]}" "${bump_old[$i]}" "${bump_new[$i]}"
+    printf 'BUMP\t%s\t%s -> %s\n' "${bump_repo[${i}]}" "${bump_old[${i}]}" "${bump_new[${i}]}"
   done
   echo "${count} bump(s) available."
 
-  if [ "${apply}" = true ]; then
+  if [ "${apply}" == true ]; then
     for i in "${!bump_repo[@]}"; do
-      apply_bump "${manifest}" "${bump_repo[$i]}" "${bump_new[$i]}"
+      apply_bump "${manifest}" "${bump_repo[${i}]}" "${bump_new[${i}]}"
     done
   fi
 
@@ -188,12 +188,12 @@ function main()
       echo "| Action | From | To |"
       echo "| --- | --- | --- |"
       for i in "${!bump_repo[@]}"; do
-        printf '| %s | %s | %s |\n' "${bump_repo[$i]}" "${bump_old[$i]}" "${bump_new[$i]}"
+        printf '| %s | %s | %s |\n' "${bump_repo[${i}]}" "${bump_old[${i}]}" "${bump_new[${i}]}"
       done
       echo
       echo "### Upstream release notes"
       for i in "${!bump_repo[@]}"; do
-        name="${bump_repo[$i]}"; new="${bump_new[$i]}"
+        name="${bump_repo[${i}]}"; new="${bump_new[${i}]}"
         echo
         echo "#### ${name} ${new}"
         echo
