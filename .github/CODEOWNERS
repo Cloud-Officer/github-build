@@ -13,3 +13,4 @@
 .yamllint.yml            @Cloud-Officer/Maintainers
 bin/                     @Cloud-Officer/Maintainers
 lib/                     @Cloud-Officer/Maintainers
+*.sh                     @Cloud-Officer/Maintainers

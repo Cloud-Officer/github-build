@@ -84,7 +84,9 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `ConfigError`: Custom exception class for configuration validation failures
 - `GitHubAPIError`: Custom exception class for failed GitHub REST API calls (carries the response body for diagnosis)
-- `CI_ACTIONS_VERSION`: Version tag for ci-actions references
+- `CI_ACTIONS_VERSION`: Version tag for `cloud-officer/ci-actions` references
+- `EXTERNAL_ACTIONS_CONFIG_FILE`: Path to the external (third-party) GitHub Actions version manifest (`config/actions.yaml`)
+- `external_action(name)`: Class method that resolves an external action to its full `owner/repo@version` ref by reading the pinned version from `config/actions.yaml` (single source of truth bumped by the external-actions cron); raises `ConfigError` if the action is not listed
 - `DEFAULT_BUILD_FILE`: Default path for workflow output
 - `DEFAULT_GITIGNORE_CONFIG_FILE`: Path to gitignore configuration
 - `DEFAULT_LANGUAGES_CONFIG_FILE`: Path to languages configuration
@@ -511,6 +513,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `config/linters.yaml`: Linter definitions with patterns and configurations
 - `config/languages.yaml`: Language definitions with setup options, dependencies (including `install_dirs` for exclusion), and top-level `excluded_dirs` for non-package-manager directories
 - `config/gitignore.yaml`: Gitignore template detection rules
+- `config/actions.yaml`: Pinned versions for external (third-party) GitHub Actions emitted into generated workflows; single source of truth read via `GHB.external_action` and bumped by the external-actions cron
 - `config/options/apt.yaml`: APT package configuration
 - `config/options/mongodb.yaml`: MongoDB service version and settings
 - `config/options/mysql.yaml`: MySQL service version and settings
@@ -529,6 +532,20 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - Updates `config/languages.yaml` with latest language versions
 - Updates `config/options/*.yaml` with latest service versions
 - Uses `yq` for YAML manipulation
+
+### bump-actions/bump-actions.sh
+
+**Purpose:** Resolves each external GitHub Action in `config/actions.yaml` to its latest upstream version and (with `--apply`) rewrites the pinned versions in place. Powers the weekly `external-actions-bump.yml` cron, which opens a review PR with the bumps. Because the Ruby builders read the same manifest via `GHB.external_action`, bumping it propagates the new version to every generated workflow.
+
+**Location:** `bump-actions/bump-actions.sh`
+
+**Key Components:**
+
+- `main`: Parses `--apply` / `--pr-body-file`, reads the manifest, resolves bumps, and optionally rewrites the manifest and emits a PR body with a bumps table and truncated upstream release notes
+- `resolve_bump(org/repo, version)`: Determines the new version for a ref — floating major tags (`vN`) bump only when the upstream major increases; exact semver pins bump to the latest strictly-newer release; SHA pins and branch pins are skipped
+- `manifest_entries`, `latest_version`, `tag_exists`, `version_gt`, `apply_bump`: Pure, individually-testable helpers (covered by `bump-actions/tests/bump-actions.bats`)
+
+**Behavior:** Skips `cloud-officer/*` actions (versioned separately via `CI_ACTIONS_VERSION`); honors `BUMP_MANIFEST` to override the manifest path for testing; requires an authenticated `gh` on `PATH`.
 
 ## Software of Unknown Provenance
 

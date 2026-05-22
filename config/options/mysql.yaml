@@ -11,7 +11,7 @@
 options:
   # MySQL server version
   - name: mysql-version
-    value: 8.0
+    value: 8.4
   # Distribution (e.g., "mysql" or "mariadb")
   - name: mysql-distribution
     value:
