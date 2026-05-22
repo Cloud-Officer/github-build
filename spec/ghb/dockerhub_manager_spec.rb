@@ -24,6 +24,9 @@ RSpec.describe(GHB::DockerhubManager) do
       manager.save
 
       expect(workflow.on).to(eq({ push: { tags: %w[**] } }))
+      # Workflow-level least-privilege default so any future job must opt into
+      # write scopes rather than inheriting the repo's default GITHUB_TOKEN scope.
+      expect(workflow.permissions).to(eq(contents: 'read'))
       expect(workflow.jobs).to(have_key(:push_to_registry))
       expect(workflow.jobs[:push_to_registry].name).to(eq('Push Docker Image to Docker Hub'))
       # Regression test for CI-01 (soup#docs/code-review.md): packages:write is for
