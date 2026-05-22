@@ -72,11 +72,12 @@ module GHB
             }
         }
 
+      # Least privilege: the only GITHUB_TOKEN consumer is actions/checkout (base SHA),
+      # which needs contents: read. Both gh steps authenticate via GH_PAT / GH_BOT_PAT,
+      # so the workflow token needs no write scopes.
       @auto_merge_workflow.permissions =
         {
-          contents: 'write',
-          'pull-requests': 'write',
-          issues: 'write'
+          contents: 'read'
         }
 
       # Cancel superseded runs on rapid pushes to the same PR.
