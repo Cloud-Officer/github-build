@@ -20,6 +20,15 @@ module GHB
             }
         }
 
+      # Workflow-level least-privilege default. The single job below opts into the
+      # write scopes it needs; declaring contents: read here forces any job added
+      # later to request write scopes deliberately rather than inheriting the
+      # repository's (often broader) default GITHUB_TOKEN permissions.
+      @dockerhub_workflow.permissions =
+        {
+          contents: 'read'
+        }
+
       @dockerhub_workflow.do_job(:push_to_registry) do
         do_name('Push Docker Image to Docker Hub')
         do_runs_on(DEFAULT_UBUNTU_VERSION)
