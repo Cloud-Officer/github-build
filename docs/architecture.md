@@ -50,7 +50,7 @@
 |   build.yml       |
 |   dependencies.yml|
 |   docker.yml      |
-|   auto-merge.yml  |
+|   auto-approve.yml|
 | .gitignore        |
 | Linter configs    |
 +-------------------+
@@ -364,7 +364,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(auto_merge_workflow:)`: Accepts auto-merge workflow object
-- `save`: Configures the auto-merge workflow with CODEOWNERS detection and auto-approval, and writes `.github/workflows/auto-merge.yml`. The CODEOWNERS membership check uses `GH_PAT`, while the approval step uses `GH_BOT_PAT` so the bot identity satisfies the `require_code_owner_reviews` branch-protection rule
+- `save`: Configures the auto-approve workflow with CODEOWNERS detection and auto-approval, and writes `.github/workflows/auto-approve.yml` (removing the legacy `auto-merge.yml` if present). The CODEOWNERS membership check uses `GH_PAT`, while the approval step uses `GH_BOT_PAT` so the bot identity satisfies the `require_code_owner_reviews` branch-protection rule
 
 ### GHB::DependabotManager
 
@@ -457,7 +457,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `initialize(name)`: Creates workflow with name
 - `read(file)`: Parses existing workflow YAML file
-- `write(file, header:)`: Writes workflow to YAML file, applying two transformations via `rewrite_github_refs`: rewrites `${GITHUB_*}` references to `${{github.*}}` in YAML values while preserving them in shell `run:` bodies (where they are runner-exported env vars), and substitutes `${{secrets.GITHUB_TOKEN}}` with `${{secrets.GH_PAT}}` for higher rate limits (except in the auto-merge workflow)
+- `write(file, header:)`: Writes workflow to YAML file, applying two transformations via `rewrite_github_refs`: rewrites `${GITHUB_*}` references to `${{github.*}}` in YAML values while preserving them in shell `run:` bodies (where they are runner-exported env vars), and substitutes `${{secrets.GITHUB_TOKEN}}` with `${{secrets.GH_PAT}}` for higher rate limits (except in the auto-approve workflow)
 - `do_job(id, &block)`: DSL method to define jobs
 - `to_h`: Converts workflow to hash for YAML serialization
 
