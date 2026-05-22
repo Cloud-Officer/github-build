@@ -158,6 +158,20 @@ RSpec.describe(GHB::Application) do
     end
   end
 
+  describe 'dependencies git-config rewrite (CI-004)' do
+    subject(:dependencies_commands) { described_class.new([]).instance_variable_get(:@dependencies_commands) }
+
+    it 'scopes every GH_PAT insteadOf rewrite to the repository owner' do # rubocop:disable RSpec/MultipleExpectations
+      expect(dependencies_commands).to(include('.insteadOf https://github.com/${{github.repository_owner}}/'))
+      expect(dependencies_commands).to(include('.insteadOf git@github.com:${{github.repository_owner}}/'))
+      expect(dependencies_commands).to(include('.insteadOf ssh://git@github.com:${{github.repository_owner}}/'))
+    end
+
+    it 'does not attach the PAT to unscoped github.com URLs' do
+      expect(dependencies_commands).not_to(include(".insteadOf https://github.com/\n"))
+    end
+  end
+
   describe 'private internals' do
     let(:internals_class) do
       Class.new(described_class) do
