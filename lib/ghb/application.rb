@@ -46,11 +46,16 @@ module GHB
       @required_status_checks = []
       @submodules = []
       @unit_tests_conditions = nil
+      # Scope the PAT insteadOf rewrites to the owning org only. A bare
+      # github.com/ rewrite would attach GH_PAT to ANY github.com URL fetched
+      # later in the run (transitive git-source gems on bundle update, etc.);
+      # narrowing to ${{github.repository_owner}}/ limits the token to this
+      # org's own repos and shrinks the exfiltration surface. See CI-004 (#410).
       @dependencies_commands =
         <<~BASH
-          git config --global --add url."https://${GH_PAT}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com:
-          git config --global --add url."https://${GH_PAT}:x-oauth-basic@github.com/".insteadOf https://github.com/
-          git config --global --add url."https://${GH_PAT}:x-oauth-basic@github.com/".insteadOf git@github.com:
+          git config --global --add url."https://${GH_PAT}:x-oauth-basic@github.com/${{github.repository_owner}}/".insteadOf ssh://git@github.com:${{github.repository_owner}}/
+          git config --global --add url."https://${GH_PAT}:x-oauth-basic@github.com/${{github.repository_owner}}/".insteadOf https://github.com/${{github.repository_owner}}/
+          git config --global --add url."https://${GH_PAT}:x-oauth-basic@github.com/${{github.repository_owner}}/".insteadOf git@github.com:${{github.repository_owner}}/
 
         BASH
     end
