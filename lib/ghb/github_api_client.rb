@@ -13,10 +13,16 @@ module GHB
     MAX_RETRIES = 3
     # Cap a single rate-limit back-off so a far-future X-RateLimit-Reset can't hang CI.
     MAX_RETRY_WAIT = 60
+    # Bound every request so a stalled connection can't hang the CLI indefinitely
+    # (and so the Net::OpenTimeout / Net::ReadTimeout retry path can actually fire).
+    OPEN_TIMEOUT = 10
+    READ_TIMEOUT = 30
     RETRYABLE_ERRORS = [Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNRESET, Errno::ECONNREFUSED, SocketError, OpenSSL::SSL::SSLError].freeze
 
     private_constant :MAX_RETRIES
     private_constant :MAX_RETRY_WAIT
+    private_constant :OPEN_TIMEOUT
+    private_constant :READ_TIMEOUT
     private_constant :RETRYABLE_ERRORS
 
     def initialize(token)
@@ -45,7 +51,7 @@ module GHB
     private
 
     def execute(method, url, body: nil, headers: {}, expected_codes: [200])
-      options = { headers: @headers.merge(headers) }
+      options = { headers: @headers.merge(headers), open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT }
       options[:body] = body.to_json if body
 
       response = with_retries { HTTParty.public_send(method, url, options) }
