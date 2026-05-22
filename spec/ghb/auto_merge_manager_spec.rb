@@ -103,7 +103,7 @@ RSpec.describe(GHB::AutoMergeManager) do
 
       checkout_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Checkout' }
       expect(checkout_step).not_to(be_nil)
-      expect(checkout_step.uses).to(eq('actions/checkout@v6'))
+      expect(checkout_step.uses).to(eq(GHB.external_action('actions/checkout')))
       expect(checkout_step.with[:ref]).to(eq('${{github.event.pull_request.base.sha}}'))
     end
 

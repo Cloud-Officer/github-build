@@ -8,10 +8,27 @@ RSpec.describe(GHB) do
     end
   end
 
+  describe '.external_action' do
+    let(:manifest) { Psych.safe_load_file(File.expand_path('../config/actions.yaml', __dir__)) }
+
+    it 'returns owner/repo@version using the version pinned in config/actions.yaml' do
+      manifest.each do |name, version|
+        expect(described_class.external_action(name)).to(eq("#{name}@#{version}"))
+      end
+    end
+
+    it 'raises ConfigError for an action absent from the manifest' do
+      expect { described_class.external_action('nonexistent/action') }
+        .to(raise_error(GHB::ConfigError, %r{not found in config/actions\.yaml}))
+    end
+  end
+
   describe 'private constants' do
     it 'keeps configuration constants private' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       # These constants exist but are private - accessing them should raise NameError
       expect { described_class::CI_ACTIONS_VERSION }
+        .to(raise_error(NameError))
+      expect { described_class::EXTERNAL_ACTIONS_CONFIG_FILE }
         .to(raise_error(NameError))
       expect { described_class::DEFAULT_BUILD_FILE }
         .to(raise_error(NameError))
