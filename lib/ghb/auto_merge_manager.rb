@@ -95,7 +95,7 @@ module GHB
         do_runs_on(DEFAULT_UBUNTU_VERSION)
 
         do_step('Checkout') do
-          do_uses('actions/checkout@v6')
+          do_uses(GHB.external_action('actions/checkout'))
           do_with(
             {
               ref: '${{github.event.pull_request.base.sha}}'

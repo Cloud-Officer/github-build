@@ -1,0 +1,9 @@
+---
+# Pinned versions for the external (third-party) GitHub Actions that github-build
+# emits into consumer workflow templates. The Ruby builders read versions from
+# here (GHB.external_action) so there is a single source of truth, and the weekly
+# .github/workflows/external-actions-bump.yml cron bumps these entries (via
+# bump-actions/bump-actions.sh) to the latest upstream major, opening a PR for
+# review. cloud-officer/* actions are versioned separately (see CI_ACTIONS_VERSION).
+actions/checkout: v6
+peter-evans/create-pull-request: v7

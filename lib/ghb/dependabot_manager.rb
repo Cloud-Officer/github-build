@@ -117,7 +117,7 @@ module GHB
         end
 
         do_step('Create Pull Request') do
-          do_uses('peter-evans/create-pull-request@v7')
+          do_uses(GHB.external_action('peter-evans/create-pull-request'))
           do_with(
             {
               'commit-message': 'Update dependencies and soup files',
