@@ -48,6 +48,14 @@ RSpec.describe(GHB::GitHubAPIClient) do
       response = client.get(base_url, expected_codes: nil)
       expect(response.code).to(eq(403))
     end
+
+    it 'bounds every request with open and read timeouts' do
+      allow(HTTParty).to(receive(:get).and_return(instance_double(HTTParty::Response, code: 200, body: '{}')))
+
+      client.get(base_url)
+
+      expect(HTTParty).to(have_received(:get).with(base_url, hash_including(open_timeout: 10, read_timeout: 30)))
+    end
   end
 
   describe '#put' do
