@@ -377,6 +377,64 @@ RSpec.describe(GHB::LinterJobBuilder) do
         # The transformation block should have uncommented the Rails rules
         expect(File).to(have_received(:write).with(anything, "AllCops:\n  TargetRailsVersion: 7.0\n"))
       end
+
+      it 'leaves prose comments commented while uncommenting Rails config' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        allow(File).to(receive(:exist?).and_call_original)
+        allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
+
+        builder = described_class.new(
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: file_cache
+          )
+        )
+
+        # Only match rubocop pattern (Fastfile)
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('Fastfile')), anything).and_return(['Fastfile']))
+
+        # No script_path, no preserve_config -> falls through to atomic_copy_config
+        allow(File).to(receive(:exist?).with('/linters/.rubocop.yml').and_return(false))
+        allow(File).to(receive(:exist?).with('.rubocop.yml').and_return(false))
+
+        # Rails project detection
+        allow(File).to(receive(:exist?).with('Gemfile').and_return(true))
+        allow(File).to(receive(:read).and_call_original)
+        allow(File).to(receive(:read).with('Gemfile').and_return("gem 'rails'\n"))
+
+        # Prose comment lines (no key:, or a URL whose colon isn't a YAML key)
+        # must survive; commented config keys/list items must be uncommented.
+        rubocop_content = <<~RUBOCOP
+          # Autocorrect for this cop collapses signatures. See:
+          # https://docs.rubocop.org/rubocop/latest/cops_style.html#stylemultilinemethodsignature
+          Style/MultilineMethodSignature:
+            Enabled: false
+          # Rails/EnvironmentVariableAccess:
+          #   Exclude:
+          #     - "app/jobs/**/*"
+        RUBOCOP
+        expected = <<~RUBOCOP
+          # Autocorrect for this cop collapses signatures. See:
+          # https://docs.rubocop.org/rubocop/latest/cops_style.html#stylemultilinemethodsignature
+          Style/MultilineMethodSignature:
+            Enabled: false
+          Rails/EnvironmentVariableAccess:
+            Exclude:
+              - "app/jobs/**/*"
+        RUBOCOP
+        allow(File).to(receive(:read).with(%r{config/linters/\.rubocop\.yml}).and_return(rubocop_content))
+        allow(File).to(receive(:write))
+        allow(FileUtils).to(receive(:mv))
+
+        builder.build
+
+        expect(new_workflow.jobs).to(have_key(:rubocop))
+        expect(YAML.safe_load(expected)).to(be_a(Hash)) # expected output is valid YAML
+        expect(File).to(have_received(:write).with(anything, expected))
+      end
     end
 
     context 'when linter is not enabled (no matches) and has a config file' do

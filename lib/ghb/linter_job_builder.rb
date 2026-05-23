@@ -120,9 +120,11 @@ module GHB
       else
         # Use atomic file operation to prevent data loss if copy fails
         atomic_copy_config("#{__dir__}/../../config/linters/#{linter[:config]}", linter[:config]) do |content|
-          # Uncomment Rails-specific rules if this is a Rails project
+          # Uncomment Rails-specific rules if this is a Rails project. Only
+          # un-comment commented-out YAML config (list items and mapping keys)
+          # so prose comments (e.g. the MultilineMethodSignature note) survive.
           if linter[:config] == '.rubocop.yml' && File.exist?('Gemfile') && File.read('Gemfile').include?('rails')
-            content.gsub(/^(\s*)# /, '\1')
+            content.gsub(/^(\s*)# (?=\s*(?:-\s|[^\s:#]+:(?:\s|$)))/, '\1')
           else
             content
           end
