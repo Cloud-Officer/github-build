@@ -201,6 +201,7 @@ root. No CLI flags are needed for these; they are detected on every run.
 | ---------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------- |
 | `.aws` | Adds an AWS commands job to the workflow | Remove the `.aws` file |
 | `appspec.yml` | Adds CodeDeploy and environment deployment jobs (`beta_deploy`, `rc_deploy`, `prod_deploy`) | Remove `appspec.yml` |
+| `vercel.json` (or a `"vercel"`/`"next"` dependency in `package.json`) | Adds Vercel deployment jobs (`beta_deploy`, `rc_deploy`, `prod_deploy`) driving the Vercel CLI. Ignored when `appspec.yml` is present (CodeDeploy wins). Custom steps such as `vercel alias` are preserved across regenerations | Remove `vercel.json` and the `vercel`/`next` dependency |
 | `.dockerhub` | Generates a separate Docker Hub workflow (`.github/workflows/docker.yml`) that pushes images on tag events | Remove the `.dockerhub` file |
 | `ci_scripts/` | Adds `Xcode` to the expected branch protection status checks | Remove the `ci_scripts/` directory |
 
