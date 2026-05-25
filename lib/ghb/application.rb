@@ -24,6 +24,7 @@ require_relative 'repository_configurator'
 require_relative 'slack_job_builder'
 require_relative 'status'
 require_relative 'variables_job_builder'
+require_relative 'vercel_job_builder'
 require_relative 'workflow/workflow'
 
 module GHB
@@ -100,6 +101,8 @@ module GHB
       collect_required_status_checks
 
       CodeDeployJobBuilder.new(context: context, code_deploy_pre_steps: @code_deploy_pre_steps).build
+
+      VercelJobBuilder.new(context: context).build
 
       AwsJobBuilder.new(context: context).build
       SlackJobBuilder.new(context: context).build

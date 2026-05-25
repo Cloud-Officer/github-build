@@ -26,9 +26,10 @@
 +------------------------------------------------------------------------+
 |                         Job Builders & Managers                         |
 |  VariablesJobBuilder  |  LinterJobBuilder    |  LicensesJobBuilder    |
-|  LanguageJobBuilder   |  CodeDeployJobBuilder|  AwsJobBuilder         |
-|  SlackJobBuilder      |  DependabotManager   |  DockerhubManager      |
-|  AutoMergeManager     |  GitignoreManager    |  RepositoryConfigurator|
+|  LanguageJobBuilder   |  CodeDeployJobBuilder|  VercelJobBuilder      |
+|  AwsJobBuilder        |  SlackJobBuilder     |  DependabotManager     |
+|  DockerhubManager     |  AutoMergeManager    |  GitignoreManager      |
+|  RepositoryConfigurator|                     |                        |
 +------------------------------------------------------------------------+
          |  uses                       |  uses
          v                             v
@@ -65,7 +66,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 1. The CLI entry point (`bin/github-build.rb`) instantiates `GHB::Application`
 2. `Application` parses command-line options via `GHB::Options` and validates configuration
 3. `Application` bundles the shared inputs (options, old/new workflow, file cache, submodules) into an immutable `GHB::BuildContext` that is passed to every builder
-4. `Application` delegates workflow generation to specialized builders: `VariablesJobBuilder`, `LinterJobBuilder`, `LicensesJobBuilder`, `LanguageJobBuilder`, `CodeDeployJobBuilder`, `AwsJobBuilder`, and `SlackJobBuilder`
+4. `Application` delegates workflow generation to specialized builders: `VariablesJobBuilder`, `LinterJobBuilder`, `LicensesJobBuilder`, `LanguageJobBuilder`, `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder`, and `SlackJobBuilder`
 5. Post-generation managers handle output: `DependabotManager`, `AutoMergeManager`, `DockerhubManager`, `GitignoreManager`, and `RepositoryConfigurator`
 6. `GitignoreManager` delegates pure rule logic (template detection, content transforms) to `GHB::GitignoreRules`
 7. `FileScanner` mixin provides shared pure-Ruby file operations to builders that need file pattern matching
@@ -139,6 +140,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `GHB::LicensesJobBuilder`
 - `GHB::LanguageJobBuilder`
 - `GHB::CodeDeployJobBuilder`
+- `GHB::VercelJobBuilder`
 - `GHB::AwsJobBuilder`
 - `GHB::SlackJobBuilder`
 - `GHB::DependabotManager`
@@ -334,6 +336,17 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `initialize(context:, code_deploy_pre_steps:)`: Accepts a `GHB::BuildContext` and the collected pre-deployment steps
 - `build`: Creates CodeDeploy packaging and per-environment deployment jobs
+
+### GHB::VercelJobBuilder
+
+**Purpose:** Builds the Vercel `beta_deploy` / `rc_deploy` / `prod_deploy` jobs — the Vercel counterpart to `CodeDeployJobBuilder`. Triggered when a `vercel.json` marker is present or `package.json` declares a `"vercel"` / `"next"` dependency. CodeDeploy takes precedence: when `appspec.yml` exists these jobs are left to `CodeDeployJobBuilder` so the `*_deploy` job names do not collide.
+
+**Location:** `lib/ghb/vercel_job_builder.rb`
+
+**Key Components:**
+
+- `initialize(context:)`: Accepts a `GHB::BuildContext`
+- `build`: Creates the three per-environment Vercel CLI deploy jobs (`prod` publishes with `--prod`; `beta`/`rc` deploy a preview build and capture the URL). Generated steps are Setup, Install Vercel CLI, Pull Vercel Environment Information, and Deploy Project to Vercel; any other step on an existing `*_deploy` job (e.g. project-specific `vercel alias` steps) is preserved across regenerations.
 
 ### GHB::AwsJobBuilder
 
