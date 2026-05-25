@@ -55,7 +55,23 @@ module GHB
       echo "PR author ${AUTHOR} is_owner=${is_owner}"
     BASH
 
-    private_constant :OLD_WORKFLOW_FILE, :WORKFLOW_FILE, :CODEOWNERS_CHECK_SCRIPT
+    # Bash run by the "Approve PR" step. GitHub rejects approving your own PR, so
+    # when GH_BOT_PAT resolves to the same account that opened the PR (e.g. the
+    # dependency-update bot approving its own PRs) we skip instead of failing the
+    # job. Human code-owner PRs (author != bot) are still approved as before.
+    APPROVE_SCRIPT = <<~BASH
+      set -euo pipefail
+
+      APPROVER=$(gh api user --jq .login)
+      if [ "$APPROVER" = "$AUTHOR" ]; then
+        echo "Approver $APPROVER is the PR author; skipping self-approval."
+        exit 0
+      fi
+
+      gh pr review --approve "$PR"
+    BASH
+
+    private_constant :OLD_WORKFLOW_FILE, :WORKFLOW_FILE, :CODEOWNERS_CHECK_SCRIPT, :APPROVE_SCRIPT
 
     def initialize(auto_merge_workflow:)
       @auto_merge_workflow = auto_merge_workflow
@@ -122,10 +138,11 @@ module GHB
           do_env(
             {
               GH_TOKEN: '${{secrets.GH_BOT_PAT}}',
+              AUTHOR: '${{github.event.pull_request.user.login}}',
               PR: '${{github.event.pull_request.number}}'
             }
           )
-          do_run('gh pr review --approve "$PR"')
+          do_run(APPROVE_SCRIPT)
         end
       end
 
