@@ -6,4 +6,4 @@
 # bump-actions/bump-actions.sh) to the latest upstream major, opening a PR for
 # review. cloud-officer/* actions are versioned separately (see CI_ACTIONS_VERSION).
 actions/checkout: v6
-peter-evans/create-pull-request: v7
+peter-evans/create-pull-request: v8
