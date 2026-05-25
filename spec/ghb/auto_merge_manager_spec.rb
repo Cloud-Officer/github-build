@@ -126,8 +126,18 @@ RSpec.describe(GHB::AutoMergeManager) do
       approve_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Approve PR' }
       expect(approve_step).not_to(be_nil)
       expect(approve_step.if).to(eq("steps.check.outputs.is_owner == 'true'"))
-      expect(approve_step.run).to(eq('gh pr review --approve "$PR"'))
+      expect(approve_step.run).to(include('gh pr review --approve "$PR"'))
       expect(approve_step.env[:GH_TOKEN]).to(eq('${{secrets.GH_BOT_PAT}}'))
+      expect(approve_step.env[:AUTHOR]).to(eq('${{github.event.pull_request.user.login}}'))
+    end
+
+    it 'skips self-approval when the approver is the PR author' do # rubocop:disable RSpec/MultipleExpectations
+      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager.save
+
+      approve_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Approve PR' }
+      expect(approve_step.run).to(include('APPROVER=$(gh api user --jq .login)'))
+      expect(approve_step.run).to(include('skipping self-approval'))
     end
 
     it 'does not include a merge step' do
