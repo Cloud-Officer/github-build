@@ -556,7 +556,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `main`: Parses `--apply` / `--pr-body-file`, reads the manifest, resolves bumps, and optionally rewrites the manifest and emits a PR body with a bumps table and truncated upstream release notes
 - `resolve_bump(org/repo, version)`: Determines the new version for a ref — floating major tags (`vN`) bump only when the upstream major increases; exact semver pins bump to the latest strictly-newer release; SHA pins and branch pins are skipped
-- `manifest_entries`, `latest_version`, `tag_exists`, `version_gt`, `apply_bump`: Pure, individually-testable helpers (covered by `bump-actions/tests/bump-actions.bats`)
+- `manifest_entries`, `latest_version`, `tag_exists`, `version_gt`, `apply_bump`: Pure, individually-testable helpers (covered by `tests/bump-actions.bats`)
 
 **Behavior:** Skips `cloud-officer/*` actions (versioned separately via `CI_ACTIONS_VERSION`); honors `BUMP_MANIFEST` to override the manifest path for testing; requires an authenticated `gh` on `PATH`.
 

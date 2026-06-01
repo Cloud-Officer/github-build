@@ -437,6 +437,52 @@ RSpec.describe(GHB::LinterJobBuilder) do
       end
     end
 
+    context 'when a managed linter config is copied' do
+      let(:options) do
+        instance_double(
+          GHB::Options,
+          skip_semgrep: false,
+          ignored_linters: {},
+          excluded_folders: [],
+          linters_config_file: 'config/linters.yaml',
+          languages_config_file: 'config/languages.yaml'
+        )
+      end
+
+      it 'renders the canonical excluded-dirs into the copied config' do # rubocop:disable RSpec/ExampleLength
+        allow(File).to(receive(:exist?).and_call_original)
+        allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
+
+        builder = described_class.new(
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: {}
+          )
+        )
+
+        # Enable only eslint (its pattern uniquely contains 'mjs')
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('mjs')), anything).and_return(['app.js']))
+
+        # No script_path / no preserve_config -> falls through to atomic_copy_config,
+        # which reads the real template (with sentinels) and writes the rendered copy.
+        allow(File).to(receive(:exist?).with('/linters/.eslintrc.json').and_return(false))
+        allow(File).to(receive(:exist?).with('.eslintrc.json').and_return(false))
+        allow(File).to(receive(:symlink?).and_return(false))
+        allow(File).to(receive(:read).and_call_original)
+        captured = nil
+        allow(File).to(receive(:write)) { |_path, content| captured = content }
+        allow(FileUtils).to(receive(:mv))
+
+        builder.build
+
+        expect(captured).to(include('"ignorePatterns": ["**/.build/**"').and(include('"**/coverage/**"')))
+      end
+    end
+
     context 'when linter is not enabled (no matches) and has a config file' do
       let(:options) do
         instance_double(

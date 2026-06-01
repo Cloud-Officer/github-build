@@ -1,4 +1,6 @@
 [bandit]
 targets: .
 recursive: yes
-exclude: node_modules,vendor,.build,Pods,Carthage,DerivedData,venv,.venv,dist,build,target
+# ghb:excluded-dirs:start - managed by github-build from config/languages.yaml; do not edit by hand
+exclude: .build,.bundle,.git,.gradle,.hg,.m2,.npm,.pnpm,.pytest_cache,.svn,.venv,.yarn,__pycache__,build,Carthage,coverage,DerivedData,dist,env,Libraries,node_modules,Pods,target,vendor,venv
+# ghb:excluded-dirs:end

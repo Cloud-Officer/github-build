@@ -470,7 +470,12 @@ ruby:
   unit_test_framework_default: bundle exec rspec
 # Directories to exclude from file scanning that are NOT package manager install dirs.
 # Combined with install_dirs values from dependency entries to form the complete exclusion list.
+# This combined set is also the single source of truth rendered into each linter
+# config's own ignore list (see lib/ghb/linter_ignore_renderer.rb).
 excluded_dirs:
   - .git # Git repository metadata
   - .hg # Mercurial repository metadata
   - .svn # Subversion repository metadata
+  - coverage # Generated test-coverage reports
+  - dist # Build/distribution output
+  - Libraries # Vendored third-party libraries
