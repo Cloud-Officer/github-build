@@ -9,8 +9,33 @@
     PMD custom rules
   </description>
 
+  <!-- ghb:excluded-dirs:start - managed by github-build from config/languages.yaml; do not edit by hand -->
+  <exclude-pattern>.*/.build/.*</exclude-pattern>
+  <exclude-pattern>.*/.bundle/.*</exclude-pattern>
+  <exclude-pattern>.*/.git/.*</exclude-pattern>
+  <exclude-pattern>.*/.gradle/.*</exclude-pattern>
+  <exclude-pattern>.*/.hg/.*</exclude-pattern>
+  <exclude-pattern>.*/.m2/.*</exclude-pattern>
+  <exclude-pattern>.*/.npm/.*</exclude-pattern>
+  <exclude-pattern>.*/.pnpm/.*</exclude-pattern>
+  <exclude-pattern>.*/.pytest_cache/.*</exclude-pattern>
+  <exclude-pattern>.*/.svn/.*</exclude-pattern>
+  <exclude-pattern>.*/.venv/.*</exclude-pattern>
+  <exclude-pattern>.*/.yarn/.*</exclude-pattern>
+  <exclude-pattern>.*/__pycache__/.*</exclude-pattern>
+  <exclude-pattern>.*/build/.*</exclude-pattern>
+  <exclude-pattern>.*/Carthage/.*</exclude-pattern>
+  <exclude-pattern>.*/coverage/.*</exclude-pattern>
+  <exclude-pattern>.*/DerivedData/.*</exclude-pattern>
+  <exclude-pattern>.*/dist/.*</exclude-pattern>
+  <exclude-pattern>.*/env/.*</exclude-pattern>
+  <exclude-pattern>.*/Libraries/.*</exclude-pattern>
   <exclude-pattern>.*/node_modules/.*</exclude-pattern>
-  <exclude-pattern>.*/.*/node_modules/.*</exclude-pattern>
+  <exclude-pattern>.*/Pods/.*</exclude-pattern>
+  <exclude-pattern>.*/target/.*</exclude-pattern>
+  <exclude-pattern>.*/vendor/.*</exclude-pattern>
+  <exclude-pattern>.*/venv/.*</exclude-pattern>
+  <!-- ghb:excluded-dirs:end -->
 
   <rule ref="category/ecmascript/bestpractices.xml">
     <exclude name="GlobalVariable"/>

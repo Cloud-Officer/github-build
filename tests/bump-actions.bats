@@ -8,7 +8,7 @@
 # cloud-officer/ci-actions so the shared helpers stay behaviour-compatible.
 
 setup() {
-  SCRIPT="${BATS_TEST_DIRNAME}/../bump-actions.sh"
+  SCRIPT="${BATS_TEST_DIRNAME}/../bump-actions/bump-actions.sh"
   BIN="$(mktemp -d)"
   MANIFEST="$(mktemp)"
   export BUMP_MANIFEST="${MANIFEST}"

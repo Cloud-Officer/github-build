@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
 require_relative 'file_scanner'
+require_relative 'linter_ignore_renderer'
 
 module GHB
   # Detects linters based on file patterns and adds linter jobs to the workflow.
   class LinterJobBuilder
     include FileScanner
+    include LinterIgnoreRenderer
 
     def initialize(context:)
       @options = context.options
@@ -120,14 +122,16 @@ module GHB
       else
         # Use atomic file operation to prevent data loss if copy fails
         atomic_copy_config("#{__dir__}/../../config/linters/#{linter[:config]}", linter[:config]) do |content|
+          # Keep each linter's ignore list aligned with the single source of truth
+          # (excluded_dirs + install_dirs from languages.yaml).
+          content = render_excluded_dirs(linter[:config], content, excluded_dirs_from_config) if manages?(linter[:config])
+
           # Uncomment Rails-specific rules if this is a Rails project. Only
           # un-comment commented-out YAML config (list items and mapping keys)
           # so prose comments (e.g. the MultilineMethodSignature note) survive.
-          if linter[:config] == '.rubocop.yml' && File.exist?('Gemfile') && File.read('Gemfile').include?('rails')
-            content.gsub(/^(\s*)# (?=\s*(?:-\s|[^\s:#]+:(?:\s|$)))/, '\1')
-          else
-            content
-          end
+          content = content.gsub(/^(\s*)# (?=\s*(?:-\s|[^\s:#]+:(?:\s|$)))/, '\1') if linter[:config] == '.rubocop.yml' && File.exist?('Gemfile') && File.read('Gemfile').include?('rails')
+
+          content
         end
       end
     end
