@@ -641,6 +641,24 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     end
   end
 
+  describe '#version_file_mismatch?' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    it 'treats a recommendation that only adds a more specific patch as a match (.php-version 8.5 vs 8.5.6)' do
+      expect(builder.__send__(:version_file_mismatch?, '8.5', '8.5.6')).to(be(false))
+    end
+
+    it 'treats an identical version as a match' do
+      expect(builder.__send__(:version_file_mismatch?, '3.13.13', '3.13.13')).to(be(false))
+    end
+
+    it 'flags a real minor-version difference as a mismatch (.python-version 3.13.13 vs 3.14.5)' do
+      expect(builder.__send__(:version_file_mismatch?, '3.13.13', '3.14.5')).to(be(true))
+    end
+
+    it 'does not treat a numerically adjacent prefix as a match (8.5 vs 8.50.0)' do
+      expect(builder.__send__(:version_file_mismatch?, '8.5', '8.50.0')).to(be(true))
+    end
+  end
+
   private
 
   def stub_config_file_reads(languages_yaml)

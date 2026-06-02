@@ -314,7 +314,7 @@ module GHB
           if option_value
             file_version = File.read(version_file).strip
 
-            if file_version != option_value.to_s
+            if version_file_mismatch?(file_version, option_value.to_s)
               puts("\e[31m\n#{'*' * 80}")
               puts("WARNING: Value mismatch for #{option[:name].upcase}")
               puts("Version file (#{version_file}): #{file_version}")
@@ -360,6 +360,18 @@ module GHB
         @new_workflow.env[option[:name].upcase.to_sym] = value unless @new_workflow.env[option[:name].upcase.to_sym]
         setup_options[option[:name]] = "${{env.#{option[:name].upcase}}}"
       end
+    end
+
+    # A version file may intentionally pin fewer segments than the recommended
+    # value: e.g. .php-version pins "8.5" and setup-php/phpenv resolve the latest
+    # patch at install time. A recommendation that only adds a more specific
+    # patch within the same prefix is not a real mismatch, so it must not
+    # trigger a version-mismatch warning.
+    def version_file_mismatch?(file_version, recommended)
+      return false if file_version == recommended
+      return false if recommended.start_with?("#{file_version}.")
+
+      true
     end
   end
 end
