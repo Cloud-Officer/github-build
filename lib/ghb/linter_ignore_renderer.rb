@@ -22,6 +22,17 @@ module GHB
     SENTINEL_PATTERN = /(.*#{Regexp.escape(SENTINEL_START)}.*\n)(?:.*\n)*?(.*#{Regexp.escape(SENTINEL_END)}.*)/
     private_constant :SENTINEL_PATTERN
 
+    # ESLint-only static ignores layered on top of the canonical excluded dirs.
+    # Workflow DSL scripts (*.workflow.js) legitimately combine a top-level
+    # `export const meta` with a top-level `return` (the Workflow runtime extracts
+    # the meta export and wraps the body in an async function), which no single
+    # ESLint parser mode can parse. They are validated by the Workflow runtime,
+    # not ESLint, so they are always ignored. This is a file glob (not a
+    # directory) and specific to ESLint, hence kept here rather than in the
+    # shared excluded_dirs list.
+    ESLINT_EXTRA_IGNORES = ['**/*.workflow.js'].freeze
+    private_constant :ESLINT_EXTRA_IGNORES
+
     # config file name (as symbol) => body renderer for its native syntax
     FORMATS = {
       '.eslintrc.json': :body_eslint,
@@ -66,6 +77,7 @@ module GHB
 
     def body_eslint(dirs)
       patterns = dirs.map { |dir| %("**/#{dir}/**") }
+      patterns.concat(ESLINT_EXTRA_IGNORES.map { |glob| %("#{glob}") })
       %(  "ignorePatterns": [#{patterns.join(', ')}],)
     end
 

@@ -24,6 +24,10 @@ target/
 **/*.spec.js
 **/*.spec.ts
 
+# Workflow DSL scripts (Claude Code): not standard modules, validated by the
+# Workflow runtime rather than static analysis
+**/*.workflow.js
+
 # Test directories
 **/test/
 **/tests/

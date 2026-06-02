@@ -745,4 +745,24 @@ RSpec.describe(GHB::LinterJobBuilder) do
       end
     end
   end
+
+  # Workflow DSL scripts (*.workflow.js) must not trigger the JS-based linters:
+  # they are validated by the Workflow runtime, not eslint/semgrep.
+  describe 'workflow DSL detection patterns' do
+    let(:linters) { Psych.safe_load(File.read('config/linters.yaml')) }
+
+    it 'excludes *.workflow.js from eslint detection but matches regular JS' do
+      pattern = Regexp.new(linters['eslint']['pattern'])
+      cases = [['./commands/code-review-deep.workflow.js', false], ['./src/app.js', true], ['./src/index.mjs', true]]
+
+      cases.each { |path, expected| expect(pattern.match?(path)).to(be(expected)) }
+    end
+
+    it 'excludes *.workflow.js from semgrep detection but matches other source files' do
+      pattern = Regexp.new(linters['semgrep']['pattern'])
+      cases = [['./commands/code-review-deep.workflow.js', false], ['./src/app.js', true], ['./lib/foo.py', true], ['./main.go', true]]
+
+      cases.each { |path, expected| expect(pattern.match?(path)).to(be(expected)) }
+    end
+  end
 end

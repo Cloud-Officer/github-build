@@ -13,12 +13,12 @@ RSpec.describe(GHB::LinterIgnoreRenderer) do
   let(:dirs) { %w[vendor node_modules Build node_modules coverage .git] }
 
   describe '#render_excluded_dirs' do
-    it 'renders the eslint ignorePatterns as sorted glob patterns' do
+    it 'renders the eslint ignorePatterns as sorted glob patterns, then the eslint-only file globs' do
       content = "{\n  // ghb:excluded-dirs:start\n  \"ignorePatterns\": [\"**/old/**\"],\n  // ghb:excluded-dirs:end\n}\n"
 
       result = renderer.render_excluded_dirs('.eslintrc.json', content, dirs)
 
-      expect(result).to(include('"ignorePatterns": ["**/.git/**", "**/Build/**", "**/coverage/**", "**/node_modules/**", "**/vendor/**"],'))
+      expect(result).to(include('"ignorePatterns": ["**/.git/**", "**/Build/**", "**/coverage/**", "**/node_modules/**", "**/vendor/**", "**/*.workflow.js"],'))
     end
 
     it 'renders the flake8 extend-exclude as a sorted comma list' do
