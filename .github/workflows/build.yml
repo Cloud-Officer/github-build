@@ -222,11 +222,11 @@ jobs:
         github-token: "${{secrets.GH_PAT}}"
     - name: Bundler
       shell: bash
-      run: bundle install
+      run: echo "Already done by setup."
       env:
         GITHUB_TOKEN: "${{secrets.GH_PAT}}"
     - name: RSpec
       shell: bash
-      run: bundle exec rspec
+      run: bundle exec rspec --format documentation
       env:
         GITHUB_TOKEN: "${{secrets.GH_PAT}}"

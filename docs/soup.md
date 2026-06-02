@@ -30,7 +30,7 @@
 | Ruby | parallel | 2.1.0 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | parser | 3.3.11.1 | MIT | A Ruby parser written in pure Ruby. | <https://github.com/whitequark/parser> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | prism | 1.9.0 | MIT | Prism Ruby parser | <https://github.com/ruby/prism> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | psych | 5.3.1 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2026-05-22 | Low | Yaml parser | Ruby standard library gem maintained by the Ruby core team |
+| Ruby | psych | 5.4.0 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2026-05-22 | Low | Yaml parser | Ruby standard library gem maintained by the Ruby core team |
 | Ruby | public_suffix | 7.0.5 | MIT | PublicSuffix can parse and decompose a domain name into top level domain, domain and subdomains. | <https://simonecarletti.com/code/publicsuffix-ruby> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | racc | 1.8.1 | Ruby | Racc is an LALR(1) parser generator. | <https://github.com/ruby/racc> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | rainbow | 3.1.1 | MIT | Colorize printed text on ANSI terminals | <https://github.com/sickill/rainbow> | 2026-05-22 | Low | Dependency | Dependency |
