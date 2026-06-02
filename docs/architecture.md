@@ -249,6 +249,18 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `find` (Ruby stdlib)
 
+### GHB::LinterIgnoreRenderer (Module)
+
+**Purpose:** Renders the canonical excluded-directory list (the same set `FileScanner` derives from `languages.yaml`) into each linter config's native ignore syntax, keeping every linter's ignore list aligned with a single source of truth. Each managed config carries a sentinel-delimited block (`ghb:excluded-dirs:start` / `ghb:excluded-dirs:end`) whose body is regenerated; configs without the sentinels are returned unchanged. Included as a mixin by `LinterJobBuilder`.
+
+**Location:** `lib/ghb/linter_ignore_renderer.rb`
+
+**Key Components:**
+
+- `FORMATS`: Maps each managed config file name (`.eslintrc.json`, `.flake8`, `.bandit`, `.yamllint.yml`, `.pmd.xml`) to its native-syntax body renderer
+- `manages?(config_name)`: Returns whether a given linter config has a managed excluded-dirs block
+- `render_excluded_dirs(config_name, content, dirs)`: Replaces the sentinel-delimited block in `content` with `dirs` rendered for the target config's native syntax (ESLint `ignorePatterns`, flake8 `extend-exclude`, Bandit `exclude`, yamllint ignore lines, PMD `exclude-pattern` entries), or returns `content` unchanged when unmanaged or missing sentinels
+
 ### GHB::GitHubAPIClient
 
 **Purpose:** Centralized GitHub REST API client with shared headers, retry logic with linear backoff, and error handling.
@@ -285,12 +297,16 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Location:** `lib/ghb/linter_job_builder.rb`
 
-**Includes:** `GHB::FileScanner`
+**Includes:** `GHB::FileScanner`, `GHB::LinterIgnoreRenderer`
 
 **Key Components:**
 
 - `initialize(context:)`: Accepts a `GHB::BuildContext`
-- `build`: Loads linter config, parses `.gitmodules`, scans for matching files, and creates linter jobs with config file copying
+- `build`: Loads linter config, parses `.gitmodules`, scans for matching files, and creates linter jobs with config file copying. When copying a bundled linter config that `GHB::LinterIgnoreRenderer` manages, regenerates its excluded-dirs block from `excluded_dirs_from_config` so every linter's ignore list stays aligned with `languages.yaml`
+
+**Internal Dependencies:**
+
+- `GHB::LinterIgnoreRenderer`
 
 ### GHB::LicensesJobBuilder
 
@@ -586,7 +602,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 3. For each linter, uses pure Ruby `find_files_matching` with regex pattern matching to search for files
 4. Excludes specified folders and submodules from search
 5. If a `content_match` string is configured, further filters matched files by checking file contents via `file_contains?`. When `content_match_pattern` is also set, only files whose path matches that sub-pattern require the content check; other files pass through unconditionally
-6. If matching files remain, enables the linter and resolves configuration files via a priority chain: cleans up deprecated config files that were renamed (tracked via `RENAMED_CONFIGS` constant, e.g., `.markdownlint.yml` → `.markdownlint-cli2.yaml`), preserves existing project-specific configs (when `preserve_config` is set and a non-symlink file exists), creates symlinks to a scripts submodule `linters/` directory, creates symlinks to a local `linters/` directory, or falls back to `atomic_copy_config` to safely copy bundled configs with optional transformation (e.g., uncommenting Rails rules in `.rubocop.yml`)
+6. If matching files remain, enables the linter and resolves configuration files via a priority chain: cleans up deprecated config files that were renamed (tracked via `RENAMED_CONFIGS` constant, e.g., `.markdownlint.yml` → `.markdownlint-cli2.yaml`), preserves existing project-specific configs (when `preserve_config` is set and a non-symlink file exists), creates symlinks to a scripts submodule `linters/` directory, creates symlinks to a local `linters/` directory, or falls back to `atomic_copy_config` to safely copy bundled configs with optional transformation (e.g., regenerating the excluded-dirs block via `GHB::LinterIgnoreRenderer` for managed configs, or uncommenting Rails rules in `.rubocop.yml`)
 7. Creates workflow job with appropriate steps for each enabled linter
 
 **Complexity:** O(n * m) where n = number of linters, m = files in repository

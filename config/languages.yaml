@@ -93,7 +93,7 @@ js:
     - .nvmrc
   setup_options:
     - name: node-version
-      value: 26.2.0
+      value: 26.3.0
     - name: node-always-auth
       value:
     - name: node-version-file
@@ -467,7 +467,7 @@ ruby:
       package_manager_update: bundle config set frozen false ; bundle update
       dependabot_ecosystem: bundler
   unit_test_framework_name: RSpec
-  unit_test_framework_default: bundle exec rspec
+  unit_test_framework_default: bundle exec rspec --format documentation
 # Directories to exclude from file scanning that are NOT package manager install dirs.
 # Combined with install_dirs values from dependency entries to form the complete exclusion list.
 # This combined set is also the single source of truth rendered into each linter
