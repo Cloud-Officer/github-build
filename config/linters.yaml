@@ -66,7 +66,12 @@ eslint:
   uses: cloud-officer/ci-actions/linters/eslint
   config: ".eslintrc.json"
   path: "."
-  pattern: ".*\\.(js|mjs|cjs)$"
+  # Excludes *.workflow.js (Workflow DSL scripts): they combine `export const meta`
+  # with a top-level `return`, which no single ESLint parser mode can parse. The
+  # negative lookahead means a repo whose only JS is workflow scripts won't enable
+  # ESLint at all (and its .eslintrc.json is removed). Mixed repos still run ESLint
+  # but skip these files via the **/*.workflow.js entry in .eslintrc.json.
+  pattern: "^(?!.*\\.workflow\\.js$).*\\.(js|mjs|cjs)$"
 flake8:
   short_name: Flake8
   long_name: Python Flake8 Linter
@@ -155,7 +160,10 @@ semgrep:
   config: ".semgrepignore"
   preserve_config: true
   path: "."
-  pattern: ".*\\.(py|js|mjs|cjs|jsx|ts|tsx|go|rb|java|kt|php|c|cpp|cs|rs|swift|scala)$"
+  # Excludes *.workflow.js (Workflow DSL scripts) so a repo whose only scannable
+  # files are workflow scripts won't enable Semgrep (parity with ESLint). Mixed
+  # repos still run Semgrep but skip these files via .semgrepignore.
+  pattern: "^(?!.*\\.workflow\\.js$).*\\.(py|js|mjs|cjs|jsx|ts|tsx|go|rb|java|kt|php|c|cpp|cs|rs|swift|scala)$"
 shellcheck:
   short_name: ShellCheck
   long_name: Shell Scripts Linter
