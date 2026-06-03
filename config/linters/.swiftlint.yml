@@ -1,18 +1,43 @@
 excluded:
+  # Swift-specific paths not covered by the shared excluded-dirs list
   - .tuist-bin
-  - Carthage
   - Derived
   - Frameworks
   - Package.swift
-  - Pods
   - Project.swift
   - SourcePackages
   - Tests
-  - .build
   - Tuist/.build
   - Tuist/Cache
   - Tuist/Dependencies
   - fastlane
+  # ghb:excluded-dirs:start - managed by github-build from config/languages.yaml; do not edit by hand
+  - .build
+  - .bundle
+  - .git
+  - .gradle
+  - .hg
+  - .m2
+  - .npm
+  - .pnpm
+  - .pytest_cache
+  - .svn
+  - .venv
+  - .yarn
+  - __pycache__
+  - build
+  - Carthage
+  - coverage
+  - DerivedData
+  - dist
+  - env
+  - Libraries
+  - node_modules
+  - Pods
+  - target
+  - vendor
+  - venv
+  # ghb:excluded-dirs:end
 disabled_rules:
   - comment_spacing
   - empty_enum_arguments

@@ -251,21 +251,21 @@ RSpec.describe(GHB::LinterJobBuilder) do
           )
         )
 
-        # Only match semgrep pattern
+        # Only match trivy pattern. Match `(tf)` -- unique to trivy's pattern.
         allow(builder).to(receive(:find_files_matching).and_return([]))
-        allow(builder).to(receive(:find_files_matching).with(anything, satisfy { |p| p.source.include?('swift') && p.source.include?('py') }, anything).and_return(['app.py']))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(tf)')), anything).and_return(['main.tf']))
 
-        # Semgrep config is .semgrepignore with preserve_config: true
+        # Trivy config is .trivyignore with preserve_config: true
         # No script_path (no .gitmodules), so script_path is nil
-        # File.exist?("#{nil}/linters/.semgrepignore") should be false
-        allow(File).to(receive(:exist?).with('/linters/.semgrepignore').and_return(false))
+        # File.exist?("#{nil}/linters/.trivyignore") should be false
+        allow(File).to(receive(:exist?).with('/linters/.trivyignore').and_return(false))
         # The config file exists and is NOT a symlink -> preserve
-        allow(File).to(receive(:exist?).with('.semgrepignore').and_return(true))
-        allow(File).to(receive(:symlink?).with('.semgrepignore').and_return(false))
+        allow(File).to(receive(:exist?).with('.trivyignore').and_return(true))
+        allow(File).to(receive(:symlink?).with('.trivyignore').and_return(false))
 
         builder.build
 
-        expect(new_workflow.jobs).to(have_key(:semgrep))
+        expect(new_workflow.jobs).to(have_key(:trivy))
         # Config should be preserved - no write or mv should happen for the config
         expect(File).not_to(have_received(:write))
       end
@@ -463,9 +463,11 @@ RSpec.describe(GHB::LinterJobBuilder) do
           )
         )
 
-        # Enable only eslint (its pattern uniquely contains 'mjs')
+        # Enable only eslint. Match its full alternation group `(js|mjs|cjs)`,
+        # which is unique to eslint -- Semgrep's catch-all pattern contains the
+        # bare tokens (js, mjs, cjs) but never that exact grouping.
         allow(builder).to(receive(:find_files_matching).and_return([]))
-        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('mjs')), anything).and_return(['app.js']))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(js|mjs|cjs)')), anything).and_return(['app.js']))
 
         # No script_path / no preserve_config -> falls through to atomic_copy_config,
         # which reads the real template (with sentinels) and writes the rendered copy.
@@ -591,12 +593,12 @@ RSpec.describe(GHB::LinterJobBuilder) do
         # No files match any linter pattern
         allow(builder).to(receive(:find_files_matching).and_return([]))
 
-        # Semgrep has preserve_config: true; its config exists and is NOT a symlink
-        allow(File).to(receive(:exist?).with('.semgrepignore').and_return(true))
+        # Trivy has preserve_config: true; its config exists and is NOT a symlink
+        allow(File).to(receive(:exist?).with('.trivyignore').and_return(true))
 
         builder.build
 
-        expect(File).not_to(have_received(:delete).with('.semgrepignore'))
+        expect(File).not_to(have_received(:delete).with('.trivyignore'))
       end
     end
 
@@ -635,21 +637,21 @@ RSpec.describe(GHB::LinterJobBuilder) do
           )
         )
 
-        # Only match semgrep pattern
+        # Only match trivy pattern. Match `(tf)` -- unique to trivy's pattern.
         allow(builder).to(receive(:find_files_matching).and_return([]))
-        allow(builder).to(receive(:find_files_matching).with(anything, satisfy { |p| p.source.include?('swift') && p.source.include?('py') }, anything).and_return(['app.py']))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(tf)')), anything).and_return(['main.tf']))
 
         # script_path has the config
-        allow(File).to(receive(:exist?).with('scripts-repo/linters/.semgrepignore').and_return(true))
+        allow(File).to(receive(:exist?).with('scripts-repo/linters/.trivyignore').and_return(true))
         # Project has its own non-symlink config
-        allow(File).to(receive(:exist?).with('.semgrepignore').and_return(true))
-        allow(File).to(receive(:symlink?).with('.semgrepignore').and_return(false))
+        allow(File).to(receive(:exist?).with('.trivyignore').and_return(true))
+        allow(File).to(receive(:symlink?).with('.trivyignore').and_return(false))
         allow(FileUtils).to(receive(:ln_s))
 
         builder.build
 
-        expect(new_workflow.jobs).to(have_key(:semgrep))
-        expect(FileUtils).not_to(have_received(:ln_s).with('scripts-repo/linters/.semgrepignore', '.semgrepignore', force: true))
+        expect(new_workflow.jobs).to(have_key(:trivy))
+        expect(FileUtils).not_to(have_received(:ln_s).with('scripts-repo/linters/.trivyignore', '.trivyignore', force: true))
       end
     end
 
@@ -688,9 +690,10 @@ RSpec.describe(GHB::LinterJobBuilder) do
           )
         )
 
-        # Only match golangci pattern (go files)
+        # Only match golangci pattern. Match `(go)` -- unique to golangci's
+        # `.*\.(go)$`; Semgrep's catch-all has the bare token `go` but never `(go)`.
         allow(builder).to(receive(:find_files_matching).and_return([]))
-        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('go')), anything).and_return(['main.go']))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(go)')), anything).and_return(['main.go']))
 
         # script_path will be 'scripts-repo' (contains 'scripts')
         # Config file is .golangci.yml
@@ -730,9 +733,10 @@ RSpec.describe(GHB::LinterJobBuilder) do
           )
         )
 
-        # Only match eslint pattern (js files)
+        # Only match eslint pattern. Match `(js|mjs|cjs)` -- unique to eslint;
+        # Semgrep's catch-all has the bare tokens but never that exact grouping.
         allow(builder).to(receive(:find_files_matching).and_return([]))
-        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('js')), anything).and_return(['app.js']))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(js|mjs|cjs)')), anything).and_return(['app.js']))
 
         # No script_path, but local linters/ directory has the config
         allow(File).to(receive(:exist?).with('linters/.eslintrc.json').and_return(true))

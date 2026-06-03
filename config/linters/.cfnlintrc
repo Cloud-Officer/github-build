@@ -3,14 +3,30 @@ templates:
 ignore_templates:
   - .github/**
   - docs/**
-  - node_modules/**
-  - vendor/**
+  # ghb:excluded-dirs:start - managed by github-build from config/languages.yaml; do not edit by hand
   - .build/**
-  - Pods/**
-  - Carthage/**
-  - DerivedData/**
-  - venv/**
+  - .bundle/**
+  - .git/**
+  - .gradle/**
+  - .hg/**
+  - .m2/**
+  - .npm/**
+  - .pnpm/**
+  - .pytest_cache/**
+  - .svn/**
   - .venv/**
-  - dist/**
+  - .yarn/**
+  - __pycache__/**
   - build/**
+  - Carthage/**
+  - coverage/**
+  - DerivedData/**
+  - dist/**
+  - env/**
+  - Libraries/**
+  - node_modules/**
+  - Pods/**
   - target/**
+  - vendor/**
+  - venv/**
+  # ghb:excluded-dirs:end

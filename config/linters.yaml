@@ -24,7 +24,7 @@
 #   path             (string, required) - Root directory to search for files matching `pattern`
 #   pattern          (string, required) - Regex pattern to match source files (e.g., ".*\\.(py)$")
 #   preserve_config  (bool, optional)   - If true, keeps the project's existing config file instead
-#                                         of overwriting it. Used by Semgrep for custom .semgrepignore
+#                                         of overwriting it. Used by Trivy for a custom .trivyignore
 #   content_match    (string, optional) - If set, files matching `pattern` are further filtered:
 #                                         only files containing this literal string are kept.
 #                                         Useful when file extensions alone can't identify the language
@@ -158,7 +158,6 @@ semgrep:
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/semgrep
   config: ".semgrepignore"
-  preserve_config: true
   path: "."
   # Excludes *.workflow.js (Workflow DSL scripts) so a repo whose only scannable
   # files are workflow scripts won't enable Semgrep (parity with ESLint). Mixed
@@ -177,7 +176,6 @@ swiftlint:
   long_name: Swift Linter
   uses: cloud-officer/ci-actions/linters/swiftlint
   config: ".swiftlint.yml"
-  preserve_config: true
   path: "."
   pattern: ".*\\.(swift)$"
 trivy:

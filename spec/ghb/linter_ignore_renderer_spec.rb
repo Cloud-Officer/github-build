@@ -53,6 +53,30 @@ RSpec.describe(GHB::LinterIgnoreRenderer) do
       expect(result).to(include("  <exclude-pattern>.*/.git/.*</exclude-pattern>\n  <exclude-pattern>.*/Build/.*</exclude-pattern>"))
     end
 
+    it 'renders the semgrepignore block as gitignore-style, slash-suffixed lines' do
+      content = "# deps\n# ghb:excluded-dirs:start\nold/\n# ghb:excluded-dirs:end\n"
+
+      result = renderer.render_excluded_dirs('.semgrepignore', content, dirs)
+
+      expect(result).to(include(".git/\nBuild/\ncoverage/\nnode_modules/\nvendor/"))
+    end
+
+    it 'renders the cfn-lint ignore_templates block as indented glob list items' do
+      content = "ignore_templates:\n  # ghb:excluded-dirs:start\n  - old/**\n  # ghb:excluded-dirs:end\n"
+
+      result = renderer.render_excluded_dirs('.cfnlintrc', content, dirs)
+
+      expect(result).to(include("  - .git/**\n  - Build/**\n  - coverage/**\n  - node_modules/**\n  - vendor/**"))
+    end
+
+    it 'renders the swiftlint excluded block as indented list items, preserving Swift-specific extras' do
+      content = "excluded:\n  - SourcePackages\n  # ghb:excluded-dirs:start\n  - old\n  # ghb:excluded-dirs:end\n"
+
+      result = renderer.render_excluded_dirs('.swiftlint.yml', content, dirs)
+
+      expect(result).to(include("  - SourcePackages\n  # ghb:excluded-dirs:start\n  - .git\n  - Build\n  - coverage\n  - node_modules\n  - vendor"))
+    end
+
     it 'is idempotent' do
       content = "[flake8]\n# ghb:excluded-dirs:start\nextend-exclude = old\n# ghb:excluded-dirs:end\n"
 
