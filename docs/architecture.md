@@ -257,10 +257,10 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Key Components:**
 
-- `FORMATS`: Maps each managed config file name (`.eslintrc.json`, `.flake8`, `.bandit`, `.yamllint.yml`, `.pmd.xml`) to its native-syntax body renderer
+- `FORMATS`: Maps each managed config file name (`.eslintrc.json`, `.flake8`, `.bandit`, `.yamllint.yml`, `.pmd.xml`, `.semgrepignore`, `.cfnlintrc`, `.swiftlint.yml`) to its native-syntax body renderer
 - `ESLINT_EXTRA_IGNORES`: ESLint-only static globs (`**/*.workflow.js`) layered on top of the canonical excluded dirs. Workflow DSL scripts combine a top-level `export const meta` with a top-level `return` that no single ESLint parser mode can parse; they are validated by the Workflow runtime, not ESLint, so they are always ignored
 - `manages?(config_name)`: Returns whether a given linter config has a managed excluded-dirs block
-- `render_excluded_dirs(config_name, content, dirs)`: Replaces the sentinel-delimited block in `content` with `dirs` rendered for the target config's native syntax (ESLint `ignorePatterns` — including the `ESLINT_EXTRA_IGNORES` globs, flake8 `extend-exclude`, Bandit `exclude`, yamllint ignore lines, PMD `exclude-pattern` entries), or returns `content` unchanged when unmanaged or missing sentinels
+- `render_excluded_dirs(config_name, content, dirs)`: Replaces the sentinel-delimited block in `content` with `dirs` rendered for the target config's native syntax (ESLint `ignorePatterns` — including the `ESLINT_EXTRA_IGNORES` globs, flake8 `extend-exclude`, Bandit `exclude`, yamllint ignore lines, PMD `exclude-pattern` entries, gitignore-style lines for `.semgrepignore`, cfn-lint `ignore_templates` globs, SwiftLint `excluded` list items), or returns `content` unchanged when unmanaged or missing sentinels
 
 ### GHB::GitHubAPIClient
 

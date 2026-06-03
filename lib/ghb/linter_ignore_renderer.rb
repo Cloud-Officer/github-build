@@ -39,7 +39,10 @@ module GHB
       '.flake8': :body_flake8,
       '.bandit': :body_bandit,
       '.yamllint.yml': :body_yamllint,
-      '.pmd.xml': :body_pmd
+      '.pmd.xml': :body_pmd,
+      '.semgrepignore': :body_semgrepignore,
+      '.cfnlintrc': :body_cfnlint,
+      '.swiftlint.yml': :body_swiftlint
     }.freeze
     public_constant :FORMATS
 
@@ -96,6 +99,27 @@ module GHB
 
     def body_pmd(dirs)
       lines = dirs.map { |dir| "  <exclude-pattern>.*/#{dir}/.*</exclude-pattern>" }
+      lines.join("\n")
+    end
+
+    # Semgrep reads .semgrepignore as gitignore-style patterns, one per line.
+    def body_semgrepignore(dirs)
+      lines = dirs.map { |dir| "#{dir}/" }
+      lines.join("\n")
+    end
+
+    # cfn-lint's ignore_templates is a YAML list of globs; match the directory
+    # anywhere in the tree with a trailing `/**`.
+    def body_cfnlint(dirs)
+      lines = dirs.map { |dir| "  - #{dir}/**" }
+      lines.join("\n")
+    end
+
+    # SwiftLint's excluded: is a YAML list of paths. The managed block carries the
+    # shared dirs; Swift-specific extras (e.g. SourcePackages, Tuist/.build) live
+    # outside the sentinels in the shipped template.
+    def body_swiftlint(dirs)
+      lines = dirs.map { |dir| "  - #{dir}" }
       lines.join("\n")
     end
   end
