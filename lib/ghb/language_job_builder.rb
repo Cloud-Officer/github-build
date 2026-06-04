@@ -11,7 +11,10 @@ module GHB
     SWIFT_DEPLOY_CHECK_FLAGS = %w[DEPLOY_ON_BETA DEPLOY_ON_RC DEPLOY_ON_PROD DEPLOY_MACOS DEPLOY_TVOS].freeze
     # Languages whose dependency steps must also be staged as CodeDeploy pre-steps.
     CODEDEPLOY_SETUP_LANGUAGES = %w[go php].freeze
-    private_constant :SWIFT_DEPLOY_CHECK_FLAGS, :CODEDEPLOY_SETUP_LANGUAGES
+    # How many directory levels below the repo root a sub-project dependency file
+    # may sit and still be detected (e.g. js/<module>/package-lock.json is 2 deep).
+    SUBDIR_DEPENDENCY_SCAN_DEPTH = 2
+    private_constant :SWIFT_DEPLOY_CHECK_FLAGS, :CODEDEPLOY_SETUP_LANGUAGES, :SUBDIR_DEPENDENCY_SCAN_DEPTH
 
     attr_reader :code_deploy_pre_steps, :dependencies_steps, :dependencies_commands
 
@@ -80,11 +83,7 @@ module GHB
         language[:dependencies].each do |dependency|
           dependency_detected = true if File.file?(dependency[:dependency_file])
 
-          next unless @options.mono_repo
-
-          Dir.glob("*/#{dependency[:dependency_file]}").each do |found|
-            mono_dependency_locations << { dependency: dependency, subdir: File.dirname(found), path: found }
-          end
+          mono_dependency_locations.concat(find_subdir_dependencies(dependency, excluded_paths))
         end
 
         dependency_detected = true if mono_dependency_locations.any?
@@ -125,6 +124,25 @@ module GHB
       add_setup_options(setup_options, service_options[:elasticsearch]) if elasticsearch
 
       add_language_job(language, setup_options, version_file, mono_dependency_locations)
+    end
+
+    # Find a language's dependency lockfile in sub-project directories. Scans up to
+    # SUBDIR_DEPENDENCY_SCAN_DEPTH levels below the repo root, skipping the root
+    # itself (detected separately) and any excluded/vendored directory. Replaces the
+    # former `--mono_repo`-gated one-level glob: sub-project detection is now default.
+    def find_subdir_dependencies(dependency, excluded_paths)
+      # find_files_matching yields root-relative paths ("./sub/file"), where a file
+      # directly under the start dir is depth 1; a file N directories deep is depth
+      # N+1. Allow one extra so SUBDIR_DEPENDENCY_SCAN_DEPTH counts subdir levels.
+      pattern = Regexp.new("/#{Regexp.escape(dependency[:dependency_file])}\\z")
+      matches = find_files_matching('.', pattern, excluded_paths, max_depth: SUBDIR_DEPENDENCY_SCAN_DEPTH + 1)
+
+      matches.filter_map do |found|
+        next if File.dirname(found) == '.' # repo root is detected separately via File.file?
+
+        relative = found.delete_prefix('./')
+        { dependency: dependency, subdir: File.dirname(relative), path: relative }
+      end
     end
 
     # True for languages that get the extended Swift deploy `if:` checks.

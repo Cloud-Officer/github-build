@@ -35,7 +35,6 @@ module GHB
       @skip_gitignore = false
       @skip_license_check = false
       @skip_repository_settings = false
-      @mono_repo = false
       @get_ignored_folders = false
       @skip_slack = false
       @strict_version_check = true
@@ -44,7 +43,7 @@ module GHB
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :mono_repo, :options_config_file_apt, :options_config_file_elasticsearch, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :original_argv, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check, :sync_required_status_checks
+    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :options_config_file_apt, :options_config_file_elasticsearch, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :original_argv, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check, :sync_required_status_checks
 
     def parse
       @parser.parse!(@argv)
@@ -153,10 +152,6 @@ module GHB
         ignored_linters.split(',').each do |key|
           @ignored_linters[key.to_sym] = true
         end
-      end
-
-      @parser.on('', '--mono_repo', 'Scan one level deep for language dependency files') do
-        @mono_repo = true
       end
 
       @parser.on('', '--no_strict_version_check', 'Do not auto-update when VERSION options do not match recommended defaults') do

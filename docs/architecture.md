@@ -185,7 +185,6 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `ignored_linters`: Hash of linters to skip
 - `languages_config_file`: Path to languages config file
 - `linters_config_file`: Path to linters config file
-- `mono_repo`: Scan one level deep for language dependency files
 - `options_config_file_apt`: Path to APT options config
 - `options_config_file_mongodb`: Path to MongoDB options config
 - `options_config_file_mysql`: Path to MySQL options config
@@ -329,7 +328,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 ### GHB::LanguageJobBuilder
 
-**Purpose:** Detects programming languages based on file extensions and dependency files, then creates unit test workflow jobs with appropriate setup, package manager, and test framework steps. Supports mono-repo mode with per-subdirectory steps.
+**Purpose:** Detects programming languages based on file extensions and dependency files, then creates unit test workflow jobs with appropriate setup, package manager, and test framework steps. Sub-projects whose dependency files sit up to two directory levels below the repo root are detected by default and generate per-subdirectory steps.
 
 **Location:** `lib/ghb/language_job_builder.rb`
 
@@ -622,8 +621,8 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 1. Loads language and options configurations from YAML files
 2. For each language entry (skipping non-Hash values like `excluded_dirs`), uses pure Ruby `find_files_matching` to search for files matching the language's file extension
 3. Verifies dependency files exist (e.g., `go.mod`, `package.json`)
-4. In mono-repo mode, scans one level deep for subdirectory dependency files and generates per-subdirectory package manager and test steps
-5. Checks dependency files (including subdirectory files in mono-repo mode) for database dependencies (MongoDB, MySQL, Redis, Elasticsearch) using `file_contains?`
+4. Scans up to two directory levels below the repo root for sub-project dependency files (excluding vendored/ignored directories) and generates per-subdirectory package manager and test steps
+5. Checks dependency files (including sub-project files) for database dependencies (MongoDB, MySQL, Redis, Elasticsearch) using `file_contains?`
 6. Detects version files (`.ruby-version`, `.nvmrc`, etc.) and validates against recommended versions
 7. Merges setup options with version validation (strict mode auto-updates version files and env vars to recommended values, non-strict warns)
 8. Creates unit test workflow job with appropriate setup, package manager, and test steps

@@ -58,7 +58,6 @@ options
                                      Ignore linter keys in linter config file
         --languages_config_file file Path to languages config file
         --linters_config_file file   Path to linters config file
-        --mono_repo                  Scan one level deep for language dependency files
         --options-apt file           Path to APT options file
         --options-mongodb file       Path to MongoDB options file
         --options-mysql file         Path to MySQL options file
