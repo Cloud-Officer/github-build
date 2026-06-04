@@ -525,6 +525,9 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       step_names = job.steps.map(&:name)
       expect(step_names).to(include('Go Modules (svc-a)'))
       expect(step_names).to(include('Testing (svc-a)'))
+      # The dependency-update command must cd into the sub-project folder (in a
+      # subshell) rather than running at the repo root where there is no manifest.
+      expect(builder.dependencies_commands).to(include('(cd svc-a && go mod tidy)'))
     end
 
     it 'scans sub-project dependency files up to two directory levels deep' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
