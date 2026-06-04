@@ -152,8 +152,8 @@ js:
       package_manager_default: pnpm install
       package_manager_update: pnpm update
       dependabot_ecosystem: npm
-  unit_test_framework_name: Jest
-  unit_test_framework_default: npx jest
+  unit_test_framework_name: Unit Tests
+  unit_test_framework_default: npm test --if-present
 kotlin:
   short_name: kotlin
   long_name: Kotlin
