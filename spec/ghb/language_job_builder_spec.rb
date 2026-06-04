@@ -11,7 +11,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
   let(:mock_options) do
     instance_double(
       GHB::Options,
-      mono_repo: false,
       excluded_folders: [],
       skip_license_check: true,
       force_codedeploy_setup: false,
@@ -296,7 +295,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'prints warning but does not exit when version file mismatches and strict_version_check is false' do # rubocop:disable RSpec/ExampleLength
       non_strict_options = instance_double(
         GHB::Options,
-        mono_repo: false,
         excluded_folders: [],
         skip_license_check: true,
         force_codedeploy_setup: false,
@@ -338,7 +336,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'populates code_deploy_pre_steps when force_codedeploy_setup is true' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       codedeploy_options = instance_double(
         GHB::Options,
-        mono_repo: false,
         excluded_folders: [],
         skip_license_check: true,
         force_codedeploy_setup: true,
@@ -380,7 +377,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'prints warning when existing env value differs from option value' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       non_strict_options = instance_double(
         GHB::Options,
-        mono_repo: false,
         excluded_folders: [],
         skip_license_check: true,
         force_codedeploy_setup: false,
@@ -472,7 +468,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'adds Licenses step when Podfile.lock exists and skip_license_check is false' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       license_options = instance_double(
         GHB::Options,
-        mono_repo: false,
         excluded_folders: [],
         skip_license_check: false,
         force_codedeploy_setup: false,
@@ -515,43 +510,16 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(licenses_step.with).to(have_key(:'ssh-key'))
     end
 
-    it 'detects mono_repo subdirectory dependencies and adds per-subdir steps' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      mono_options = instance_double(
-        GHB::Options,
-        mono_repo: true,
-        excluded_folders: [],
-        skip_license_check: true,
-        force_codedeploy_setup: false,
-        strict_version_check: true,
-        languages_config_file: 'config/languages.yaml',
-        options_config_file_apt: 'config/options/apt.yaml',
-        options_config_file_mongodb: 'config/options/mongodb.yaml',
-        options_config_file_mysql: 'config/options/mysql.yaml',
-        options_config_file_redis: 'config/options/redis.yaml',
-        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml'
-      )
+    it 'detects sub-project dependency files by default and adds per-subdir steps' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      stub_non_strict_config_file_reads(builder, go_language_yaml)
 
-      mono_builder = described_class.new(
-        context: GHB::BuildContext.new(
-          options: mono_options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: {}
-        ),
-        unit_tests_conditions: unit_tests_conditions,
-        dependencies_commands: +''
-      )
-
-      stub_non_strict_config_file_reads(mono_builder, go_language_yaml)
-
-      allow(mono_builder).to(receive_messages(find_files_matching: ['./main.go'], file_contains?: false))
+      allow(builder).to(receive_messages(file_contains?: false, find_files_matching: ['./main.go']))
+      allow(builder).to(receive(:find_files_matching).with(anything, anything, anything, max_depth: anything).and_return(['./svc-a/go.mod']))
       allow(File).to(receive(:file?).with('go.mod').and_return(false))
       allow(File).to(receive(:exist?).with('.go-version').and_return(false))
       allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
-      allow(Dir).to(receive(:glob).with('*/go.mod').and_return(['svc-a/go.mod']))
 
-      mono_builder.build
+      builder.build
 
       job = new_workflow.jobs[:go_unit_tests]
       step_names = job.steps.map(&:name)
@@ -559,44 +527,35 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(step_names).to(include('Testing (svc-a)'))
     end
 
-    it 'detects services in mono_repo subdirectory dependency files' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      mono_options = instance_double(
-        GHB::Options,
-        mono_repo: true,
-        excluded_folders: [],
-        skip_license_check: true,
-        force_codedeploy_setup: false,
-        strict_version_check: true,
-        languages_config_file: 'config/languages.yaml',
-        options_config_file_apt: 'config/options/apt.yaml',
-        options_config_file_mongodb: 'config/options/mongodb.yaml',
-        options_config_file_mysql: 'config/options/mysql.yaml',
-        options_config_file_redis: 'config/options/redis.yaml',
-        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml'
-      )
+    it 'scans sub-project dependency files up to two directory levels deep' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      stub_non_strict_config_file_reads(builder, go_language_yaml)
 
-      mono_svc_builder = described_class.new(
-        context: GHB::BuildContext.new(
-          options: mono_options,
-          submodules: submodules,
-          old_workflow: old_workflow,
-          new_workflow: new_workflow,
-          file_cache: {}
-        ),
-        unit_tests_conditions: unit_tests_conditions,
-        dependencies_commands: +''
-      )
-
-      stub_non_strict_config_file_reads(mono_svc_builder, go_language_yaml)
-
-      allow(mono_svc_builder).to(receive_messages(find_files_matching: ['./main.go'], file_contains?: false))
-      allow(mono_svc_builder).to(receive(:file_contains?).with('svc-a/go.mod', 'mongodb').and_return(true))
+      allow(builder).to(receive_messages(file_contains?: false, find_files_matching: ['./main.go']))
+      allow(builder).to(receive(:find_files_matching).with(anything, anything, anything, max_depth: anything).and_return(['./apps/web/go.mod']))
       allow(File).to(receive(:file?).with('go.mod').and_return(false))
       allow(File).to(receive(:exist?).with('.go-version').and_return(false))
       allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
-      allow(Dir).to(receive(:glob).with('*/go.mod').and_return(['svc-a/go.mod']))
 
-      mono_svc_builder.build
+      builder.build
+
+      # max_depth 3 == repo root + two subdirectory levels (a 2-level path is depth 3).
+      expect(builder).to(have_received(:find_files_matching).with('.', anything, anything, max_depth: 3))
+      step_names = new_workflow.jobs[:go_unit_tests].steps.map(&:name)
+      expect(step_names).to(include('Go Modules (apps/web)'))
+      expect(step_names).to(include('Testing (apps/web)'))
+    end
+
+    it 'detects services in sub-project dependency files' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      stub_non_strict_config_file_reads(builder, go_language_yaml)
+
+      allow(builder).to(receive_messages(file_contains?: false, find_files_matching: ['./main.go']))
+      allow(builder).to(receive(:find_files_matching).with(anything, anything, anything, max_depth: anything).and_return(['./svc-a/go.mod']))
+      allow(builder).to(receive(:file_contains?).with('svc-a/go.mod', 'mongodb').and_return(true))
+      allow(File).to(receive(:file?).with('go.mod').and_return(false))
+      allow(File).to(receive(:exist?).with('.go-version').and_return(false))
+      allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
+
+      builder.build
 
       expect(new_workflow.jobs).to(have_key(:go_unit_tests))
       expect(new_workflow.env).to(have_key(:'MONGODB-VERSION'))
