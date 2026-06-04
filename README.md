@@ -126,7 +126,11 @@ own copy. Required top-level keys are validated at startup — a missing key fai
 #### Linters (`--linters_config_file`, default `config/linters.yaml`)
 
 A map of linter id → definition. Each entry **must** define `short_name`, `long_name`, `uses`, `path`, and
-`pattern`. Optional keys: `condition` (a GitHub Actions `if:` expression), `config` (linter config file to copy).
+`pattern`. Optional keys: `condition` (a GitHub Actions `if:` expression), `config` (a single config file name or
+a list of names when a linter ships several, e.g. Trivy's `["trivy.yaml", ".trivyignore"]`), `preserve_config`
+(keep the project's existing config instead of overwriting it), `content_match` / `content_match_pattern` (filter
+matched files by their contents), `permissions` (job-level permissions override), and `directory` (extra directory
+hint).
 
 ```yaml
 actionlint:
@@ -136,7 +140,7 @@ actionlint:
   path: ".github/workflows"
   pattern: ".*\\.(yml|yaml)$"
   condition: "github.event_name == 'pull_request'" # optional
-  config:                                           # optional
+  config:                                           # optional (string or list)
 ```
 
 #### Languages (`--languages_config_file`, default `config/languages.yaml`)
