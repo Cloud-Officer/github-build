@@ -42,14 +42,37 @@ module GHB
       '.pmd.xml': :body_pmd,
       '.semgrepignore': :body_semgrepignore,
       '.cfnlintrc': :body_cfnlint,
-      '.swiftlint.yml': :body_swiftlint
+      '.swiftlint.yml': :body_swiftlint,
+      'trivy.yaml': :body_trivy
     }.freeze
     public_constant :FORMATS
+
+    # Managed configs whose project-added lines (outside the sentinel block) must
+    # survive a rebuild: they are rendered against the project's own existing file
+    # rather than the bundled template, so e.g. a project's custom Trivy skip-dirs
+    # (added below the end sentinel) are preserved. The other managed configs are
+    # fully curated by us and are refreshed from the bundled template each build.
+    MERGE_EXISTING_CONFIGS = %i[trivy.yaml].freeze
+    public_constant :MERGE_EXISTING_CONFIGS
 
     # @param config_name [String] linter config file name
     # @return [Boolean] true if this config has a managed excluded-dirs block
     def manages?(config_name)
       FORMATS.key?(config_name.to_sym)
+    end
+
+    # @param config_name [String] linter config file name
+    # @return [Boolean] true if this config must be merged into the project's
+    #   existing file (preserving content outside the managed block) rather than
+    #   copied fresh from the bundled template
+    def merges_existing?(config_name)
+      MERGE_EXISTING_CONFIGS.include?(config_name.to_sym)
+    end
+
+    # @param content [String] file content
+    # @return [Boolean] true if `content` carries a complete managed block
+    def managed_block?(content)
+      content.include?(SENTINEL_START) && content.include?(SENTINEL_END)
     end
 
     # Replace the managed block in `content` with `dirs` rendered for `config_name`.
@@ -120,6 +143,15 @@ module GHB
     # outside the sentinels in the shipped template.
     def body_swiftlint(dirs)
       lines = dirs.map { |dir| "  - #{dir}" }
+      lines.join("\n")
+    end
+
+    # Trivy's scan.skip-dirs is a YAML list of glob paths (4-space indent, nested
+    # under scan: > skip-dirs:). Use `**/<dir>` so the directory is skipped at any
+    # depth. The leading `*` makes the scalar an alias in YAML, so each entry is
+    # quoted.
+    def body_trivy(dirs)
+      lines = dirs.map { |dir| %(    - "**/#{dir}") }
       lines.join("\n")
     end
   end

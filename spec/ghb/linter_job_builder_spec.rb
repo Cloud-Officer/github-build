@@ -251,21 +251,21 @@ RSpec.describe(GHB::LinterJobBuilder) do
           )
         )
 
-        # Only match trivy pattern. Match `(tf)` -- unique to trivy's pattern.
+        # Only match ktlint pattern. Match `(kt|kts)` -- unique to ktlint's pattern.
         allow(builder).to(receive(:find_files_matching).and_return([]))
-        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(tf)')), anything).and_return(['main.tf']))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(kt|kts)')), anything).and_return(['Main.kt']))
 
-        # Trivy config is .trivyignore with preserve_config: true
+        # KTLint config is .editorconfig with preserve_config: true
         # No script_path (no .gitmodules), so script_path is nil
-        # File.exist?("#{nil}/linters/.trivyignore") should be false
-        allow(File).to(receive(:exist?).with('/linters/.trivyignore').and_return(false))
+        # File.exist?("#{nil}/linters/.editorconfig") should be false
+        allow(File).to(receive(:exist?).with('/linters/.editorconfig').and_return(false))
         # The config file exists and is NOT a symlink -> preserve
-        allow(File).to(receive(:exist?).with('.trivyignore').and_return(true))
-        allow(File).to(receive(:symlink?).with('.trivyignore').and_return(false))
+        allow(File).to(receive(:exist?).with('.editorconfig').and_return(true))
+        allow(File).to(receive(:symlink?).with('.editorconfig').and_return(false))
 
         builder.build
 
-        expect(new_workflow.jobs).to(have_key(:trivy))
+        expect(new_workflow.jobs).to(have_key(:ktlint))
         # Config should be preserved - no write or mv should happen for the config
         expect(File).not_to(have_received(:write))
       end
@@ -593,12 +593,12 @@ RSpec.describe(GHB::LinterJobBuilder) do
         # No files match any linter pattern
         allow(builder).to(receive(:find_files_matching).and_return([]))
 
-        # Trivy has preserve_config: true; its config exists and is NOT a symlink
-        allow(File).to(receive(:exist?).with('.trivyignore').and_return(true))
+        # KTLint has preserve_config: true; its config exists and is NOT a symlink
+        allow(File).to(receive(:exist?).with('.editorconfig').and_return(true))
 
         builder.build
 
-        expect(File).not_to(have_received(:delete).with('.trivyignore'))
+        expect(File).not_to(have_received(:delete).with('.editorconfig'))
       end
     end
 
@@ -637,21 +637,21 @@ RSpec.describe(GHB::LinterJobBuilder) do
           )
         )
 
-        # Only match trivy pattern. Match `(tf)` -- unique to trivy's pattern.
+        # Only match ktlint pattern. Match `(kt|kts)` -- unique to ktlint's pattern.
         allow(builder).to(receive(:find_files_matching).and_return([]))
-        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(tf)')), anything).and_return(['main.tf']))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(kt|kts)')), anything).and_return(['Main.kt']))
 
         # script_path has the config
-        allow(File).to(receive(:exist?).with('scripts-repo/linters/.trivyignore').and_return(true))
+        allow(File).to(receive(:exist?).with('scripts-repo/linters/.editorconfig').and_return(true))
         # Project has its own non-symlink config
-        allow(File).to(receive(:exist?).with('.trivyignore').and_return(true))
-        allow(File).to(receive(:symlink?).with('.trivyignore').and_return(false))
+        allow(File).to(receive(:exist?).with('.editorconfig').and_return(true))
+        allow(File).to(receive(:symlink?).with('.editorconfig').and_return(false))
         allow(FileUtils).to(receive(:ln_s))
 
         builder.build
 
-        expect(new_workflow.jobs).to(have_key(:trivy))
-        expect(FileUtils).not_to(have_received(:ln_s).with('scripts-repo/linters/.trivyignore', '.trivyignore', force: true))
+        expect(new_workflow.jobs).to(have_key(:ktlint))
+        expect(FileUtils).not_to(have_received(:ln_s).with('scripts-repo/linters/.editorconfig', '.editorconfig', force: true))
       end
     end
 
@@ -746,6 +746,69 @@ RSpec.describe(GHB::LinterJobBuilder) do
 
         expect(new_workflow.jobs).to(have_key(:eslint))
         expect(FileUtils).to(have_received(:ln_s).with('linters/.eslintrc.json', '.eslintrc.json', force: true))
+      end
+    end
+
+    context 'when a linter ships multiple config files (Trivy)' do
+      let(:options) do
+        instance_double(
+          GHB::Options,
+          skip_semgrep: false,
+          ignored_linters: {},
+          excluded_folders: [],
+          linters_config_file: 'config/linters.yaml',
+          languages_config_file: 'config/languages.yaml'
+        )
+      end
+
+      def build_trivy_only
+        builder = described_class.new(
+          context: GHB::BuildContext.new(
+            options: options,
+            submodules: submodules,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow,
+            file_cache: {}
+          )
+        )
+        # Detect only Trivy (its `(tf)` grouping is unique to its pattern).
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(tf)')), anything).and_return(['main.tf']))
+        builder
+      end
+
+      it 'writes both trivy.yaml (with the managed skip-dirs) and .trivyignore' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        allow(File).to(receive(:delete).and_call_original)
+        Dir.mktmpdir do |dir|
+          Dir.chdir(dir) { build_trivy_only.build } # rubocop:disable ThreadSafety/DirChdir
+
+          trivy_yaml = File.read(File.join(dir, 'trivy.yaml'))
+          expect(File.exist?(File.join(dir, '.trivyignore'))).to(be(true))
+          expect(trivy_yaml).to(include('skip-dirs:'))
+          expect(trivy_yaml).to(include('- "**/node_modules"'))
+        end
+      end
+
+      it 'merges into an existing trivy.yaml, refreshing the block and preserving project skip-dirs' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        allow(File).to(receive(:delete).and_call_original)
+        Dir.mktmpdir do |dir|
+          existing = <<~YAML
+            scan:
+              skip-dirs:
+                # ghb:excluded-dirs:start
+                - "**/stale-entry"
+                # ghb:excluded-dirs:end
+                - "**/my/project/dir"
+          YAML
+          File.write(File.join(dir, 'trivy.yaml'), existing)
+
+          Dir.chdir(dir) { build_trivy_only.build } # rubocop:disable ThreadSafety/DirChdir
+          result = File.read(File.join(dir, 'trivy.yaml'))
+
+          expect(result).to(include('- "**/node_modules"')) # managed dirs rendered in
+          expect(result).not_to(include('- "**/stale-entry"')) # old block content replaced
+          expect(result).to(include('- "**/my/project/dir"')) # project addition preserved
+        end
       end
     end
   end
