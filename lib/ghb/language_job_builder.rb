@@ -283,7 +283,10 @@ module GHB
           do_shell('bash')
           do_run("cd #{subdir} && #{dep[:package_manager_default]}") if run.nil?
           env['GITHUB_TOKEN'] = '${{secrets.GH_PAT}}'
-          dependencies_commands_additions << dep[:package_manager_update] if dep[:package_manager_update]
+          # Sub-project update commands run from the repo root in a single combined
+          # block, so each must cd into its own folder; a subshell keeps the cwd
+          # local so the next command still starts from the root.
+          dependencies_commands_additions << "(cd #{subdir} && #{dep[:package_manager_update]})" if dep[:package_manager_update]
         end
 
         job.do_step("#{language[:unit_test_framework_name]} (#{subdir})") do
