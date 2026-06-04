@@ -77,6 +77,15 @@ RSpec.describe(GHB::LinterIgnoreRenderer) do
       expect(result).to(include("  - SourcePackages\n  # ghb:excluded-dirs:start\n  - .git\n  - Build\n  - coverage\n  - node_modules\n  - vendor"))
     end
 
+    it 'renders the trivy skip-dirs block as quoted, indented anywhere-globs, preserving project entries' do # rubocop:disable RSpec/MultipleExpectations
+      content = %(scan:\n  skip-dirs:\n    # ghb:excluded-dirs:start\n    - "**/old"\n    # ghb:excluded-dirs:end\n    - "**/keep-me"\n)
+
+      result = renderer.render_excluded_dirs('trivy.yaml', content, dirs)
+
+      expect(result).to(include(%(    - "**/.git"\n    - "**/Build"\n    - "**/coverage"\n    - "**/node_modules"\n    - "**/vendor")))
+      expect(result).to(include(%(    - "**/keep-me"))) # project addition outside the block survives
+    end
+
     it 'is idempotent' do
       content = "[flake8]\n# ghb:excluded-dirs:start\nextend-exclude = old\n# ghb:excluded-dirs:end\n"
 

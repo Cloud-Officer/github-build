@@ -16,15 +16,21 @@
 #                                         If omitted, the linter runs on all event types
 #   uses             (string, required) - GitHub Actions action reference (without version suffix).
 #                                         Version @v2 is appended automatically
-#   config           (string, optional) - Linter config file name (e.g., ".eslintrc.json").
-#                                         Resolved in order: (1) preserve project's own config if
-#                                         preserve_config is true, (2) symlink from scripts submodule,
-#                                         (3) symlink from local linters/ directory,
-#                                         (4) copy from config/linters/ directory
+#   config           (string|list, optional) - Linter config file name (e.g., ".eslintrc.json"),
+#                                         or a list of file names when a linter ships several
+#                                         (e.g., Trivy: ["trivy.yaml", ".trivyignore"]). Each entry
+#                                         is resolved independently in order: (1) preserve project's
+#                                         own config if preserve_config is true, (2) symlink from
+#                                         scripts submodule, (3) symlink from local linters/ directory,
+#                                         (4) copy from config/linters/ directory. Configs managed by
+#                                         LinterIgnoreRenderer get their excluded-dirs block
+#                                         regenerated on copy; merge-managed ones (trivy.yaml) are
+#                                         rendered into the project's existing file so out-of-block
+#                                         additions survive
 #   path             (string, required) - Root directory to search for files matching `pattern`
 #   pattern          (string, required) - Regex pattern to match source files (e.g., ".*\\.(py)$")
 #   preserve_config  (bool, optional)   - If true, keeps the project's existing config file instead
-#                                         of overwriting it. Used by Trivy for a custom .trivyignore
+#                                         of overwriting it (e.g., KTLint's .editorconfig)
 #   content_match    (string, optional) - If set, files matching `pattern` are further filtered:
 #                                         only files containing this literal string are kept.
 #                                         Useful when file extensions alone can't identify the language
@@ -183,8 +189,12 @@ trivy:
   long_name: Container & IaC Vulnerability Scanner
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/trivy
-  config: ".trivyignore"
-  preserve_config: true
+  # trivy.yaml carries the shared excluded-dirs (scan.skip-dirs) and is managed by
+  # LinterIgnoreRenderer; project-specific skip-dirs added outside its sentinel
+  # block are preserved across rebuilds. .trivyignore holds vuln/CVE IDs to ignore.
+  config:
+    - "trivy.yaml"
+    - ".trivyignore"
   path: "."
   pattern: "(.*\\.(tf)$)|(.*Dockerfile$)|(.*\\.(yaml|yml|json)$)|(.*/?(package-lock\\.json|yarn\\.lock|pnpm-lock\\.yaml|go\\.sum|requirements\\.txt|Pipfile\\.lock|poetry\\.lock|Gemfile\\.lock|composer\\.lock|pom\\.xml|build\\.gradle(\\.kts)?|Cargo\\.lock|Package\\.resolved)$)"
   content_match: "AWSTemplateFormatVersion"

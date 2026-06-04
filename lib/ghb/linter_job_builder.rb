@@ -89,10 +89,17 @@ module GHB
       add_linter_job(short_name, linter)
     end
 
+    # A linter's `config` may be a single file name or a list of them (e.g. Trivy
+    # ships both trivy.yaml and .trivyignore). Normalise to an array, dropping a
+    # nil/empty config (linters like Actionlint have none).
+    def configs_for(linter)
+      Array(linter[:config]).compact
+    end
+
     # Clean up deprecated config files that were renamed
-    def cleanup_renamed_configs(linter)
+    def cleanup_renamed_configs(config_name)
       RENAMED_CONFIGS.each do |old_name, new_name|
-        next if linter[:config] != new_name.to_s
+        next if config_name != new_name.to_s
         next unless File.exist?(old_name.to_s) || File.symlink?(old_name.to_s)
 
         File.delete(old_name.to_s)
@@ -100,40 +107,59 @@ module GHB
     end
 
     def delete_linter_config(linter)
-      return unless linter[:config]
-      return if linter[:preserve_config] && File.exist?(linter[:config]) && !File.symlink?(linter[:config])
+      configs_for(linter).each { |config_name| delete_single_config(linter, config_name) }
+    end
 
-      File.delete(linter[:config]) if File.exist?(linter[:config]) || File.symlink?(linter[:config])
+    def delete_single_config(linter, config_name)
+      return if linter[:preserve_config] && File.exist?(config_name) && !File.symlink?(config_name)
 
-      cleanup_renamed_configs(linter)
+      File.delete(config_name) if File.exist?(config_name) || File.symlink?(config_name)
+
+      cleanup_renamed_configs(config_name)
     end
 
     def copy_linter_config(linter, script_path)
-      return unless linter[:config]
+      configs_for(linter).each { |config_name| copy_single_config(linter, config_name, script_path) }
+    end
 
-      cleanup_renamed_configs(linter)
+    def copy_single_config(linter, config_name, script_path)
+      cleanup_renamed_configs(config_name)
 
-      if linter[:preserve_config] && File.exist?(linter[:config]) && !File.symlink?(linter[:config])
-        puts("            Preserving existing #{linter[:config]} (project-specific config)")
-      elsif File.exist?("#{script_path}/linters/#{linter[:config]}") && linter[:config] != '.editorconfig'
-        FileUtils.ln_s("#{script_path}/linters/#{linter[:config]}", linter[:config], force: true)
-      elsif File.exist?("linters/#{linter[:config]}") && linter[:config] != '.editorconfig'
-        FileUtils.ln_s("linters/#{linter[:config]}", linter[:config], force: true)
+      if linter[:preserve_config] && File.exist?(config_name) && !File.symlink?(config_name)
+        puts("            Preserving existing #{config_name} (project-specific config)")
+      elsif File.exist?("#{script_path}/linters/#{config_name}") && config_name != '.editorconfig'
+        FileUtils.ln_s("#{script_path}/linters/#{config_name}", config_name, force: true)
+      elsif File.exist?("linters/#{config_name}") && config_name != '.editorconfig'
+        FileUtils.ln_s("linters/#{config_name}", config_name, force: true)
       else
-        # Use atomic file operation to prevent data loss if copy fails
-        atomic_copy_config("#{__dir__}/../../config/linters/#{linter[:config]}", linter[:config]) do |content|
+        # Use atomic file operation to prevent data loss if copy fails. For
+        # merge-managed configs (e.g. trivy.yaml) render into the project's own
+        # file so its out-of-block additions survive; otherwise copy the template.
+        atomic_copy_config(config_source(config_name), config_name) do |content|
           # Keep each linter's ignore list aligned with the single source of truth
           # (excluded_dirs + install_dirs from languages.yaml).
-          content = render_excluded_dirs(linter[:config], content, excluded_dirs_from_config) if manages?(linter[:config])
+          content = render_excluded_dirs(config_name, content, excluded_dirs_from_config) if manages?(config_name)
 
           # Uncomment Rails-specific rules if this is a Rails project. Only
           # un-comment commented-out YAML config (list items and mapping keys)
           # so prose comments (e.g. the MultilineMethodSignature note) survive.
-          content = content.gsub(/^(\s*)# (?=\s*(?:-\s|[^\s:#]+:(?:\s|$)))/, '\1') if linter[:config] == '.rubocop.yml' && File.exist?('Gemfile') && File.read('Gemfile').include?('rails')
+          content = content.gsub(/^(\s*)# (?=\s*(?:-\s|[^\s:#]+:(?:\s|$)))/, '\1') if config_name == '.rubocop.yml' && File.exist?('Gemfile') && File.read('Gemfile').include?('rails')
 
           content
         end
       end
+    end
+
+    # Resolves the content source for a config: the project's existing file when
+    # it is a merge-managed config already carrying our sentinel block (so custom
+    # lines outside the block are preserved), otherwise the bundled template.
+    def config_source(config_name)
+      bundled = "#{__dir__}/../../config/linters/#{config_name}"
+      return bundled unless merges_existing?(config_name)
+      return bundled unless File.exist?(config_name) && !File.symlink?(config_name)
+      return bundled unless managed_block?(File.read(config_name))
+
+      config_name
     end
 
     def add_linter_job(short_name, linter)
