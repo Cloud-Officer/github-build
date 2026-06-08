@@ -232,7 +232,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 ### GHB::FileScanner (Module)
 
-**Purpose:** Shared utility module providing pure-Ruby file operations to avoid shell command injection. Included as a mixin by Application, LinterJobBuilder, LanguageJobBuilder, and GitignoreManager. Provides config-driven directory exclusions sourced from `languages.yaml`.
+**Purpose:** Shared utility module providing pure-Ruby file operations to avoid shell command injection. Included as a mixin by Application, LinterJobBuilder, LanguageJobBuilder, GitignoreManager, and GitignoreRules. Provides config-driven directory exclusions sourced from `languages.yaml` and excludes anything the repo's `.gitignore` ignores so ignored files never count toward language/dependency/linter detection.
 
 **Location:** `lib/ghb/file_scanner.rb`
 
@@ -240,13 +240,16 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `cached_file_read(path)`: Caches and returns file contents to avoid redundant reads across builders
 - `excluded_dirs_from_config`: Builds the list of excluded directory patterns from `languages.yaml` by combining `install_dirs` from all dependency entries with the top-level `excluded_dirs`, memoized per instance
-- `find_files_matching(path, pattern, excluded_paths, max_depth:)`: Recursively searches for files matching a regex pattern using `Find.find`, with optional depth limit, path exclusions, and config-driven directory exclusions via `excluded_dirs_from_config`
+- `find_files_matching(path, pattern, excluded_paths, max_depth:)`: Recursively searches for files matching a regex pattern using `Find.find`, with optional depth limit, explicit path exclusions, config-driven directory exclusions via `excluded_dirs_from_config`, and gitignored-path exclusions via `git_ignored?`
+- `git_ignored?(file_path)`: Returns whether a path is ignored by the repo's `.gitignore` (and global/exclude rules), matched relative to the repo root
+- `gitignored_paths`: Computes the git-ignored files and directories once via `git ls-files --others --ignored --exclude-standard --directory` (so real `.gitignore` semantics apply); returns `[]` when git is unavailable or the cwd is not a repository, leaving scanning unfiltered
 - `file_contains?(file, pattern)`: Checks if a file contains a literal string match using `File.foreach`
 - `atomic_copy_config(source, target)`: Atomically copies a config file using a temp file and rename, with optional transformation via block
 
 **External Dependencies:**
 
 - `find` (Ruby stdlib)
+- `git` CLI (via `git ls-files` for gitignore-aware exclusion)
 
 ### GHB::LinterIgnoreRenderer (Module)
 
@@ -603,7 +606,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 1. Loads linter configuration from `config/linters.yaml`
 2. Parses `.gitmodules` for submodule paths to exclude
 3. For each linter, uses pure Ruby `find_files_matching` with regex pattern matching to search for files
-4. Excludes specified folders and submodules from search
+4. Excludes specified folders, submodules, config-driven directories, and gitignored paths from search
 5. If a `content_match` string is configured, further filters matched files by checking file contents via `file_contains?`. When `content_match_pattern` is also set, only files whose path matches that sub-pattern require the content check; other files pass through unconditionally
 6. If matching files remain, enables the linter and resolves each of its configuration files via a priority chain. A linter's `config` may be a single file name or a list (e.g., Trivy ships `["trivy.yaml", ".trivyignore"]`); `configs_for` normalizes it and each entry is resolved independently: cleans up deprecated config files that were renamed (tracked via `RENAMED_CONFIGS` constant, e.g., `.markdownlint.yml` → `.markdownlint-cli2.yaml`), preserves existing project-specific configs (when `preserve_config` is set and a non-symlink file exists, e.g., KTLint's `.editorconfig`), creates symlinks to a scripts submodule `linters/` directory, creates symlinks to a local `linters/` directory, or falls back to `atomic_copy_config` to safely copy bundled configs with optional transformation (e.g., regenerating the excluded-dirs block via `GHB::LinterIgnoreRenderer` for managed configs, or uncommenting Rails rules in `.rubocop.yml`). For merge-managed configs (`trivy.yaml`), `config_source` points `atomic_copy_config` at the project's own existing file when it already carries the sentinel block, so the managed `scan.skip-dirs` block is regenerated while project-added skip-dirs outside it are preserved
 7. Creates workflow job with appropriate steps for each enabled linter
@@ -668,7 +671,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 1. Loads detection rules from `config/gitignore.yaml`
 2. Adds always-enabled templates (OS, IDEs)
-3. For each extension detection entry, checks file extensions using `find_files_matching` (with excluded paths combining config-driven directories from `languages.yaml`, submodules, and the `--excluded_folders` option), specific files that indicate the technology, and package dependencies in manifest files using pure Ruby regex
+3. For each extension detection entry, checks file extensions using `find_files_matching` (with excluded paths combining config-driven directories from `languages.yaml`, submodules, the `--excluded_folders` option, and gitignored paths), specific files that indicate the technology, and package dependencies in manifest files using pure Ruby regex
 4. Fetches templates from gitignore.io API via HTTParty
 5. Applies project-specific modifications (uncomment JetBrains patterns, comment out conflicting directory patterns like `bin/`, `lib/`, `var/`)
 6. Always appends AI assistant ignore patterns (Claude Code, Cursor, Copilot, OpenAI Codex) via `detect_custom_patterns` to prevent accidental commits even if the tool isn't actively used
