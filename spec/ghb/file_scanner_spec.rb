@@ -102,6 +102,21 @@ RSpec.describe(GHB::FileScanner) do
       expect(matches).to(eq([]))
     end
 
+    it 'skips files and folders ignored by the repo .gitignore' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      Dir.mktmpdir('ghb-gitignore-test') do |repo|
+        system('git', 'init', '--quiet', repo, out: File::NULL, err: File::NULL)
+        File.write("#{repo}/.gitignore", ".ruby-lsp/\n")
+        FileUtils.mkdir_p("#{repo}/.ruby-lsp")
+        File.write("#{repo}/.ruby-lsp/Gemfile", "source 'x'\n")
+        File.write("#{repo}/app.rb", "puts 'hi'\n")
+
+        matches = Dir.chdir(repo) { scanner.find_files_matching('.', /(\.rb|Gemfile)$/, []) } # rubocop:disable ThreadSafety/DirChdir
+
+        expect(matches).to(include('./app.rb'))
+        expect(matches).not_to(include('./.ruby-lsp/Gemfile'))
+      end
+    end
+
     it 'handles permission denied gracefully' do # rubocop:disable RSpec/ExampleLength
       skip 'Cannot test permission denied as root' if Process.uid.zero? # rubocop:disable RSpec/Pending
 

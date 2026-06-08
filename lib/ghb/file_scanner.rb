@@ -55,8 +55,11 @@ module GHB
         end
 
         # Skip excluded paths (submodules, excluded_folders, dirs from languages.yaml)
+        # and anything the repo's .gitignore excludes (e.g. the .ruby-lsp sub-bundle),
+        # so ignored files never count toward language/dependency/linter detection.
         should_skip = excluded_paths.any? { |excluded| file_path.include?(excluded) } ||
-                      config_excluded.any? { |dir| file_path.include?("/#{dir}/") }
+                      config_excluded.any? { |dir| file_path.include?("/#{dir}/") } ||
+                      git_ignored?(file_path)
 
         if should_skip
           Find.prune
@@ -71,6 +74,44 @@ module GHB
     rescue Errno::ENOENT, Errno::EACCES
       # Path doesn't exist or permission denied - return empty
       []
+    end
+
+    # Returns true when the repo's .gitignore (plus global/exclude rules) ignores
+    # this path, so gitignored files/folders are never scanned for detection.
+    # Paths are matched relative to the repo root, mirroring `git ls-files` output.
+    # @param file_path [String] path yielded by Find (e.g. "./.ruby-lsp/Gemfile")
+    # @return [Boolean] true if the path is git-ignored
+    def git_ignored?(file_path)
+      ignored = gitignored_paths
+      return false if ignored.empty?
+
+      relative = file_path.delete_prefix('./')
+
+      ignored.any? do |entry|
+        if entry.end_with?('/')
+          directory = entry.chomp('/')
+          relative == directory || relative.start_with?("#{directory}/")
+        else
+          relative == entry
+        end
+      end
+    end
+
+    # Git-ignored files and directories relative to the repo root, computed once.
+    # Uses `git ls-files` so the real .gitignore semantics apply (negations,
+    # nested .gitignore files, global excludes). Returns [] when git is
+    # unavailable or the cwd is not a repository, leaving scanning unfiltered.
+    # @return [Array<String>] ignored entries; directories carry a trailing slash
+    def gitignored_paths
+      return @gitignored_paths if defined?(@gitignored_paths)
+
+      output = `git ls-files --others --ignored --exclude-standard --directory 2>/dev/null`
+      entries = output.split("\n")
+      entries.map!(&:strip)
+      entries.reject!(&:empty?)
+      @gitignored_paths = entries
+    rescue StandardError
+      @gitignored_paths = []
     end
 
     # Pure Ruby file content search
