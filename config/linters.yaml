@@ -59,7 +59,9 @@ bandit:
 cfnlint:
   short_name: Cfn-lint
   long_name: CloudFormation Linter
-  condition: "github.event_name == 'pull_request'"
+  # No condition: cfn-lint runs `--non-zero-exit-code error` and fails the job by
+  # exit code (it does not use reviewdog/github-pr-review), so it is meaningful on
+  # pushes too, not just pull requests.
   uses: cloud-officer/ci-actions/linters/cfnlint
   config: ".cfnlintrc"
   path: "."
@@ -161,7 +163,9 @@ rubocop:
 semgrep:
   short_name: Semgrep
   long_name: Semgrep Security Scanner
-  condition: "github.event_name == 'pull_request'"
+  # No condition: Semgrep runs `semgrep scan ... --error` and fails the job by exit
+  # code (no reviewdog/github-pr-review), so this security scan is meaningful on
+  # pushes too, not just pull requests.
   uses: cloud-officer/ci-actions/linters/semgrep
   config: ".semgrepignore"
   path: "."
@@ -187,7 +191,9 @@ swiftlint:
 trivy:
   short_name: Trivy
   long_name: Container & IaC Vulnerability Scanner
-  condition: "github.event_name == 'pull_request'"
+  # No condition: the Trivy action runs the scanner with `exit-code: 1` and fails
+  # the job by exit code (no reviewdog/github-pr-review), so this vulnerability
+  # scan is meaningful on pushes too, not just pull requests.
   uses: cloud-officer/ci-actions/linters/trivy
   # trivy.yaml carries the shared excluded-dirs (scan.skip-dirs) and is managed by
   # LinterIgnoreRenderer; project-specific skip-dirs added outside its sentinel
