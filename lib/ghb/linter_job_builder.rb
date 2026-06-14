@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'fileutils'
 require_relative 'file_scanner'
 require_relative 'linter_ignore_renderer'
 
