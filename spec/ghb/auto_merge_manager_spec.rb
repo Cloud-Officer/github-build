@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'open3'
+
 RSpec.describe(GHB::AutoMergeManager) do
   let(:auto_merge_workflow) { GHB::Workflow.new('Auto-approve for code owners') }
 
@@ -146,6 +148,80 @@ RSpec.describe(GHB::AutoMergeManager) do
 
       merge_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name&.match?(/merge/i) }
       expect(merge_step).to(be_nil)
+    end
+  end
+
+  # Runs the actual generated "Check if PR author is a code owner" bash script against a
+  # sandbox CODEOWNERS file and returns [exit_status, github_output_contents, combined_stdout].
+  # The sandbox is set up via bash (not stubbed Ruby File methods) so the global File.write /
+  # FileUtils stubs above do not interfere.
+  describe 'generated CODEOWNERS check script (BUG-001)' do
+    def run_check_script(codeowners:, author:)
+      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager.save
+      check_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Check if PR author is a code owner' }
+      script = check_step.run
+
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'github_output')
+        prologue = <<~SH
+          mkdir -p '#{dir}/.github'
+          cat > '#{dir}/.github/CODEOWNERS' <<'CODEOWNERS_EOF'
+          #{codeowners}
+          CODEOWNERS_EOF
+          export GITHUB_OUTPUT='#{output_path}'
+          export AUTHOR='#{author}'
+          cd '#{dir}'
+        SH
+        stdout_str, status = Open3.capture2e('bash', '-c', "#{prologue}\n#{script}")
+        [status.exitstatus, File.exist?(output_path) ? File.read(output_path) : '', stdout_str]
+      end
+    end
+
+    it 'degrades to is_owner=false (exit 0) when CODEOWNERS has no catch-all * line' do # rubocop:disable RSpec/MultipleExpectations
+      exit_status, output, = run_check_script(codeowners: "docs/ @someone\n", author: 'alice')
+
+      expect(exit_status).to(eq(0))
+      expect(output).to(include('is_owner=false'))
+    end
+
+    it 'sets is_owner=true when the * line lists the PR author as an individual owner' do # rubocop:disable RSpec/MultipleExpectations
+      exit_status, output, = run_check_script(codeowners: "* @alice @bob\n", author: 'alice')
+
+      expect(exit_status).to(eq(0))
+      expect(output).to(include('is_owner=true'))
+    end
+
+    it 'sets is_owner=false when the * line does not list the PR author' do # rubocop:disable RSpec/MultipleExpectations
+      exit_status, output, = run_check_script(codeowners: "* @bob @carol\n", author: 'alice')
+
+      expect(exit_status).to(eq(0))
+      expect(output).to(include('is_owner=false'))
+    end
+
+    it 'degrades to is_owner=false (exit 0) when CODEOWNERS is empty' do # rubocop:disable RSpec/MultipleExpectations
+      exit_status, output, = run_check_script(codeowners: "\n", author: 'alice')
+
+      expect(exit_status).to(eq(0))
+      expect(output).to(include('is_owner=false'))
+    end
+
+    it 'still emits is_owner=false (exit 0) when no CODEOWNERS file exists' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager.save
+      check_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Check if PR author is a code owner' }
+      script = check_step.run
+
+      exit_status, output =
+        Dir.mktmpdir do |dir|
+          output_path = File.join(dir, 'github_output')
+          prologue = "export GITHUB_OUTPUT='#{output_path}'\nexport AUTHOR='alice'\ncd '#{dir}'\n"
+          _stdout_str, status = Open3.capture2e('bash', '-c', "#{prologue}#{script}")
+          [status.exitstatus, File.exist?(output_path) ? File.read(output_path) : '']
+        end
+
+      expect(exit_status).to(eq(0))
+      expect(output).to(include('is_owner=false'))
     end
   end
 end
