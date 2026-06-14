@@ -127,8 +127,7 @@ module GHB
           do_env(
             {
               GH_TOKEN: '${{secrets.GH_PAT}}',
-              AUTHOR: '${{github.event.pull_request.user.login}}',
-              ORG: '${{github.repository_owner}}'
+              AUTHOR: '${{github.event.pull_request.user.login}}'
             }
           )
           do_run(CODEOWNERS_CHECK_SCRIPT)

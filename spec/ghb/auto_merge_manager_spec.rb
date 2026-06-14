@@ -121,6 +121,23 @@ RSpec.describe(GHB::AutoMergeManager) do
       expect(check_step.env[:GH_TOKEN]).to(eq('${{secrets.GH_PAT}}'))
     end
 
+    it 'exposes only GH_TOKEN and AUTHOR to the code owner check step (no dead ORG var)' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager.save
+
+      check_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Check if PR author is a code owner' }
+      expect(check_step.env).to(
+        eq(
+          {
+            GH_TOKEN: '${{secrets.GH_PAT}}',
+            AUTHOR: '${{github.event.pull_request.user.login}}'
+          }
+        )
+      )
+      expect(check_step.env).not_to(have_key(:ORG))
+      expect(check_step.run).not_to(include('$ORG'))
+    end
+
     it 'includes an approve PR step' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
       manager.save
