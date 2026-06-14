@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'fileutils'
+
 module GHB
   # Manages dependabot configuration and cron dependency update workflow.
   class DependabotManager

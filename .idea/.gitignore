@@ -8,3 +8,10 @@
 /dataSources.local.xml
 # GitHub Copilot persisted chat sessions
 /copilot/chatSessions
+# GitHub Copilot data migration state markers (per-machine)
+/copilot.data.migration.agent.xml
+/copilot.data.migration.ask.xml
+/copilot.data.migration.ask2agent.xml
+/copilot.data.migration.edit.xml
+# GitToolbox per-machine blame state
+/git_toolbox_blame.xml
