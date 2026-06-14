@@ -73,7 +73,6 @@ jobs:
       env:
         GH_TOKEN: "${{secrets.GH_PAT}}"
         AUTHOR: "${{github.event.pull_request.user.login}}"
-        ORG: "${{github.repository_owner}}"
     - name: Approve PR
       shell: bash
       if: steps.check.outputs.is_owner == 'true'
