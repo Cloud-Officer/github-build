@@ -10,8 +10,13 @@ module GHB
     ARGS_COMMENT_PREFIX = '# github-build'
     # Flags that are one-shot in nature and must not be persisted to the generated workflow header.
     EPHEMERAL_FLAGS = %w[--sync_required_status_checks].freeze
+    # Flags removed from the CLI that may still linger in a downstream repo's persisted build.yml header.
+    # They are stripped (with a warning) during persisted-args replay so old headers self-heal on the next
+    # regeneration instead of aborting on OptionParser::InvalidOption.
+    REMOVED_FLAGS = %w[--mono_repo].freeze
     private_constant :ARGS_COMMENT_PREFIX
     private_constant :EPHEMERAL_FLAGS
+    private_constant :REMOVED_FLAGS
 
     def initialize(argv = [])
       @application_name = Dir.pwd.split('/').last.split('-').last
@@ -67,9 +72,24 @@ module GHB
 
       args_string = first_line.sub(ARGS_COMMENT_PREFIX, '').strip
       require('shellwords')
-      Shellwords.split(args_string)
+      strip_removed_flags(Shellwords.split(args_string), file)
     rescue ArgumentError => e
       raise(ConfigError, "Malformed github-build args in #{file}: #{e.message}")
+    end
+
+    # Drops flags that no longer exist from persisted args so replay tolerates removed options.
+    # Each dropped flag is reported on stderr; because it never reaches @argv/@original_argv,
+    # the regenerated build.yml header self-heals (the flag disappears on the next run).
+    def strip_removed_flags(args, file)
+      removed, kept = args.partition { |arg| removed_flag?(arg) }
+      removed.each do |arg|
+        warn("Warning: ignoring removed option '#{arg.split('=').first}' from #{file} header; it will be dropped on the next regeneration")
+      end
+      kept
+    end
+
+    def removed_flag?(arg)
+      REMOVED_FLAGS.any? { |flag| arg == flag || arg.start_with?("#{flag}=") }
     end
 
     def setup_parser
