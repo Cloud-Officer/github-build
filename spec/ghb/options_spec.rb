@@ -321,4 +321,57 @@ RSpec.describe(GHB::Options) do
         .to(raise_error(GHB::ConfigError, /Malformed github-build args/))
     end
   end
+
+  describe 'removed flags in persisted header' do
+    it 'strips a removed flag from replayed args instead of aborting (BC-001)' do
+      allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --organization TestOrg --mono_repo --skip_slack\n"].each))
+      allow($stderr).to(receive(:write))
+
+      options = described_class.new([])
+
+      expect(options.original_argv).to(eq(['--organization', 'TestOrg', '--skip_slack']))
+    end
+
+    it 'parses cleanly after the removed flag is stripped' do # rubocop:disable RSpec/MultipleExpectations
+      allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --organization TestOrg --mono_repo --skip_slack\n"].each))
+      allow($stderr).to(receive(:write))
+
+      options = described_class.new([]).parse
+
+      expect(options.organization).to(eq('TestOrg'))
+      expect(options.skip_slack).to(be(true))
+    end
+
+    it 'self-heals the persisted header by dropping the removed flag from args_comment' do
+      allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --organization TestOrg --mono_repo --skip_slack\n"].each))
+      allow($stderr).to(receive(:write))
+
+      options = described_class.new([])
+
+      expect(options.args_comment).to(eq("# github-build --organization TestOrg --skip_slack\n"))
+    end
+
+    it 'warns on stderr when a removed flag is stripped' do
+      allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --mono_repo\n"].each))
+
+      expect { described_class.new([]) }
+        .to(output(/ignoring removed option '--mono_repo'/).to_stderr)
+    end
+
+    it 'strips a removed flag written in --flag=value form' do
+      allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --mono_repo=true --skip_slack\n"].each))
+      allow($stderr).to(receive(:write))
+
+      options = described_class.new([])
+
+      expect(options.original_argv).to(eq(['--skip_slack']))
+    end
+
+    it 'still aborts when a removed flag is passed explicitly on the command line' do
+      allow(File).to(receive(:exist?).and_return(false))
+
+      expect { described_class.new(['--mono_repo']).parse }
+        .to(raise_error(OptionParser::InvalidOption))
+    end
+  end
 end
