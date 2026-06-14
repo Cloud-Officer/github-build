@@ -25,10 +25,12 @@ module GHB
         exit 0
       fi
 
-      # Collect @handles only from the catch-all (*) line — the repo-wide code owners
+      # Collect @handles only from the catch-all (*) line — the repo-wide code owners.
+      # `|| true` keeps the pipeline from aborting under `set -euo pipefail` when there
+      # is no `*` line (grep exits 1); empty handles then degrade to is_owner=false below.
       handles=$(grep -E '^\\*\\s' "$CODEOWNERS" \\
         | grep -oE '@[A-Za-z0-9_.\\-]+(/[A-Za-z0-9_.\\-]+)?' \\
-        | sort -u)
+        | sort -u || true)
 
       is_owner=false
       for h in $handles; do
