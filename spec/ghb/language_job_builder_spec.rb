@@ -122,6 +122,49 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(step_names).to(include('Testing'))
     end
 
+    it 'does not grant long-lived AWS keys to the unit-test Setup step by default', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      stub_config_file_reads(go_language_yaml)
+      stub_go_language_detection
+
+      builder.build
+
+      setup = new_workflow.jobs[:go_unit_tests].steps.find { |step| step.name == 'Setup' }
+      expect(setup.with).not_to(have_key(:'aws-access-key-id'))
+      expect(setup.with).not_to(have_key(:'aws-secret-access-key'))
+      expect(setup.with).not_to(have_key(:'aws-region'))
+      expect(setup.with).to(include(:'ssh-key', :'github-token'))
+    end
+
+    it 'strips AWS keys inherited from a previously generated unit-test Setup step', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      stub_config_file_reads(go_language_yaml)
+      stub_go_language_detection
+
+      old_workflow.do_job(:go_unit_tests) do
+        do_name('Go Unit Tests')
+        do_step('Setup') do
+          do_uses('cloud-officer/ci-actions/setup@v2')
+          do_with(
+            {
+              'ssh-key': '${{secrets.SSH_KEY}}',
+              'github-token': '${{secrets.GH_PAT}}',
+              'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
+              'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
+              'aws-region': '${{secrets.AWS_DEFAULT_REGION}}',
+              'ruby-bundler-cache': '${{env.RUBY-BUNDLER-CACHE}}'
+            }
+          )
+        end
+      end
+
+      builder.build
+
+      setup = new_workflow.jobs[:go_unit_tests].steps.find { |step| step.name == 'Setup' }
+      expect(setup.with).not_to(have_key(:'aws-access-key-id'))
+      expect(setup.with).not_to(have_key(:'aws-secret-access-key'))
+      expect(setup.with).not_to(have_key(:'aws-region'))
+      expect(setup.with).to(include(:'ruby-bundler-cache')) # non-AWS inherited keys are preserved
+    end
+
     it 'sets up mongodb options when dependency file contains mongodb string' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       stub_config_file_reads(go_language_yaml)
       stub_go_language_detection
