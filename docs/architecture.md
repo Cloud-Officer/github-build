@@ -172,7 +172,9 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Private Methods:**
 
-- `args_from_file(file)`: Reads arguments from existing build file
+- `args_from_file(file)`: Reads arguments from existing build file, stripping any flags that no longer exist before replay
+- `strip_removed_flags(args, file)`: Drops `REMOVED_FLAGS` from persisted args (warning on stderr) so an old `build.yml` header self-heals on the next regeneration instead of aborting on `OptionParser::InvalidOption`
+- `removed_flag?(arg)`: Returns whether an argument matches a removed flag (bare or `flag=value` form)
 
 **Attributes:**
 
@@ -203,6 +205,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Constants:**
 
 - `EPHEMERAL_FLAGS`: One-shot flags (e.g. `--sync_required_status_checks`) that are stripped from `original_argv` so they are not persisted to the generated workflow header
+- `REMOVED_FLAGS`: Flags removed from the CLI (e.g. `--mono_repo`) that may still linger in a downstream repo's persisted `build.yml` header; stripped with a warning during replay so old headers self-heal
 
 ### GHB::Status
 
