@@ -268,7 +268,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `manages?(config_name)`: Returns whether a given linter config has a managed excluded-dirs block
 - `merges_existing?(config_name)`: Returns whether a config must be merged into the project's existing file (preserving content outside the managed block) rather than copied fresh from the bundled template
 - `managed_block?(content)`: Returns whether `content` carries a complete sentinel-delimited managed block
-- `render_excluded_dirs(config_name, content, dirs)`: Replaces the sentinel-delimited block in `content` with `dirs` rendered for the target config's native syntax (ESLint `ignorePatterns` — including the `ESLINT_EXTRA_IGNORES` globs, flake8 `extend-exclude`, Bandit `exclude`, yamllint ignore lines, PMD `exclude-pattern` entries, gitignore-style lines for `.semgrepignore`, cfn-lint `ignore_templates` globs, SwiftLint `excluded` list items, Trivy `scan.skip-dirs` quoted `**/<dir>` globs), or returns `content` unchanged when unmanaged or missing sentinels
+- `render_excluded_dirs(config_name, content, dirs)`: Replaces the sentinel-delimited block in `content` with `dirs` rendered for the target config's native syntax (ESLint `ignorePatterns` — including the `ESLINT_EXTRA_IGNORES` globs, flake8 `extend-exclude`, Bandit `exclude`, yamllint ignore lines, PMD `exclude-pattern` entries, gitignore-style lines for `.semgrepignore`, cfn-lint `ignore_templates` globs, SwiftLint `excluded` quoted `**/<dir>` globs matched at any depth, Trivy `scan.skip-dirs` quoted `**/<dir>` globs), or returns `content` unchanged when unmanaged or missing sentinels
 
 ### GHB::GitHubAPIClient
 
