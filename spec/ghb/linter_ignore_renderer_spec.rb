@@ -69,12 +69,12 @@ RSpec.describe(GHB::LinterIgnoreRenderer) do
       expect(result).to(include("  - .git/**\n  - Build/**\n  - coverage/**\n  - node_modules/**\n  - vendor/**"))
     end
 
-    it 'renders the swiftlint excluded block as indented list items, preserving Swift-specific extras' do
+    it 'renders the swiftlint excluded block as quoted anywhere-globs, preserving Swift-specific extras' do
       content = "excluded:\n  - SourcePackages\n  # ghb:excluded-dirs:start\n  - old\n  # ghb:excluded-dirs:end\n"
 
       result = renderer.render_excluded_dirs('.swiftlint.yml', content, dirs)
 
-      expect(result).to(include("  - SourcePackages\n  # ghb:excluded-dirs:start\n  - .git\n  - Build\n  - coverage\n  - node_modules\n  - vendor"))
+      expect(result).to(include(%(  - SourcePackages\n  # ghb:excluded-dirs:start\n  - "**/.git"\n  - "**/Build"\n  - "**/coverage"\n  - "**/node_modules"\n  - "**/vendor")))
     end
 
     it 'renders the trivy skip-dirs block as quoted, indented anywhere-globs, preserving project entries' do # rubocop:disable RSpec/MultipleExpectations
