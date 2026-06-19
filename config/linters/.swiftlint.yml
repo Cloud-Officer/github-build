@@ -5,38 +5,40 @@ excluded:
   - Frameworks
   - Package.swift
   - Project.swift
-  - SourcePackages
   - Tests
-  - Tuist/.build
-  - Tuist/Cache
-  - Tuist/Dependencies
   - fastlane
+  # Build/dependency caches can appear nested under submodule dirs
+  # (e.g. Projects/<sub>/Tuist/.build), so match them at any depth.
+  - "**/SourcePackages"
+  - "**/Tuist/.build"
+  - "**/Tuist/Cache"
+  - "**/Tuist/Dependencies"
   # ghb:excluded-dirs:start - managed by github-build from config/languages.yaml; do not edit by hand
-  - .build
-  - .bundle
-  - .git
-  - .gradle
-  - .hg
-  - .m2
-  - .npm
-  - .pnpm
-  - .pytest_cache
-  - .svn
-  - .venv
-  - .yarn
-  - __pycache__
-  - build
-  - Carthage
-  - coverage
-  - DerivedData
-  - dist
-  - env
-  - Libraries
-  - node_modules
-  - Pods
-  - target
-  - vendor
-  - venv
+  - "**/.build"
+  - "**/.bundle"
+  - "**/.git"
+  - "**/.gradle"
+  - "**/.hg"
+  - "**/.m2"
+  - "**/.npm"
+  - "**/.pnpm"
+  - "**/.pytest_cache"
+  - "**/.svn"
+  - "**/.venv"
+  - "**/.yarn"
+  - "**/__pycache__"
+  - "**/build"
+  - "**/Carthage"
+  - "**/coverage"
+  - "**/DerivedData"
+  - "**/dist"
+  - "**/env"
+  - "**/Libraries"
+  - "**/node_modules"
+  - "**/Pods"
+  - "**/target"
+  - "**/vendor"
+  - "**/venv"
   # ghb:excluded-dirs:end
 disabled_rules:
   - comment_spacing

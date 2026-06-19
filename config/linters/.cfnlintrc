@@ -3,6 +3,7 @@ templates:
 ignore_templates:
   - .github/**
   - docs/**
+  - trivy.yaml
   # ghb:excluded-dirs:start - managed by github-build from config/languages.yaml; do not edit by hand
   - .build/**
   - .bundle/**

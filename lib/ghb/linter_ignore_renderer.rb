@@ -142,7 +142,13 @@ module GHB
     # shared dirs; Swift-specific extras (e.g. SourcePackages, Tuist/.build) live
     # outside the sentinels in the shipped template.
     def body_swiftlint(dirs)
-      lines = dirs.map { |dir| "  - #{dir}" }
+      # Match each excluded dir at ANY depth, mirroring the recursive globs the
+      # other renderers use (trivy `**/<dir>`, cfnlint `<dir>/**`, etc.). A bare
+      # `- .build` only excludes the repo-root copy, so nested build/checkout
+      # caches in submodules (e.g. Projects/<sub>/Tuist/.build/checkouts) slip
+      # through and trip `swiftlint --strict`. The leading `*` makes the scalar
+      # a YAML alias, so each entry is quoted.
+      lines = dirs.map { |dir| %(  - "**/#{dir}") }
       lines.join("\n")
     end
 
