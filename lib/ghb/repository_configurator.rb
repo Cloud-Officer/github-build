@@ -280,15 +280,7 @@ module GHB
         }
       }
 
-      response = github_client.patch(repo_url, body: security_settings, expected_codes: nil)
-
-      return unless response.code == 200
-
-      puts('        Secret scanning disabled')
-      puts('        Secret scanning push protection disabled')
-      puts('        Secret scanning validity checks disabled')
-      puts('        Secret scanning non-provider patterns disabled')
-      puts('        Secret scanning AI detection disabled')
+      github_client.patch(repo_url, body: security_settings, expected_codes: nil)
     end
 
     def enable_security_features(github_client, repo_url)
@@ -304,12 +296,6 @@ module GHB
       }
 
       github_client.patch(repo_url, body: security_settings)
-
-      puts('        Secret scanning enabled')
-      puts('        Secret scanning push protection enabled')
-      puts('        Secret scanning validity checks enabled')
-      puts('        Secret scanning non-provider patterns enabled')
-      puts('        Secret scanning AI detection (generic passwords) enabled')
     end
 
     def disable_codeql_default_setup(github_client, repo_url)
@@ -318,38 +304,32 @@ module GHB
         state: 'not-configured'
       }
 
-      response = github_client.patch(
+      github_client.patch(
         "#{repo_url}/code-scanning/default-setup",
         body: code_scanning_config,
         expected_codes: nil
       )
-
-      puts('        CodeQL default setup disabled') if [200, 202].include?(response.code)
     end
 
     def enable_codeql_default_setup(github_client, repo_url)
       puts('    Enabling CodeQL default setup...')
 
-      # First check current status
+      # First check current status; skip the patch if it is already configured.
       response = github_client.get("#{repo_url}/code-scanning/default-setup")
       current_setup = JSON.parse(response.body)
 
-      if current_setup['state'] == 'configured'
-        puts('        CodeQL default setup already configured')
-      else
-        code_scanning_config = {
-          state: 'configured',
-          query_suite: 'default'
-        }
+      return if current_setup['state'] == 'configured'
 
-        github_client.patch(
-          "#{repo_url}/code-scanning/default-setup",
-          body: code_scanning_config,
-          expected_codes: [200, 202]
-        )
+      code_scanning_config = {
+        state: 'configured',
+        query_suite: 'default'
+      }
 
-        puts('        CodeQL default setup enabled')
-      end
+      github_client.patch(
+        "#{repo_url}/code-scanning/default-setup",
+        body: code_scanning_config,
+        expected_codes: [200, 202]
+      )
     end
   end
 end

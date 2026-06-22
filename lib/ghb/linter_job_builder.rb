@@ -77,14 +77,7 @@ module GHB
         return
       end
 
-      result = matches.join("\n")
-
       puts("        Enabling #{linter[:short_name]}...")
-      puts('            Found:')
-
-      result.each_line.map(&:strip).first(5).each do |line|
-        puts("              #{line}")
-      end
 
       copy_linter_config(linter, script_path)
       add_linter_job(short_name, linter)
