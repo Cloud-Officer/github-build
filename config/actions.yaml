@@ -5,5 +5,5 @@
 # .github/workflows/external-actions-bump.yml cron bumps these entries (via
 # bump-actions/bump-actions.sh) to the latest upstream major, opening a PR for
 # review. cloud-officer/* actions are versioned separately (see CI_ACTIONS_VERSION).
-actions/checkout: v6
+actions/checkout: v7
 peter-evans/create-pull-request: v8
