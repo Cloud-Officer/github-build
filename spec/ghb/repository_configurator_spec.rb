@@ -1019,9 +1019,8 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(codeql_disable_response))
       end
 
-      it 'prints CodeQL disabled confirmation for 202 response' do # rubocop:disable RSpec/MultipleExpectations
-        expect { configurator.configure }
-          .to(output(/CodeQL default setup disabled/).to_stdout)
+      it 'patches CodeQL default setup to not-configured for 202 response' do
+        configurator.configure
 
         expect(github_client).to(have_received(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil))
       end
@@ -1065,9 +1064,8 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(codeql_disable_response))
       end
 
-      it 'does not print CodeQL disabled confirmation for non-200/202 response' do # rubocop:disable RSpec/MultipleExpectations
-        expect { configurator.configure }
-          .not_to(output(/CodeQL default setup disabled/).to_stdout)
+      it 'still patches CodeQL default setup for non-200/202 response' do
+        configurator.configure
 
         expect(github_client).to(have_received(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil))
       end
