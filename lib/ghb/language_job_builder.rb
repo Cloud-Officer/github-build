@@ -212,14 +212,6 @@ module GHB
         copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
         do_uses("cloud-officer/ci-actions/setup@#{CI_ACTIONS_VERSION}")
 
-        # Unit-test suites stub all AWS clients and never call AWS, so the test job
-        # must not receive long-lived AWS access keys (least privilege: handing static
-        # credentials to a job that runs dozens of third-party gems widens the blast
-        # radius of a supply-chain compromise). Strip any inherited from a previously
-        # generated workflow, and never add them to the default block below. Jobs that
-        # genuinely need AWS should use OIDC. See Cloud-Officer/ci-tools#504.
-        %i[aws-access-key-id aws-secret-access-key aws-region].each { |key| with.delete(key) }
-
         # Remove version parameter from with if version file exists (version file takes precedence)
         if version_file
           version_option_key = (version_file == '.nvmrc' ? 'node-version' : version_file.delete_prefix('.')).to_sym
