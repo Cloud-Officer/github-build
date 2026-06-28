@@ -229,7 +229,7 @@ kotlin:
       elasticsearch_dependency: elasticsearch
       package_manager_name: Gradle
       package_manager_default: gradle build
-      package_manager_update: gradle dependencies --refresh-dependencies
+      package_manager_update: gradle dependencies --refresh-dependencies --write-locks
       dependabot_ecosystem: gradle
     - dependency_file: pom.xml
       install_dirs:
