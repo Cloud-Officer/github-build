@@ -135,7 +135,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(setup.with).to(include(:'ssh-key', :'github-token'))
     end
 
-    it 'strips AWS keys inherited from a previously generated unit-test Setup step', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'preserves AWS keys inherited from a previously generated unit-test Setup step', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       stub_config_file_reads(go_language_yaml)
       stub_go_language_detection
 
@@ -159,10 +159,8 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       builder.build
 
       setup = new_workflow.jobs[:go_unit_tests].steps.find { |step| step.name == 'Setup' }
-      expect(setup.with).not_to(have_key(:'aws-access-key-id'))
-      expect(setup.with).not_to(have_key(:'aws-secret-access-key'))
-      expect(setup.with).not_to(have_key(:'aws-region'))
-      expect(setup.with).to(include(:'ruby-bundler-cache')) # non-AWS inherited keys are preserved
+      expect(setup.with).to(include(:'aws-access-key-id', :'aws-secret-access-key', :'aws-region'))
+      expect(setup.with).to(include(:'ruby-bundler-cache'))
     end
 
     it 'sets up mongodb options when dependency file contains mongodb string' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
