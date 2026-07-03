@@ -18,9 +18,9 @@ latest_node=${latest#v}
 export latest_node
 yq e --indent=2 '(.js.setup_options[] | select(.name == "node-version").value) = env(latest_node)' -i "${LANGUAGE_FILE}"
 
-# Java
+# Java (track the latest LTS major, not a hardcoded interim release or exact patch)
 
-latest_java=$(curl -s "https://api.adoptium.net/v3/assets/latest/24/hotspot" | jq -r '.[0].version.openjdk_version' | cut -d+ -f1)
+latest_java=$(curl -s "https://api.adoptium.net/v3/info/available_releases" | jq -r '.most_recent_lts')
 export latest_java
 yq e --indent=2 '(.kotlin.setup_options[] | select(.name == "java-version").value) = env(latest_java)' -i  "${LANGUAGE_FILE}"
 
