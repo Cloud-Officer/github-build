@@ -57,7 +57,7 @@ go:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.26.4
+      value: 1.26.5
     - name: go-version-file
       value:
     - name: go-check-latest
@@ -93,7 +93,7 @@ js:
     - .nvmrc
   setup_options:
     - name: node-version
-      value: 26.4.0
+      value: 26.5.0
     - name: node-always-auth
       value:
     - name: node-version-file
@@ -301,7 +301,7 @@ proto:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.26.4
+      value: 1.26.5
     - name: go-version-file
       value:
     - name: go-check-latest
@@ -439,7 +439,7 @@ ruby:
     - .ruby-version
   setup_options:
     - name: ruby-version
-      value: 4.0.5
+      value: 4.0.6
     - name: ruby-rubygems
       value:
     - name: ruby-bundler

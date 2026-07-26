@@ -37,6 +37,15 @@ module GHB
         end
     end
 
+    # Single regexp matching any caller-supplied excluded path fragment or any
+    # excluded directory from languages.yaml, so each scanned path is tested once.
+    # Fragments are matched literally (Regexp.union escapes them), mirroring String#include?.
+    # @param excluded_paths [Array<String>] paths to exclude (partial matches)
+    # @return [Regexp] union of every exclusion fragment (never matches when empty)
+    def excluded_paths_pattern(excluded_paths)
+      Regexp.union(excluded_paths + excluded_dirs_from_config.map { |dir| "/#{dir}/" })
+    end
+
     # Pure Ruby file finder - avoids shell command injection (SEC-001, SEC-002)
     # @param path [String] starting directory path
     # @param pattern [Regexp] file pattern to match
@@ -46,7 +55,7 @@ module GHB
     def find_files_matching(path, pattern, excluded_paths = [], max_depth: nil)
       matches = []
       base_depth = path.count(File::SEPARATOR)
-      config_excluded = excluded_dirs_from_config
+      excluded_pattern = excluded_paths_pattern(excluded_paths)
 
       Find.find(path) do |file_path|
         # Check max depth
@@ -58,11 +67,7 @@ module GHB
         # Skip excluded paths (submodules, excluded_folders, dirs from languages.yaml)
         # and anything the repo's .gitignore excludes (e.g. the .ruby-lsp sub-bundle),
         # so ignored files never count toward language/dependency/linter detection.
-        should_skip = excluded_paths.any? { |excluded| file_path.include?(excluded) } ||
-                      config_excluded.any? { |dir| file_path.include?("/#{dir}/") } ||
-                      git_ignored?(file_path)
-
-        if should_skip
+        if file_path.match?(excluded_pattern) || git_ignored?(file_path)
           Find.prune
           next
         end
