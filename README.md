@@ -122,6 +122,10 @@ To change the persisted arguments, either:
 * Run `github-build` again with the new set of flags, or
 * Edit the `# github-build ...` comment at the top of the build file directly
 
+One-shot flags are never persisted: `--sync_required_status_checks` is stripped from the saved comment so it only
+applies to the run where it is passed. Flags that no longer exist in the CLI but still linger in a saved header are
+dropped with a warning on the next run, so old headers self-heal instead of failing.
+
 ### Configuration Files
 
 `github-build` ships sensible defaults under `config/`. Each file can be overridden with a CLI flag pointing at your
@@ -211,7 +215,7 @@ root. No CLI flags are needed for these; they are detected on every run.
 | `appspec.yml` | Adds CodeDeploy and environment deployment jobs (`beta_deploy`, `rc_deploy`, `prod_deploy`) | Remove `appspec.yml` |
 | `vercel.json` (or a `"vercel"`/`"next"` dependency in `package.json`) | Adds Vercel deployment jobs (`beta_deploy`, `rc_deploy`, `prod_deploy`) driving the Vercel CLI. Ignored when `appspec.yml` is present (CodeDeploy wins). Custom steps such as `vercel alias` are preserved across regenerations | Remove `vercel.json` and the `vercel`/`next` dependency |
 | `.dockerhub` | Generates a separate Docker Hub workflow (`.github/workflows/docker.yml`) that pushes images on tag events | Remove the `.dockerhub` file |
-| `ci_scripts/` | Adds `Xcode` to the expected branch protection status checks | Remove the `ci_scripts/` directory |
+| `ci_scripts/` | Adds `Xcode` to the expected branch protection status checks and, for Swift projects, drops the `Swift Unit Tests` job since Xcode Cloud runs the tests (dependency information is still collected) | Remove the `ci_scripts/` directory |
 
 ### Required Secrets
 
@@ -227,7 +231,9 @@ Generated workflows reference the following GitHub Actions secrets that must be 
 
 #### AWS Secrets (CodeDeploy and Custom AWS Deployments)
 
-Required when using CodeDeploy (`--application_name`) or custom AWS deployments (`.aws` file present).
+Required when using CodeDeploy (`--application_name`) or custom AWS deployments (`.aws` file present). The generated
+Vercel deployment jobs also forward these credentials to the shared setup step, so they appear in Vercel-only
+repositories as well.
 
 | Secret                  | Purpose                                                                                            |
 |-------------------------|----------------------------------------------------------------------------------------------------|
