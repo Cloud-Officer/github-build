@@ -33,12 +33,16 @@
 +------------------------------------------------------------------------+
          |  uses                       |  uses
          v                             v
-+-------------------+     +---------------------+     +-----------------+
-|  GHB::Workflow    |     |  GHB::FileScanner   |     | GitHubAPIClient |
++-------------------+     +----------------------+     +-----------------+
+|  GHB::Workflow    |     |  GHB::FileScanner    |     | GitHubAPIClient |
 |  - Read/Write     |     |  - find_files_match  |     | - get/put/post  |
-|  - YAML handling  |     |  - file_contains?    |     | - retry logic   |
+|  - YAML handling  |     |  - file_contains?    |     | - retry/backoff |
 +-------------------+     |  - atomic_copy_config|     +-----------------+
-   |            |          +---------------------+
+   |            |         +----------------------+
+   |            |         +----------------------+
+   |            |         | GitignoreRules       |
+   |            |         | LinterIgnoreRenderer |
+   |            |         +----------------------+
    v            v
 +----------+ +----------+
 | GHB::Job | |GHB::Step |
@@ -74,6 +78,21 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 9. `Workflow`, `Job`, and `Step` classes model the GitHub Actions YAML structure
 
 ## Software units
+
+### bin/github-build.rb
+
+**Purpose:** CLI entry point. Instantiates `GHB::Application` with `ARGV`, exits with its return code, and maps uncaught exceptions to a non-zero exit.
+
+**Location:** `bin/github-build.rb`
+
+**Key Components:**
+
+- Rescues `GHB::ConfigError` and prints `Error: <message>` to stderr, exiting 1
+- Rescues `StandardError` (including `GHB::GitHubAPIError`), printing the backtrace only when `ENV['DEBUG']` is set, exiting 1
+
+**Internal Dependencies:**
+
+- `GHB::Application`
 
 ### GHB Module
 
@@ -272,7 +291,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 ### GHB::GitHubAPIClient
 
-**Purpose:** Centralized GitHub REST API client with shared headers, retry logic with linear backoff, and error handling.
+**Purpose:** Centralized GitHub REST API client with shared headers, bounded timeouts, rate-limit-aware retries, and error handling. Raises `GHB::GitHubAPIError` (carrying a truncated response body) when a response code falls outside the caller's `expected_codes`.
 
 **Location:** `lib/ghb/github_api_client.rb`
 
@@ -283,6 +302,20 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `put(url, body:, expected_codes:)`: HTTP PUT with response validation
 - `post(url, body:, headers:, expected_codes:)`: HTTP POST with response validation
 - `patch(url, body:, expected_codes:)`: HTTP PATCH with response validation
+
+**Private Methods:**
+
+- `execute(method, url, body:, headers:, expected_codes:)`: Applies shared headers and the `OPEN_TIMEOUT` / `READ_TIMEOUT` bounds, dispatches through `with_retries`, and validates the response code
+- `with_retries`: Retries up to `MAX_RETRIES` on retryable responses and on transient network errors (`RETRYABLE_ERRORS`: `Net::OpenTimeout`, `Net::ReadTimeout`, `Errno::ECONNRESET`, `Errno::ECONNREFUSED`, `SocketError`, `OpenSSL::SSL::SSLError`)
+- `retryable_response?(response)`: Returns whether a response is a 5xx or rate-limited
+- `rate_limited?(response)`: Detects rate limiting via HTTP 429, or HTTP 403 with `X-RateLimit-Remaining: 0` (primary and secondary/abuse limits)
+- `retry_wait(response, retries)` / `rate_limit_wait(response)`: Honors `Retry-After` and `X-RateLimit-Reset` for rate-limited responses (capped at `MAX_RETRY_WAIT`), otherwise falls back to linear backoff (1s, 2s, 3s)
+
+**Constants:**
+
+- `MAX_RETRIES`: Retry attempts per request (3)
+- `MAX_RETRY_WAIT`: Cap on a single rate-limit backoff so a far-future `X-RateLimit-Reset` cannot hang CI (60s)
+- `OPEN_TIMEOUT` / `READ_TIMEOUT`: Connection and read bounds (10s / 30s) so a stalled connection cannot hang the CLI and the timeout retry path can fire
 
 **External Dependencies:**
 
@@ -465,6 +498,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `uncomment_jetbrains_patterns(content)`: Uncomments JetBrains IDE patterns
 - `comment_conflicting_patterns(content)`: Comments out directory patterns (`bin/`, `lib/`, `var/`) that conflict with common project directories
 - `preserve_custom_entries(git_ignore, custom_patterns)`: Preserves custom entries from an existing `.gitignore`
+- `detect_custom_patterns(config)`: Returns the always-appended custom patterns (AI assistant ignore rules) regardless of whether the corresponding tool is detected, so they cannot be accidentally committed
 
 ### GHB::RepositoryConfigurator
 
@@ -476,8 +510,17 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `initialize(options:, required_status_checks:, default_branch:)`: Accepts options, collected status checks, and default branch
 - `configure`: Validates GITHUB_TOKEN, retrieves repo info, and configures branch protection, security features, and repository options
+
+**Private Methods:**
+
+- `configure_branch_protection(github_client, repo_url, current_protection, protection_exists)`: Builds and applies the branch protection payload
+- `augment_required_status_checks`: Adds integration-derived checks (Vercel, CodeQL) to the collected list
+- `validate_required_checks!(expected_checks, actual_checks, protection_exists)`: Raises on a check mismatch unless `--sync_required_status_checks` is set
 - `discover_xcode_cloud_checks_from_protection(actual_checks, expected_checks)`: Extracts Xcode Cloud checks from existing branch protection by finding checks not in the expected set
 - `discover_xcode_cloud_checks_from_statuses(github_client, repo_url)`: Discovers Xcode Cloud checks from commit statuses on the default branch for new repos without existing protection
+- `configure_repository_options(github_client, repo_url)`: Applies merge strategy, wiki/projects, and delete-branch-on-merge settings
+- `enable_security_features` / `disable_security_features`: Toggles secret scanning features by repository visibility
+- `enable_codeql_default_setup` / `disable_codeql_default_setup`: Toggles CodeQL default setup by repository visibility
 
 **Internal Dependencies:**
 
@@ -499,6 +542,9 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `read(file)`: Parses existing workflow YAML file
 - `write(file, header:)`: Writes workflow to YAML file, applying two transformations via `rewrite_github_refs`: rewrites `${GITHUB_*}` references to `${{github.*}}` in YAML values while preserving them in shell `run:` bodies (where they are runner-exported env vars), and substitutes `${{secrets.GITHUB_TOKEN}}` with `${{secrets.GH_PAT}}` for higher rate limits (except in the auto-approve workflow)
 - `do_job(id, &block)`: DSL method to define jobs
+- `do_name`, `do_run_name`, `do_on`, `do_permissions`, `do_env`, `do_defaults`, `do_concurrency`: DSL setters for the top-level workflow keys
+- `deploy_needs`: Returns the job ids a deploy job must wait on (linters, licenses, unit tests)
+- `deploy_if_statement`: Returns the shared `if:` guard applied to deploy jobs
 - `to_h`: Converts workflow to hash for YAML serialization
 
 **Attributes:**
@@ -557,6 +603,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `config/options/mysql.yaml`: MySQL service version and settings
 - `config/options/redis.yaml`: Redis service version and settings
 - `config/options/elasticsearch.yaml`: Elasticsearch service version and settings
+- `config/linters/`: Bundled linter config templates copied or symlinked into target repositories by `GHB::LinterJobBuilder` (`.rubocop.yml`, `.eslintrc.json`, `.flake8`, `.bandit`, `.yamllint.yml`, `.pmd.xml`, `.semgrepignore`, `.cfnlintrc`, `.swiftlint.yml`, `trivy.yaml`, `.trivyignore`, `.golangci.yml`, `.hadolint.yaml`, `.protolint.yaml`, `.markdownlint-cli2.yaml`, `.shellcheckrc`, `.editorconfig`). The subset listed in `GHB::LinterIgnoreRenderer::FORMATS` has its excluded-dirs block regenerated on copy
 
 ### bin/update_versions.sh
 
@@ -708,14 +755,18 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 - Secrets referenced via GitHub Actions secret syntax
 - No secrets stored in generated files
 - Token permissions scoped appropriately in workflow files
+- The generated dependency-update `git config ... insteadOf` rewrites (built in `GHB::Application#initialize`) are scoped to `${{github.repository_owner}}/` rather than bare `github.com/`, so `GH_PAT` is not attached to arbitrary GitHub URLs fetched later in the run (e.g. transitive git-source dependencies), limiting the exfiltration surface to the owning organization's own repositories
+- `GHB::Options::EPHEMERAL_FLAGS` keeps one-shot flags out of the argument comment persisted in the generated workflow header
 
 ### Error Handling
 
-- `GHB::ConfigError` raised for configuration validation failures (missing or malformed YAML)
-- `StandardError` caught at top level with backtrace output (DEBUG-only via `ENV['DEBUG']`)
+- `GHB::ConfigError` raised for configuration validation failures (missing or malformed YAML, or an external action absent from `config/actions.yaml`)
+- `GHB::GitHubAPIError` raised by `GHB::GitHubAPIClient` for unexpected REST response codes, carrying the method, URL, status, and a truncated response body for diagnosis
+- Both are rescued in `bin/github-build.rb`; `StandardError` is caught at top level with backtrace output (DEBUG-only via `ENV['DEBUG']`)
 - Exit codes via `GHB::Status` indicate success (0), error (1), or failure (2)
-- API errors raise exceptions with descriptive messages
-- File operations rescue `Errno::ENOENT` and `Errno::EACCES` for graceful degradation
+- Transient API failures (5xx, rate limiting, connection timeouts/resets) are retried by `GHB::GitHubAPIClient` before surfacing
+- File operations in `GHB::FileScanner` rescue `Errno::ENOENT` and `Errno::EACCES` for graceful degradation
+- `GHB::FileScanner#gitignored_paths` returns `[]` when git is unavailable or the cwd is not a repository, leaving scanning unfiltered rather than failing
 
 ### Logging and Monitoring
 
@@ -732,5 +783,8 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 | Invalid configuration YAML  | Application crash           | Validate YAML structure, use safe_load             |
 | Missing linter config files | Linter step may fail        | Copy default configs, symlink to scripts submodule |
 | File permission errors      | Cannot write output         | Check permissions, exit with error                 |
-| Network timeout             | API calls fail              | HTTParty handles timeouts, user can retry          |
+| Network timeout             | API calls fail              | Bounded open/read timeouts, up to 3 retries        |
+| GitHub API rate limiting    | API calls rejected          | Retry honoring Retry-After / X-RateLimit-Reset     |
 | Version mismatch detected   | Warning or error            | Configurable strict mode for version checking      |
+| Status check list mismatch  | Protection update fails     | Error unless `--sync_required_status_checks`       |
+| git unavailable in cwd      | Ignored files scanned       | Scanning proceeds unfiltered instead of failing    |

@@ -16,7 +16,12 @@
 
 This is a GitHub Action build file generator. It will detect and enable linters, enable license check, detect the
 languages including dependencies like mongodb, mysql, redis and elasticsearch, enable the unit tests framework, enable CodeDeploy,
-detect custom AWS deployment, enable Slack notification and enable Dependabot Jira integration.
+detect custom AWS and Vercel deployments and enable Slack notification.
+
+Alongside `.github/workflows/build.yml`, it generates the companion workflows `dependencies.yml` (weekly cron
+dependency updates), `auto-approve.yml` (approves pull requests opened by code owners) and, when a `.dockerhub`
+file is present, `docker.yml`. Any legacy `.github/dependabot.yml` is removed, as CVE alerts are handled through
+the repository settings instead.
 
 It will also update the `.gitignore` file and check the repository settings.
 
@@ -46,16 +51,10 @@ Run `./bin/github-build.rb` in the root of the project.
 Usage: github-build options
 
 options
-        --application_name application_name
-                                     Name of the CodeDeploy application
         --build_file file            Path to build file
         --excluded_folders excluded_folders
                                      Comma separated list of folders to ignore
-        --force_codedeploy_setup     Force executing the setup step in CodeDeploy even if not technically required
-        --get_ignored_folders        Output ignored folders as JSON and exit
         --gitignore_config_file file Path to gitignore config file
-        --ignored_linters ignored_linters
-                                     Ignore linter keys in linter config file
         --languages_config_file file Path to languages config file
         --linters_config_file file   Path to linters config file
         --options-apt file           Path to APT options file
@@ -63,15 +62,21 @@ options
         --options-mysql file         Path to MySQL options file
         --options-redis file         Path to Redis options file
         --options-elasticsearch file Path to Elasticsearch options file
+        --application_name application_name
+                                     Name of the CodeDeploy application
         --organization organization  GitHub organization
+        --force_codedeploy_setup     Force executing the setup step in CodeDeploy even if not technically required
+        --get_ignored_folders        Output ignored folders as JSON and exit
+        --ignored_linters ignored_linters
+                                     Ignore linter keys in linter config file
+        --no_strict_version_check    Do not auto-update when VERSION options do not match recommended defaults
+        --sync_required_status_checks
+                                     On branch protection check mismatch, overwrite remote check list with the expected one instead of erroring (useful when renaming jobs/matrix values)
         --skip_semgrep               Skip Semgrep
         --skip_gitignore             Skip update of gitignore file
         --skip_license_check         Skip license check
         --skip_repository_settings   Skip check of repository settings
         --skip_slack                 Skip slack
-        --no_strict_version_check    Do not auto-update when VERSION options do not match recommended defaults
-        --sync_required_status_checks
-                                     On branch protection check mismatch, overwrite remote check list with the expected one instead of erroring (useful when renaming jobs/matrix values)
     -h, --help                       Show this message
 ```
 
@@ -214,10 +219,11 @@ Generated workflows reference the following GitHub Actions secrets that must be 
 
 #### Core Secrets (All Workflows)
 
-| Secret    | Purpose                                                                                                                                                                                  |
-|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `GH_PAT`  | GitHub Personal Access Token used for API authentication, git operations, and accessing private dependencies across all generated workflow jobs (linters, tests, licenses, deployments). |
-| `SSH_KEY` | SSH private key used for repository checkout and SSH-based git operations across all generated workflow jobs.                                                                            |
+| Secret        | Purpose                                                                                                                                                                                  |
+|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GH_PAT`      | GitHub Personal Access Token used for API authentication, git operations, and accessing private dependencies across all generated workflow jobs (linters, tests, licenses, deployments). |
+| `SSH_KEY`     | SSH private key used for repository checkout and SSH-based git operations across all generated workflow jobs.                                                                            |
+| `GH_BOT_PAT`  | Token of the bot account used by `auto-approve.yml` to approve pull requests opened by code owners. Self-approval is skipped when it resolves to the pull request author.                |
 
 #### AWS Secrets (CodeDeploy and Custom AWS Deployments)
 
@@ -229,6 +235,17 @@ Required when using CodeDeploy (`--application_name`) or custom AWS deployments 
 | `AWS_SECRET_ACCESS_KEY` | AWS secret key paired with `AWS_ACCESS_KEY_ID` for AWS API authentication.                         |
 | `AWS_DEFAULT_REGION`    | AWS region for API calls and CodeDeploy operations (e.g., `us-east-1`).                            |
 | `CODEDEPLOY_BUCKET`     | S3 bucket name for storing CodeDeploy deployment packages. Used exclusively by the CodeDeploy job. |
+
+#### Vercel Secrets (Vercel Deployments)
+
+Required when a `vercel.json` file (or a `vercel`/`next` dependency in `package.json`) is present and `appspec.yml`
+is not.
+
+| Secret              | Purpose                                                                  |
+|---------------------|--------------------------------------------------------------------------|
+| `VERCEL_TOKEN`      | Vercel access token used by the Vercel CLI to pull settings and deploy.  |
+| `VERCEL_ORG_ID`     | Vercel organization (team) identifier used by the Vercel CLI.            |
+| `VERCEL_PROJECT_ID` | Vercel project identifier used by the Vercel CLI.                        |
 
 #### Slack Secret (Notifications)
 
