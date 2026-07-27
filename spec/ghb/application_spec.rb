@@ -246,7 +246,7 @@ RSpec.describe(GHB::Application) do
         expect(result).to(eq(['Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (macos-26)']))
       end
 
-      it 'expands every axis when the matrix has multiple keys' do # rubocop:disable RSpec/ExampleLength
+      it 'joins every dimension of a multi-key matrix into a single check name' do # rubocop:disable RSpec/ExampleLength
         result =
           checks_for do |w|
             w.do_job(:tests) do
@@ -255,7 +255,134 @@ RSpec.describe(GHB::Application) do
             end
           end
 
-        expect(result).to(eq(['Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (3.3)', 'Ruby Unit Tests (3.4)']))
+        expect(result).to(eq(['Ruby Unit Tests (ubuntu-latest, 3.3)', 'Ruby Unit Tests (ubuntu-latest, 3.4)']))
+      end
+
+      it 'expands the cartesian product with the first axis varying slowest' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:tests) do
+              do_name('Ruby Unit Tests')
+              do_strategy({ matrix: { os: %w[ubuntu-latest macos-26], ruby: %w[3.3 3.4] } })
+            end
+          end
+
+        expect(result).to(
+          eq(
+            [
+              'Ruby Unit Tests (ubuntu-latest, 3.3)',
+              'Ruby Unit Tests (ubuntu-latest, 3.4)',
+              'Ruby Unit Tests (macos-26, 3.3)',
+              'Ruby Unit Tests (macos-26, 3.4)'
+            ]
+          )
+        )
+      end
+
+      it 'stringifies non-string matrix values the way GitHub does' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:tests) do
+              do_name('Ruby Unit Tests')
+              do_strategy({ matrix: { version: [20, 3.4], experimental: [true] } })
+            end
+          end
+
+        expect(result).to(eq(['Ruby Unit Tests (20, true)', 'Ruby Unit Tests (3.4, true)']))
+      end
+
+      it 'accepts a matrix written with string keys' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:tests) do
+              do_name('Ruby Unit Tests')
+              do_strategy({ 'matrix' => { 'os' => %w[ubuntu-latest], 'ruby' => %w[3.3] } }) # rubocop:disable Style/StringHashKeys
+            end
+          end
+
+        expect(result).to(eq(['Ruby Unit Tests (ubuntu-latest, 3.3)']))
+      end
+
+      it 'drops the combinations listed under exclude' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:tests) do
+              do_name('Ruby Unit Tests')
+              do_strategy({ matrix: { os: %w[ubuntu-latest macos-26], ruby: %w[3.3 3.4], exclude: [{ os: 'macos-26', ruby: '3.3' }] } })
+            end
+          end
+
+        expect(result).to(
+          eq(['Ruby Unit Tests (ubuntu-latest, 3.3)', 'Ruby Unit Tests (ubuntu-latest, 3.4)', 'Ruby Unit Tests (macos-26, 3.4)'])
+        )
+      end
+
+      it 'merges an include row into every combination it matches' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:tests) do
+              do_name('Ruby Unit Tests')
+              do_strategy({ matrix: { os: %w[ubuntu-latest macos-26], include: [{ os: 'macos-26', arch: 'arm64' }] } })
+            end
+          end
+
+        expect(result).to(eq(['Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (macos-26, arm64)']))
+      end
+
+      it 'adds an include row that matches nothing as its own combination' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:tests) do
+              do_name('Ruby Unit Tests')
+              do_strategy({ matrix: { os: %w[ubuntu-latest], include: [{ os: 'windows-latest' }] } })
+            end
+          end
+
+        expect(result).to(eq(['Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (windows-latest)']))
+      end
+
+      it 'treats each row of an include-only matrix as its own combination' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:tests) do
+              do_name('Ruby Unit Tests')
+              do_strategy({ matrix: { include: [{ site: 'production', datacenter: 'site-a' }, { site: 'staging', datacenter: 'site-b' }] } })
+            end
+          end
+
+        expect(result).to(eq(['Ruby Unit Tests (production, site-a)', 'Ruby Unit Tests (staging, site-b)']))
+      end
+
+      it "reproduces GitHub's documented include expansion" do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:tests) do
+              do_name('Build')
+              do_strategy(
+                {
+                  matrix:
+                    {
+                      fruit: %w[apple pear],
+                      animal: %w[cat dog],
+                      include: [{ color: 'green' }, { color: 'pink', animal: 'cat' }, { fruit: 'apple', shape: 'circle' }, { fruit: 'banana' }, { fruit: 'banana', animal: 'cat' }]
+                    }
+                }
+              )
+            end
+          end
+
+        expect(result).to(
+          eq(
+            [
+              'Build (apple, cat, pink, circle)',
+              'Build (apple, dog, green, circle)',
+              'Build (pear, cat, pink)',
+              'Build (pear, dog, green)',
+              'Build (banana)',
+              'Build (banana, cat)'
+            ]
+          )
+        )
       end
 
       it 'mixes bare and expanded names across jobs and preserves job order' do # rubocop:disable RSpec/ExampleLength
@@ -281,6 +408,93 @@ RSpec.describe(GHB::Application) do
 
         expect(result.first).to(eq('Ruby Linter'))
         expect(result.first).not_to(include('('))
+      end
+
+      it 'treats a job whose strategy is not a mapping as non-matrix' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:lint) { do_name('Ruby Linter') }
+            w.jobs[:lint].strategy = 'fail-fast'
+          end
+
+        expect(result).to(eq(['Ruby Linter']))
+      end
+
+      it 'skips a nil job entry' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:lint) { do_name('Ruby Linter') }
+            w.jobs[:broken] = nil
+          end
+
+        expect(result).to(eq(['Ruby Linter']))
+      end
+
+      describe 'matrices that cannot be expanded statically' do # rubocop:disable RSpec/NestedGroups
+        before { allow(app).to(receive(:warn)) }
+
+        def checks_for_matrix(matrix)
+          checks_for do |w|
+            w.do_job(:tests) do
+              do_name('Ruby Unit Tests')
+              do_strategy({ matrix: matrix })
+            end
+          end
+        end
+
+        it 'warns and emits no check name for a matrix built from an expression' do # rubocop:disable RSpec/MultipleExpectations
+          expect(checks_for_matrix('${{fromJson(needs.variables.outputs.matrix)}}')).to(eq([]))
+          expect(app).to(have_received(:warn).with(/cannot expand the matrix of job 'Ruby Unit Tests'/))
+        end
+
+        it 'warns and emits no check name for an axis whose values come from an expression' do # rubocop:disable RSpec/MultipleExpectations
+          expect(checks_for_matrix({ os: '${{fromJson(needs.variables.outputs.os)}}' })).to(eq([]))
+          expect(app).to(have_received(:warn).with(/skipping it in the required status checks/))
+        end
+
+        it 'emits no check name for an axis with no values' do
+          expect(checks_for_matrix({ os: [] })).to(eq([]))
+        end
+
+        it 'emits no check name for an axis holding non-scalar values' do
+          expect(checks_for_matrix({ config: [{ os: 'ubuntu-latest' }] })).to(eq([]))
+        end
+
+        it 'emits no check name for an axis holding a nil value' do
+          expect(checks_for_matrix({ os: [nil] })).to(eq([]))
+        end
+
+        it 'emits no check name for an empty matrix' do
+          expect(checks_for_matrix({})).to(eq([]))
+        end
+
+        it 'emits no check name when the matrix keys are not names' do
+          expect(checks_for_matrix({ 1 => %w[a b] })).to(eq([]))
+        end
+
+        it 'emits no check name when include is not a list' do
+          expect(checks_for_matrix({ os: %w[ubuntu-latest], include: { os: 'macos-26' } })).to(eq([]))
+        end
+
+        it 'emits no check name when an include row is not a mapping' do
+          expect(checks_for_matrix({ os: %w[ubuntu-latest], include: ['macos-26'] })).to(eq([]))
+        end
+
+        it 'emits no check name when an include row is empty' do
+          expect(checks_for_matrix({ os: %w[ubuntu-latest], include: [{}] })).to(eq([]))
+        end
+
+        it 'emits no check name when an include row holds a non-scalar value' do
+          expect(checks_for_matrix({ os: %w[ubuntu-latest], include: [{ os: 'ubuntu-latest', env: { 'DEBUG' => '1' } }] })).to(eq([])) # rubocop:disable Style/StringHashKeys
+        end
+
+        it 'emits no check name when an include row key is not a name' do
+          expect(checks_for_matrix({ os: %w[ubuntu-latest], include: [{ 1 => 'macos-26' }] })).to(eq([]))
+        end
+
+        it 'emits no check name when exclude is not a list' do
+          expect(checks_for_matrix({ os: %w[ubuntu-latest], exclude: 'macos-26' })).to(eq([]))
+        end
       end
     end
   end
