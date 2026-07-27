@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+require 'active_support/core_ext/hash/keys'
 require 'httparty'
+require 'psych'
 
 require_relative 'file_scanner'
 require_relative 'gitignore_rules'

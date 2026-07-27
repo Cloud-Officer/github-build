@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
+require 'active_support/core_ext/hash/keys'
 require 'fileutils'
 require 'find'
+require 'psych'
 
 module GHB
   # Shared utility methods for file scanning and content searching.
