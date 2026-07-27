@@ -7,6 +7,7 @@ require 'httparty'
 require 'json'
 require 'psych'
 
+require_relative '../ghb'
 require_relative 'auto_merge_manager'
 require_relative 'aws_job_builder'
 require_relative 'build_context'
@@ -31,6 +32,13 @@ module GHB
   # Represents an instance of an application. This is the entry point for all invocations from the command line.
   class Application
     include FileScanner
+
+    # Validation keys of the service options files, derived from the SERVICES registry.
+    SERVICE_CONFIG_KEYS =
+      SERVICES
+      .map { |service| GHB.service_config_key(service) }
+      .freeze
+    private_constant :SERVICE_CONFIG_KEYS
 
     def initialize(argv)
       @code_deploy_pre_steps = []
@@ -142,14 +150,11 @@ module GHB
     # and contain required keys (CFG-001, CFG-005)
     # @raise [ConfigError] if any config file is missing, malformed, or missing required keys
     def validate_config!
+      service_config_files = SERVICES.to_h { |service| [GHB.service_config_key(service), @options.options_config_files[service]] }
       config_files = {
         linters_config: @options.linters_config_file,
         languages_config: @options.languages_config_file,
-        apt_options: @options.options_config_file_apt,
-        mongodb_options: @options.options_config_file_mongodb,
-        mysql_options: @options.options_config_file_mysql,
-        redis_options: @options.options_config_file_redis,
-        elasticsearch_options: @options.options_config_file_elasticsearch,
+        **service_config_files,
         gitignore_config: @options.gitignore_config_file
       }
 
@@ -170,13 +175,13 @@ module GHB
     end
 
     def validate_config_schema(name, relative_path, data)
+      return validate_option_entries(data, relative_path) if SERVICE_CONFIG_KEYS.include?(name)
+
       case name
       when :linters_config
         validate_entries(data, relative_path, 'linter', %w[short_name long_name uses path pattern])
       when :languages_config
         validate_entries(data, relative_path, 'language', %w[short_name long_name])
-      when :apt_options, :mongodb_options, :mysql_options, :redis_options, :elasticsearch_options
-        validate_option_entries(data, relative_path)
       end
     end
 

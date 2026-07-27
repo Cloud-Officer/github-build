@@ -29,11 +29,7 @@ module GHB
       @ignored_linters = {}
       @languages_config_file = DEFAULT_LANGUAGES_CONFIG_FILE
       @linters_config_file = DEFAULT_LINTERS_CONFIG_FILE
-      @options_config_file_apt = OPTIONS_APT_CONFIG_FILE
-      @options_config_file_mongodb = OPTIONS_MONGODB_CONFIG_FILE
-      @options_config_file_mysql = OPTIONS_MYSQL_CONFIG_FILE
-      @options_config_file_redis = OPTIONS_REDIS_CONFIG_FILE
-      @options_config_file_elasticsearch = OPTIONS_ELASTICSEARCH_CONFIG_FILE
+      @options_config_files = SERVICES.to_h { |service| [service, GHB.service_config_file(service)] }
       @organization = Dir.pwd.split('/')[-2]
       @parser = OptionParser.new
       @skip_semgrep = false
@@ -48,7 +44,12 @@ module GHB
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :options_config_file_apt, :options_config_file_elasticsearch, :options_config_file_mongodb, :options_config_file_mysql, :options_config_file_redis, :organization, :original_argv, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check, :sync_required_status_checks
+    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :options_config_files, :organization, :original_argv, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check, :sync_required_status_checks
+
+    # Path of a single service's options file, e.g. options_config_file(:mysql).
+    def options_config_file(service)
+      @options_config_files[service]
+    end
 
     def parse
       @parser.parse!(@argv)
@@ -129,24 +130,15 @@ module GHB
         @linters_config_file = file
       end
 
-      @parser.on('', '--options-apt file', 'Path to APT options file') do |file|
-        @options_config_file_apt = file
-      end
+      setup_service_options
+    end
 
-      @parser.on('', '--options-mongodb file', 'Path to MongoDB options file') do |file|
-        @options_config_file_mongodb = file
-      end
-
-      @parser.on('', '--options-mysql file', 'Path to MySQL options file') do |file|
-        @options_config_file_mysql = file
-      end
-
-      @parser.on('', '--options-redis file', 'Path to Redis options file') do |file|
-        @options_config_file_redis = file
-      end
-
-      @parser.on('', '--options-elasticsearch file', 'Path to Elasticsearch options file') do |file|
-        @options_config_file_elasticsearch = file
+    # One --options-<service> path override per SERVICES registry entry.
+    def setup_service_options
+      SERVICES.each do |service|
+        @parser.on('', "--options-#{service} file", "Path to #{GHB.service_display_name(service)} options file") do |file|
+          @options_config_files[service] = file
+        end
       end
     end
 

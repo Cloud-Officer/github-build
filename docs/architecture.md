@@ -111,11 +111,13 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `DEFAULT_GITIGNORE_CONFIG_FILE`: Path to gitignore configuration
 - `DEFAULT_LANGUAGES_CONFIG_FILE`: Path to languages configuration
 - `DEFAULT_LINTERS_CONFIG_FILE`: Path to linters configuration
-- `OPTIONS_APT_CONFIG_FILE`: Path to APT options configuration
-- `OPTIONS_MONGODB_CONFIG_FILE`: Path to MongoDB options configuration
-- `OPTIONS_MYSQL_CONFIG_FILE`: Path to MySQL options configuration
-- `OPTIONS_REDIS_CONFIG_FILE`: Path to Redis options configuration
-- `OPTIONS_ELASTICSEARCH_CONFIG_FILE`: Path to Elasticsearch options configuration
+- `SERVICES`: Registry of supported services (`apt`, `mongodb`, `mysql`, `redis`, `elasticsearch`); config file paths, CLI flags, config validation entries and dependency detection are all derived from it, so adding a service means adding one symbol plus a `config/options/<service>.yaml` file
+- `ALWAYS_ENABLED_SERVICES`: Services applied to every detected language without dependency detection (`apt`)
+- `DETECTABLE_SERVICES`: Services enabled only when a language dependency file contains their marker string
+- `service_config_file(service)`: Default options file path for a service (`config/options/<service>.yaml`)
+- `service_display_name(service)`: Human readable service name used in CLI help text
+- `service_config_key(service)`: Config validation key for a service's options file (`<service>_options`)
+- `service_dependency_key(service)`: Key holding a service's marker string in a language dependency entry (`<service>_dependency`)
 - `DEFAULT_UBUNTU_VERSION`: Default Ubuntu runner OS
 - `DEFAULT_MACOS_VERSION`: Default macOS runner OS
 - `DEFAULT_JOB_TIMEOUT_MINUTES`: Default job timeout
@@ -206,11 +208,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `ignored_linters`: Hash of linters to skip
 - `languages_config_file`: Path to languages config file
 - `linters_config_file`: Path to linters config file
-- `options_config_file_apt`: Path to APT options config
-- `options_config_file_mongodb`: Path to MongoDB options config
-- `options_config_file_mysql`: Path to MySQL options config
-- `options_config_file_redis`: Path to Redis options config
-- `options_config_file_elasticsearch`: Path to Elasticsearch options config
+- `options_config_files`: Hash of service symbol (`GHB::SERVICES`) to its options config path, one `--options-<service>` flag per entry (`options_config_file(service)` reads a single entry)
 - `organization`: GitHub organization name
 - `original_argv`: Original command-line arguments for reproducibility
 - `skip_gitignore`: Skip gitignore updates

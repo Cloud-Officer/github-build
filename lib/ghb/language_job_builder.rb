@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../ghb'
 require_relative 'file_scanner'
 
 module GHB
@@ -34,19 +35,7 @@ module GHB
     def build
       puts('    Detecting languages...')
       languages = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.languages_config_file}"))&.deep_symbolize_keys
-      options_apt = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_apt}"))&.deep_symbolize_keys&.[](:options)
-      options_mongodb = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_mongodb}"))&.deep_symbolize_keys&.[](:options)
-      options_mysql = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_mysql}"))&.deep_symbolize_keys&.[](:options)
-      options_redis = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_redis}"))&.deep_symbolize_keys&.[](:options)
-      options_elasticsearch = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_file_elasticsearch}"))&.deep_symbolize_keys&.[](:options)
-
-      service_options = {
-        apt: options_apt,
-        mongodb: options_mongodb,
-        mysql: options_mysql,
-        redis: options_redis,
-        elasticsearch: options_elasticsearch
-      }
+      service_options = SERVICES.to_h { |service| [service, load_service_options(service)] }
 
       languages&.each_value do |language|
         next unless language.is_a?(Hash)
@@ -61,14 +50,16 @@ module GHB
 
     private
 
+    # Setup options declared by a service's config/options file, or nil when it declares none.
+    def load_service_options(service)
+      Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_files[service]}"))&.deep_symbolize_keys&.[](:options)
+    end
+
     def detect_language(language, service_options)
       return if language[:file_extension].nil?
 
       language_detected = false
-      mongodb = false
-      mysql = false
-      redis = false
-      elasticsearch = false
+      detected_services = Set.new(ALWAYS_ENABLED_SERVICES)
       setup_options = {}
 
       # Pure Ruby file finding - avoids shell injection (SEC-002)
@@ -94,21 +85,12 @@ module GHB
 
         # Pure Ruby dependency checking - avoids shell injection (SEC-002)
         language[:dependencies].each do |dependency|
-          dep_file = dependency[:dependency_file]
-          mongodb = true if dependency[:mongodb_dependency] && file_contains?(dep_file, dependency[:mongodb_dependency])
-          mysql = true if dependency[:mysql_dependency] && file_contains?(dep_file, dependency[:mysql_dependency])
-          redis = true if dependency[:redis_dependency] && file_contains?(dep_file, dependency[:redis_dependency])
-          elasticsearch = true if dependency[:elasticsearch_dependency] && file_contains?(dep_file, dependency[:elasticsearch_dependency])
+          detected_services.merge(detect_services(dependency, dependency[:dependency_file]))
         end
 
         # Also check subdirectory dependency files for service detection
         mono_dependency_locations.each do |loc|
-          dep = loc[:dependency]
-          path = loc[:path]
-          mongodb = true if dep[:mongodb_dependency] && file_contains?(path, dep[:mongodb_dependency])
-          mysql = true if dep[:mysql_dependency] && file_contains?(path, dep[:mysql_dependency])
-          redis = true if dep[:redis_dependency] && file_contains?(path, dep[:redis_dependency])
-          elasticsearch = true if dep[:elasticsearch_dependency] && file_contains?(path, dep[:elasticsearch_dependency])
+          detected_services.merge(detect_services(loc[:dependency], loc[:path]))
         end
       end
 
@@ -117,13 +99,19 @@ module GHB
       puts("        Enabling #{language[:long_name]}...")
       version_file = language[:version_files]&.find { |f| File.exist?(f) }
       add_setup_options(setup_options, language[:setup_options], version_file)
-      add_setup_options(setup_options, service_options[:apt])
-      add_setup_options(setup_options, service_options[:mongodb]) if mongodb
-      add_setup_options(setup_options, service_options[:mysql]) if mysql
-      add_setup_options(setup_options, service_options[:redis]) if redis
-      add_setup_options(setup_options, service_options[:elasticsearch]) if elasticsearch
+      SERVICES.each { |service| add_setup_options(setup_options, service_options[service]) if detected_services.include?(service) }
 
       add_language_job(language, setup_options, version_file, mono_dependency_locations)
+    end
+
+    # Services whose marker string (the `<service>_dependency` key) appears in the given
+    # dependency file. Used for both the repo-root and the sub-project lockfiles so the
+    # two detection sites can no longer diverge.
+    def detect_services(dependency, path)
+      DETECTABLE_SERVICES.select do |service|
+        marker = dependency[GHB.service_dependency_key(service)]
+        marker && file_contains?(path, marker)
+      end
     end
 
     # Find a language's dependency lockfile in sub-project directories. Scans up to

@@ -18,11 +18,7 @@ RSpec.describe(GHB::Application) do
         GHB::Options,
         linters_config_file: 'config/linters.yaml',
         languages_config_file: 'config/languages.yaml',
-        options_config_file_apt: 'config/options/apt.yaml',
-        options_config_file_mongodb: 'config/options/mongodb.yaml',
-        options_config_file_mysql: 'config/options/mysql.yaml',
-        options_config_file_redis: 'config/options/redis.yaml',
-        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml',
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' },
         gitignore_config_file: 'config/gitignore.yaml'
       )
     end
@@ -39,11 +35,7 @@ RSpec.describe(GHB::Application) do
         GHB::Options,
         linters_config_file: 'config/nonexistent.yaml',
         languages_config_file: 'config/languages.yaml',
-        options_config_file_apt: 'config/options/apt.yaml',
-        options_config_file_mongodb: 'config/options/mongodb.yaml',
-        options_config_file_mysql: 'config/options/mysql.yaml',
-        options_config_file_redis: 'config/options/redis.yaml',
-        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml',
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' },
         gitignore_config_file: 'config/gitignore.yaml'
       )
       config_app = config_test_class.new(bad_options)
@@ -117,6 +109,24 @@ RSpec.describe(GHB::Application) do
         .to(raise_error(GHB::ConfigError, %r{Option entry 0 in config/options/apt.yaml is missing required key: name}))
     end
 
+    # Validation entries are derived from the SERVICES registry, so each service's
+    # options file must be checked for existence and schema.
+    GHB::SERVICES.each do |service|
+      it "validates the #{service} options file" do # rubocop:disable RSpec/ExampleLength
+        missing_options = instance_double(
+          GHB::Options,
+          linters_config_file: 'config/linters.yaml',
+          languages_config_file: 'config/languages.yaml',
+          options_config_files: GHB::SERVICES.to_h { |name| [name, name == service ? "config/options/missing-#{name}.yaml" : "config/options/#{name}.yaml"] },
+          gitignore_config_file: 'config/gitignore.yaml'
+        )
+        config_app = config_test_class.new(missing_options)
+
+        expect { config_app.validate_config! }
+          .to(raise_error(GHB::ConfigError, "Missing required #{service} options file: config/options/missing-#{service}.yaml"))
+      end
+    end
+
     it 'outputs ignored folders as JSON when get_ignored_folders is set' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       ignored_options = instance_double(
         GHB::Options,
@@ -144,11 +154,7 @@ RSpec.describe(GHB::Application) do
         GHB::Options,
         linters_config_file: 'custom/path/linters.yaml',
         languages_config_file: 'config/languages.yaml',
-        options_config_file_apt: 'config/options/apt.yaml',
-        options_config_file_mongodb: 'config/options/mongodb.yaml',
-        options_config_file_mysql: 'config/options/mysql.yaml',
-        options_config_file_redis: 'config/options/redis.yaml',
-        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml',
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' },
         gitignore_config_file: 'config/gitignore.yaml'
       )
       config_app = config_test_class.new(bad_options)

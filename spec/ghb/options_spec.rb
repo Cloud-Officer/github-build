@@ -31,6 +31,12 @@ RSpec.describe(GHB::Options) do
       expect(options.strict_version_check).to(be(true))
     end
 
+    it 'defaults one options config file per registered service' do
+      options = described_class.new([])
+
+      expect(options.options_config_files).to(eq(GHB::SERVICES.to_h { |service| [service, "config/options/#{service}.yaml"] }))
+    end
+
     it 'derives application_name from current directory' do
       allow(Dir).to(receive(:pwd).and_return('/path/to/my-awesome-app'))
       options = described_class.new([])
@@ -174,32 +180,30 @@ RSpec.describe(GHB::Options) do
       expect(options.gitignore_config_file).to(eq('custom/gitignore.yaml'))
     end
 
-    it 'parses --options-mongodb' do
-      options = described_class.new(['--options-mongodb', 'custom/mongodb.yaml'])
-      options.parse
+    GHB::SERVICES.each do |service|
+      it "parses --options-#{service}", :aggregate_failures do
+        options = described_class.new(["--options-#{service}", "custom/#{service}.yaml"])
+        options.parse
 
-      expect(options.options_config_file_mongodb).to(eq('custom/mongodb.yaml'))
+        expect(options.options_config_file(service)).to(eq("custom/#{service}.yaml"))
+        expect(options.options_config_files[service]).to(eq("custom/#{service}.yaml"))
+      end
     end
 
-    it 'parses --options-mysql' do
+    it 'leaves the other service option files at their defaults', :aggregate_failures do
       options = described_class.new(['--options-mysql', 'custom/mysql.yaml'])
       options.parse
 
-      expect(options.options_config_file_mysql).to(eq('custom/mysql.yaml'))
+      (GHB::SERVICES - [:mysql]).each do |service|
+        expect(options.options_config_file(service)).to(eq("config/options/#{service}.yaml"))
+      end
     end
 
-    it 'parses --options-redis' do
-      options = described_class.new(['--options-redis', 'custom/redis.yaml'])
+    it 'returns nil for a service outside the registry' do
+      options = described_class.new([])
       options.parse
 
-      expect(options.options_config_file_redis).to(eq('custom/redis.yaml'))
-    end
-
-    it 'parses --options-apt' do
-      options = described_class.new(['--options-apt', 'custom/apt.yaml'])
-      options.parse
-
-      expect(options.options_config_file_apt).to(eq('custom/apt.yaml'))
+      expect(options.options_config_file(:postgres)).to(be_nil)
     end
 
     it 'parses multiple options together' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations

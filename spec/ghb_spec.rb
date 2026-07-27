@@ -6,6 +6,49 @@ RSpec.describe(GHB) do
       expect(described_class::DEFAULT_JOB_TIMEOUT_MINUTES).to(be_a(Integer))
       expect(described_class::DEFAULT_JOB_TIMEOUT_MINUTES).to(eq(30))
     end
+
+    it 'exposes the service registry', :aggregate_failures do
+      expect(described_class::SERVICES).to(eq(%i[apt mongodb mysql redis elasticsearch]))
+      expect(described_class::SERVICES).to(be_frozen)
+    end
+
+    it 'splits the registry into always enabled and detectable services', :aggregate_failures do
+      expect(described_class::ALWAYS_ENABLED_SERVICES).to(eq(%i[apt]))
+      expect(described_class::DETECTABLE_SERVICES).to(eq(%i[mongodb mysql redis elasticsearch]))
+      expect(described_class::ALWAYS_ENABLED_SERVICES + described_class::DETECTABLE_SERVICES).to(match_array(described_class::SERVICES))
+    end
+
+    it 'ships an options file for every registered service' do
+      described_class::SERVICES.each do |service|
+        expect(File).to(exist(File.expand_path("../#{described_class.service_config_file(service)}", __dir__)))
+      end
+    end
+  end
+
+  describe 'service helpers' do
+    it 'derives the default options file path from the service name' do
+      expect(described_class.service_config_file(:postgres)).to(eq('config/options/postgres.yaml'))
+    end
+
+    it 'uses the display name table when present', :aggregate_failures do
+      expect(described_class.service_display_name(:apt)).to(eq('APT'))
+      expect(described_class.service_display_name(:mongodb)).to(eq('MongoDB'))
+      expect(described_class.service_display_name(:mysql)).to(eq('MySQL'))
+      expect(described_class.service_display_name(:elasticsearch)).to(eq('Elasticsearch'))
+    end
+
+    it 'falls back to a capitalized name for services absent from the table', :aggregate_failures do
+      expect(described_class.service_display_name(:redis)).to(eq('Redis'))
+      expect(described_class.service_display_name(:postgres)).to(eq('Postgres'))
+    end
+
+    it 'derives the config validation key' do
+      expect(described_class.service_config_key(:mysql)).to(eq(:mysql_options))
+    end
+
+    it 'derives the language dependency key' do
+      expect(described_class.service_dependency_key(:mysql)).to(eq(:mysql_dependency))
+    end
   end
 
   describe '.external_action' do
@@ -38,13 +81,7 @@ RSpec.describe(GHB) do
         .to(raise_error(NameError))
       expect { described_class::DEFAULT_GITIGNORE_CONFIG_FILE }
         .to(raise_error(NameError))
-      expect { described_class::OPTIONS_APT_CONFIG_FILE }
-        .to(raise_error(NameError))
-      expect { described_class::OPTIONS_MONGODB_CONFIG_FILE }
-        .to(raise_error(NameError))
-      expect { described_class::OPTIONS_MYSQL_CONFIG_FILE }
-        .to(raise_error(NameError))
-      expect { described_class::OPTIONS_REDIS_CONFIG_FILE }
+      expect { described_class::SERVICE_DISPLAY_NAMES }
         .to(raise_error(NameError))
       expect { described_class::DEFAULT_UBUNTU_VERSION }
         .to(raise_error(NameError))
