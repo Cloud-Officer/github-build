@@ -144,9 +144,11 @@ module GHB
       data = rewrite_github_refs(to_h.deep_stringify_keys)
       content = header + data.to_yaml({ line_width: -1 })
 
-      # Convert secrets.GITHUB_TOKEN to secrets.GH_PAT for higher rate limits
-      content.gsub!('${{secrets.GITHUB_TOKEN}}', '${{secrets.GH_PAT}}') unless file.match?(/auto-(merge|approve)/)
-
+      # NOTE: secrets.GITHUB_TOKEN is deliberately NOT rewritten to secrets.GH_PAT here (SEC-001).
+      # The blanket rewrite put a long-lived, org-scoped PAT into the environment of every step
+      # that runs third-party code, and it silently overrode a GITHUB_TOKEN a user wrote on
+      # purpose in a preserved job. Steps that genuinely need cross-repo or PR-creation rights
+      # request secrets.GH_PAT explicitly instead.
       File.write(file, content)
     end
 

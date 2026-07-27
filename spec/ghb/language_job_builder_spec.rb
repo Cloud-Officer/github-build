@@ -602,6 +602,88 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(new_workflow.env).not_to(have_key(:'MYSQL-VERSION'))
     end
 
+    # SEC-001: dependency-install steps run arbitrary third-party code, so they must never see
+    # the long-lived org-scoped PAT. They keep an ephemeral repo-scoped token because Tuist's
+    # SwiftPM resolution reads GITHUB_TOKEN; unit-test steps get no token at all.
+    describe 'token exposure in generated steps' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      def go_steps
+        stub_config_file_reads(go_language_yaml)
+        stub_go_language_detection
+        builder.build
+        new_workflow.jobs[:go_unit_tests].steps
+      end
+
+      it 'gives the dependency-install step the ephemeral token, never the PAT', :aggregate_failures do
+        install_step = go_steps.find { |step| step.name == 'Go Modules' }
+
+        expect(install_step.env['GITHUB_TOKEN']).to(eq('${{secrets.GITHUB_TOKEN}}'))
+        expect(install_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
+      end
+
+      it 'gives the unit-test step no token at all', :aggregate_failures do
+        test_step = go_steps.find { |step| step.name == 'Testing' }
+
+        expect(test_step.env).not_to(have_key('GITHUB_TOKEN'))
+        expect(test_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
+      end
+
+      it 'keeps the PAT out of every run step in the generated job' do
+        run_steps = go_steps.reject { |step| step.run.nil? }
+
+        expect(run_steps.flat_map { |step| step.env.values }).not_to(include('${{secrets.GH_PAT}}'))
+      end
+
+      # The setup action fetches the private ci-actions repo, so its github-token input
+      # legitimately keeps the PAT -- this is the boundary of the SEC-001 change.
+      it 'still passes the PAT to the setup action that needs cross-repo rights' do
+        setup_step = go_steps.find { |step| step.name == 'Setup' }
+
+        expect(setup_step.with[:'github-token']).to(eq('${{secrets.GH_PAT}}'))
+      end
+
+      # Migration path: steps inherit env from the previously generated workflow via
+      # copy_properties, so a repo generated before this fix carries the PAT on its test step.
+      # Regeneration must strip it, or the exposure survives the upgrade indefinitely.
+      context 'when regenerating a workflow that already carries the injected PAT' do # rubocop:disable RSpec/NestedGroups,RSpec/MultipleMemoizedHelpers
+        before do
+          old_workflow.do_job(:go_unit_tests) do
+            do_name('Go Unit Tests')
+            do_step('Testing') { do_env({ 'GITHUB_TOKEN' => '${{secrets.GH_PAT}}' }) } # rubocop:disable Style/StringHashKeys
+            do_step('Go Modules') { do_env({ 'GITHUB_TOKEN' => '${{secrets.GH_PAT}}' }) } # rubocop:disable Style/StringHashKeys
+          end
+        end
+
+        it 'strips the inherited PAT from the unit-test step', :aggregate_failures do
+          test_step = go_steps.find { |step| step.name == 'Testing' }
+
+          expect(test_step.env).not_to(have_key('GITHUB_TOKEN'))
+          expect(test_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
+        end
+
+        it 'downgrades the inherited PAT on the dependency-install step' do
+          install_step = go_steps.find { |step| step.name == 'Go Modules' }
+
+          expect(install_step.env['GITHUB_TOKEN']).to(eq('${{secrets.GITHUB_TOKEN}}'))
+        end
+      end
+
+      # Only the value this tool injected is stripped; a token the user set on purpose stays.
+      context 'when the user set their own token on the unit-test step' do # rubocop:disable RSpec/NestedGroups,RSpec/MultipleMemoizedHelpers
+        before do
+          old_workflow.do_job(:go_unit_tests) do
+            do_name('Go Unit Tests')
+            do_step('Testing') { do_env({ 'GITHUB_TOKEN' => '${{secrets.MY_OWN_TOKEN}}' }) } # rubocop:disable Style/StringHashKeys
+          end
+        end
+
+        it 'leaves a user-chosen token untouched' do
+          test_step = go_steps.find { |step| step.name == 'Testing' }
+
+          expect(test_step.env['GITHUB_TOKEN']).to(eq('${{secrets.MY_OWN_TOKEN}}'))
+        end
+      end
+    end
+
     it 'does not enable a service the language declares no marker for', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       markerless_config = go_language_config.deep_stringify_keys
       markerless_config['go']['dependencies'].first.delete('mysql_dependency')
