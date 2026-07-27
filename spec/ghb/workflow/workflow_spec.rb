@@ -324,13 +324,39 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       end
     end
 
-    it 'converts secrets.GITHUB_TOKEN to secrets.GH_PAT' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+    # SEC-001 regression guard: the writer used to blanket-rewrite every
+    # secrets.GITHUB_TOKEN into secrets.GH_PAT, silently swapping an ephemeral
+    # repo-scoped token for a long-lived org-scoped PAT -- including in jobs the
+    # user wrote by hand. The token a caller asks for is the token that ships.
+    it 'preserves secrets.GITHUB_TOKEN instead of rewriting it to secrets.GH_PAT' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       workflow.do_env({ TOKEN: '${{secrets.GITHUB_TOKEN}}' })
+      workflow.write(temp_file)
+
+      expect(File).to(have_received(:write)) do |_, content|
+        expect(content).to(include('${{secrets.GITHUB_TOKEN}}'))
+        expect(content).not_to(include('${{secrets.GH_PAT}}'))
+      end
+    end
+
+    it 'leaves an explicitly requested secrets.GH_PAT untouched' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      workflow.do_env({ TOKEN: '${{secrets.GH_PAT}}' })
       workflow.write(temp_file)
 
       expect(File).to(have_received(:write)) do |_, content|
         expect(content).to(include('${{secrets.GH_PAT}}'))
         expect(content).not_to(include('${{secrets.GITHUB_TOKEN}}'))
+      end
+    end
+
+    # The old rewrite exempted auto-merge/auto-approve by filename; with the rewrite gone
+    # the filename must no longer influence the token that is written.
+    it 'writes the same token regardless of the workflow filename' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      workflow.do_env({ TOKEN: '${{secrets.GITHUB_TOKEN}}' })
+      workflow.write('.github/workflows/auto-approve.yml')
+
+      expect(File).to(have_received(:write)) do |_, content|
+        expect(content).to(include('${{secrets.GITHUB_TOKEN}}'))
+        expect(content).not_to(include('${{secrets.GH_PAT}}'))
       end
     end
 

@@ -189,12 +189,10 @@ jobs:
           sudo apt-get update && sudo apt-get install -y bats
         fi
       env:
-        GITHUB_TOKEN: "${{secrets.GH_PAT}}"
+        GITHUB_TOKEN: "${{secrets.GITHUB_TOKEN}}"
     - name: Bats
       shell: bash
       run: bats tests/
-      env:
-        GITHUB_TOKEN: "${{secrets.GH_PAT}}"
   ruby_unit_tests:
     name: Ruby Unit Tests
     runs-on: "${{matrix.os}}"
@@ -218,9 +216,7 @@ jobs:
       shell: bash
       run: echo "Already done by setup."
       env:
-        GITHUB_TOKEN: "${{secrets.GH_PAT}}"
+        GITHUB_TOKEN: "${{secrets.GITHUB_TOKEN}}"
     - name: RSpec
       shell: bash
       run: bundle exec rspec --format documentation
-      env:
-        GITHUB_TOKEN: "${{secrets.GH_PAT}}"

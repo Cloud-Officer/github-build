@@ -18,9 +18,38 @@ module GHB
     # How many directory levels below the repo root a sub-project dependency file
     # may sit and still be detected (e.g. js/<module>/package-lock.json is 2 deep).
     SUBDIR_DEPENDENCY_SCAN_DEPTH = 2
-    private_constant :SWIFT_DEPLOY_CHECK_FLAGS, :CODEDEPLOY_SETUP_LANGUAGES, :SUBDIR_DEPENDENCY_SCAN_DEPTH
+    # Token exposed to dependency-install steps. Deliberately the ephemeral, repo-scoped
+    # secrets.GITHUB_TOKEN and NOT secrets.GH_PAT (SEC-001): install steps execute arbitrary
+    # third-party code (postinstall hooks, plugins), so an org-scoped long-lived PAT in their
+    # environment is one malicious transitive dependency away from exfiltration.
+    #
+    # Kept rather than dropped because Tuist's SwiftPM resolution reads GITHUB_TOKEN/GH_TOKEN.
+    # The other package managers authenticate by other means and are unaffected: Composer via
+    # the github-oauth config setup-php writes from the run token, Bundler via
+    # BUNDLE_GITHUB__COM, npm/yarn/pnpm via NODE_AUTH_TOKEN, Carthage via GITHUB_ACCESS_TOKEN,
+    # and private sibling repos over SSH through webfactory/ssh-agent with secrets.SSH_KEY.
+    # It also raises the API rate limit from 60/hour per runner IP to 1,000/hour per
+    # repository -- and unlike the PAT's 5,000/hour shared across every repo and workflow,
+    # that budget is isolated per repo, so concurrent builds no longer contend.
+    #
+    # Unit-test steps get no token at all: none of the supported test frameworks read one.
+    DEPENDENCY_STEP_TOKEN = '${{secrets.GITHUB_TOKEN}}'
+    # The PAT reference this tool used to inject, kept so regeneration can recognise and strip
+    # it from workflows generated before SEC-001 was fixed.
+    INJECTED_PAT = '${{secrets.GH_PAT}}'
+    private_constant :SWIFT_DEPLOY_CHECK_FLAGS, :CODEDEPLOY_SETUP_LANGUAGES, :SUBDIR_DEPENDENCY_SCAN_DEPTH, :DEPENDENCY_STEP_TOKEN, :INJECTED_PAT
 
     attr_reader :code_deploy_pre_steps, :dependencies_steps, :dependencies_commands
+
+    # Steps inherit their env from the previously generated workflow via copy_properties, so
+    # simply no longer injecting the PAT would leave it in place forever in every repo that
+    # already has one written. Strip it on regeneration -- but only when the value is exactly
+    # the PAT reference this tool used to inject, so a GITHUB_TOKEN the user set deliberately
+    # (or already migrated to secrets.GITHUB_TOKEN) is left alone.
+    def self.drop_injected_pat(env)
+      env.delete('GITHUB_TOKEN') if env['GITHUB_TOKEN'] == INJECTED_PAT
+      env.delete(:GITHUB_TOKEN) if env[:GITHUB_TOKEN] == INJECTED_PAT
+    end
 
     def initialize(context:, unit_tests_conditions:, dependencies_commands:)
       @options = context.options
@@ -240,7 +269,7 @@ module GHB
           copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
           do_shell('bash')
           do_run(dependency[:package_manager_default]) if run.nil?
-          env['GITHUB_TOKEN'] = '${{secrets.GH_PAT}}'
+          env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
           code_deploy_pre_steps << duplicate(self) if needs_codedeploy_setup
           dependencies_commands_additions << dependency[:package_manager_update] if dependency[:package_manager_update]
         end
@@ -251,7 +280,7 @@ module GHB
           copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
           do_shell('bash')
           do_run(language[:unit_test_framework_default]) if run.nil?
-          env['GITHUB_TOKEN'] = '${{secrets.GH_PAT}}'
+          LanguageJobBuilder.drop_injected_pat(env)
         end
       end
 
@@ -270,7 +299,7 @@ module GHB
           copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
           do_shell('bash')
           do_run("cd #{subdir} && #{dep[:package_manager_default]}") if run.nil?
-          env['GITHUB_TOKEN'] = '${{secrets.GH_PAT}}'
+          env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
           # Sub-project update commands run from the repo root in a single combined
           # block, so each must cd into its own folder; a subshell keeps the cwd
           # local so the next command still starts from the root.
@@ -281,7 +310,7 @@ module GHB
           copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
           do_shell('bash')
           do_run("cd #{subdir} && #{language[:unit_test_framework_default]}") if run.nil?
-          env['GITHUB_TOKEN'] = '${{secrets.GH_PAT}}'
+          LanguageJobBuilder.drop_injected_pat(env)
         end
       end
     end
