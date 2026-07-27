@@ -16,11 +16,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       force_codedeploy_setup: false,
       strict_version_check: true,
       languages_config_file: 'config/languages.yaml',
-      options_config_file_apt: 'config/options/apt.yaml',
-      options_config_file_mongodb: 'config/options/mongodb.yaml',
-      options_config_file_mysql: 'config/options/mysql.yaml',
-      options_config_file_redis: 'config/options/redis.yaml',
-      options_config_file_elasticsearch: 'config/options/elasticsearch.yaml'
+      options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' }
     )
   end
 
@@ -341,11 +337,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         force_codedeploy_setup: false,
         strict_version_check: false,
         languages_config_file: 'config/languages.yaml',
-        options_config_file_apt: 'config/options/apt.yaml',
-        options_config_file_mongodb: 'config/options/mongodb.yaml',
-        options_config_file_mysql: 'config/options/mysql.yaml',
-        options_config_file_redis: 'config/options/redis.yaml',
-        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml'
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' }
       )
 
       non_strict_builder = described_class.new(
@@ -382,11 +374,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         force_codedeploy_setup: true,
         strict_version_check: true,
         languages_config_file: 'config/languages.yaml',
-        options_config_file_apt: 'config/options/apt.yaml',
-        options_config_file_mongodb: 'config/options/mongodb.yaml',
-        options_config_file_mysql: 'config/options/mysql.yaml',
-        options_config_file_redis: 'config/options/redis.yaml',
-        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml'
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' }
       )
 
       codedeploy_builder = described_class.new(
@@ -423,11 +411,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         force_codedeploy_setup: false,
         strict_version_check: false,
         languages_config_file: 'config/languages.yaml',
-        options_config_file_apt: 'config/options/apt.yaml',
-        options_config_file_mongodb: 'config/options/mongodb.yaml',
-        options_config_file_mysql: 'config/options/mysql.yaml',
-        options_config_file_redis: 'config/options/redis.yaml',
-        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml'
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' }
       )
 
       env_mismatch_workflow = GHB::Workflow.new('CI')
@@ -514,11 +498,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         force_codedeploy_setup: false,
         strict_version_check: true,
         languages_config_file: 'config/languages.yaml',
-        options_config_file_apt: 'config/options/apt.yaml',
-        options_config_file_mongodb: 'config/options/mongodb.yaml',
-        options_config_file_mysql: 'config/options/mysql.yaml',
-        options_config_file_redis: 'config/options/redis.yaml',
-        options_config_file_elasticsearch: 'config/options/elasticsearch.yaml'
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' }
       )
 
       license_builder = described_class.new(
@@ -589,20 +569,54 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(step_names).to(include('Testing (apps/web)'))
     end
 
-    it 'detects services in sub-project dependency files' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      stub_non_strict_config_file_reads(builder, go_language_yaml)
+    # Every registry service must be detected from a sub-project lockfile too: the root and
+    # sub-project detection used to be copy-pasted quartets that could silently diverge.
+    GHB::DETECTABLE_SERVICES.each do |service|
+      it "detects #{service} in sub-project dependency files", :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        marker = go_language_config[:go][:dependencies].first[GHB.service_dependency_key(service)]
+        stub_non_strict_config_file_reads(builder, go_language_yaml)
 
-      allow(builder).to(receive_messages(file_contains?: false, find_files_matching: ['./main.go']))
-      allow(builder).to(receive(:find_files_matching).with(anything, anything, anything, max_depth: anything).and_return(['./svc-a/go.mod']))
-      allow(builder).to(receive(:file_contains?).with('svc-a/go.mod', 'mongodb').and_return(true))
-      allow(File).to(receive(:file?).with('go.mod').and_return(false))
+        allow(builder).to(receive_messages(file_contains?: false, find_files_matching: ['./main.go']))
+        allow(builder).to(receive(:find_files_matching).with(anything, anything, anything, max_depth: anything).and_return(['./svc-a/go.mod']))
+        allow(builder).to(receive(:file_contains?).with('svc-a/go.mod', marker).and_return(true))
+        allow(File).to(receive(:file?).with('go.mod').and_return(false))
+        allow(File).to(receive(:exist?).with('.go-version').and_return(false))
+        allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
+
+        builder.build
+
+        expect(new_workflow.jobs).to(have_key(:go_unit_tests))
+        expect(new_workflow.env).to(have_key(:"#{service.to_s.upcase}-VERSION"))
+      end
+    end
+
+    it 'always applies apt options even when no service dependency matches', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      stub_config_file_reads(go_language_yaml)
+      allow(builder).to(receive(:cached_file_read).with(%r{options/apt\.yaml}).and_return(Psych.dump({ options: [{ name: 'apt-packages', value: 'libpq-dev' }] }.deep_stringify_keys)))
+      stub_go_language_detection
+
+      builder.build
+
+      expect(new_workflow.env).to(have_key(:'APT-PACKAGES'))
+      expect(new_workflow.env).not_to(have_key(:'MONGODB-VERSION'))
+      expect(new_workflow.env).not_to(have_key(:'MYSQL-VERSION'))
+    end
+
+    it 'does not enable a service the language declares no marker for', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      markerless_config = go_language_config.deep_stringify_keys
+      markerless_config['go']['dependencies'].first.delete('mysql_dependency')
+      stub_config_file_reads(Psych.dump(markerless_config))
+
+      allow(builder).to(receive_messages(find_files_matching: ['./main.go'], file_contains?: true))
+      allow(File).to(receive(:file?).with('go.mod').and_return(true))
       allow(File).to(receive(:exist?).with('.go-version').and_return(false))
       allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
 
       builder.build
 
-      expect(new_workflow.jobs).to(have_key(:go_unit_tests))
       expect(new_workflow.env).to(have_key(:'MONGODB-VERSION'))
+      expect(new_workflow.env).to(have_key(:'REDIS-VERSION'))
+      expect(new_workflow.env).not_to(have_key(:'MYSQL-VERSION'))
     end
 
     it 'detects shell_script language via .bats files when no .sh files exist' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
