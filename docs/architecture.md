@@ -619,7 +619,10 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - Fetches latest versions from official sources (go.dev, nodejs.org, etc.)
 - Updates `config/languages.yaml` with latest language versions
 - Updates `config/options/*.yaml` with latest service versions
-- Uses `yq` for YAML manipulation
+- Uses `yq` for YAML manipulation (always invoked as `yq e --indent=2 ... -i <file>`)
+- `require_version(name, value)`: Aborts with `::error::could not resolve the latest <name> version` when a lookup resolves to an empty or `null` value, so a failed upstream fetch can never write an empty version into a config file
+
+**Behavior:** Runs under `set -euo pipefail`; because the filter stages (`jq`, `grep`, `sort`, `tail`) exit 0 on empty input, each lookup pipeline ends with `|| true` and is validated by `require_version`. The AWS-first service lookups (DocumentDB, Aurora MySQL, ElastiCache Valkey, OpenSearch) still degrade to their public fallback when the AWS CLI is unavailable, and an unresolved or unsupported Valkey version degrades to the `latest` tag. Covered by `tests/update_versions.bats`, which stubs `curl`/`aws`/`pyenv`/`rbenv` and runs against a throwaway copy of `config/`.
 
 ### bump-actions/bump-actions.sh
 

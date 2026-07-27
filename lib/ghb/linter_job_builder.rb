@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
+require 'active_support/core_ext/hash/keys'
 require 'fileutils'
+require 'psych'
+
 require_relative 'file_scanner'
 require_relative 'linter_ignore_renderer'
 

@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'active_support/core_ext/hash/keys'
+require 'psych'
+
 require_relative '../ghb'
 require_relative 'file_scanner'
 

@@ -1,103 +1,139 @@
 #!/usr/bin/env bash
-set -e
+
+# Refresh the pinned language and service versions in config/languages.yaml and
+# config/options/*.yaml from their upstream sources. Run from the repository
+# root (every path below is relative to the working directory).
+#
+# Strict mode note: each lookup is a `<fetch> | <filter>` pipeline whose filters
+# (jq, grep, sort, tail) exit 0 on empty input, so under bare `set -e` a failed
+# fetch used to write an empty version into the config YAML. Under `pipefail`
+# those pipelines fail instead, so every lookup ends with `|| true` — keeping
+# the AWS-first paths degrading to their public fallback — and every resolved
+# value is checked by `require_version` before yq touches a file.
+
+set -euo pipefail
 
 LANGUAGE_FILE="config/languages.yaml"
 
+# Abort with a clear error instead of writing an empty (or JSON null) version
+# into a config file.
+function require_version()
+{
+  local name="$1" value="$2"
+
+  if [ -z "${value}" ] || [ "${value}" == "null" ]; then
+    echo "::error::could not resolve the latest ${name} version" >&2
+    exit 1
+  fi
+}
+
 # Go
 
-latest=$(curl -s https://go.dev/VERSION?m=text)
+latest=$(curl -fsS "https://go.dev/VERSION?m=text" || true)
 latest_go=$(echo "${latest#go}" | awk 'NR==1 { print $1 }')
+require_version "Go" "${latest_go}"
 export latest_go
-yq --indent=2 e '(.go.setup_options[] | select(.name == "go-version").value) = env(latest_go)' -i "${LANGUAGE_FILE}"
-yq --indent=2 e '(.proto.setup_options[] | select(.name == "go-version").value) = env(latest_go)' -i "${LANGUAGE_FILE}"
+yq e --indent=2 '(.go.setup_options[] | select(.name == "go-version").value) = env(latest_go)' -i "${LANGUAGE_FILE}"
+yq e --indent=2 '(.proto.setup_options[] | select(.name == "go-version").value) = env(latest_go)' -i "${LANGUAGE_FILE}"
 
 # Node.js
 
-latest=$(curl -s https://nodejs.org/dist/index.json | jq -r '.[0].version')
+latest=$(curl -fsS "https://nodejs.org/dist/index.json" | jq -r '.[0].version' || true)
 latest_node=${latest#v}
+require_version "Node.js" "${latest_node}"
 export latest_node
 yq e --indent=2 '(.js.setup_options[] | select(.name == "node-version").value) = env(latest_node)' -i "${LANGUAGE_FILE}"
 
 # Java (track the latest LTS major, not a hardcoded interim release or exact patch)
 
-latest_java=$(curl -s "https://api.adoptium.net/v3/info/available_releases" | jq -r '.most_recent_lts')
+latest_java=$(curl -fsS "https://api.adoptium.net/v3/info/available_releases" | jq -r '.most_recent_lts' || true)
+require_version "Java" "${latest_java}"
 export latest_java
-yq e --indent=2 '(.kotlin.setup_options[] | select(.name == "java-version").value) = env(latest_java)' -i  "${LANGUAGE_FILE}"
+yq e --indent=2 '(.kotlin.setup_options[] | select(.name == "java-version").value) = env(latest_java)' -i "${LANGUAGE_FILE}"
 
 # PHP
 
-releases=$(curl -s "https://www.php.net/releases/index.php?json=1")
-latest_php=$(echo "${releases}" | jq -r 'to_entries | map(.value) | map(select(.version | test("^8\\."))) | map(.version)[]' | sort -V | tail -n1)
+releases=$(curl -fsS "https://www.php.net/releases/index.php?json=1" || true)
+latest_php=$(echo "${releases}" | jq -r 'to_entries | map(.value) | map(select(.version | test("^8\\."))) | map(.version)[]' | sort -V | tail -n1 || true)
+require_version "PHP" "${latest_php}"
 export latest_php
 yq e --indent=2 '(.php.setup_options[] | select(.name == "php-version").value) = env(latest_php)' -i "${LANGUAGE_FILE}"
 
 # Xcode
 
-releases=$(curl -s "https://xcodereleases.com/data.json")
-latest_xcode=$(echo "${releases}" |  jq -r '[.[] | select(.version.release.release == true) | .version][0].number')
+releases=$(curl -fsS "https://xcodereleases.com/data.json" || true)
+latest_xcode=$(echo "${releases}" | jq -r '[.[] | select(.version.release.release == true) | .version][0].number' || true)
+require_version "Xcode" "${latest_xcode}"
 export latest_xcode
 yq e --indent=2 '(.proto.setup_options[] | select(.name == "xcode-version").value) = env(latest_xcode)' -i "${LANGUAGE_FILE}"
 
 # Python
 
-latest_python=$(pyenv install --list | grep -oE '^[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^[[:space:]]*//' | sort -V | tail -n1)
+latest_python=$(pyenv install --list | grep -oE '^[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^[[:space:]]*//' | sort -V | tail -n1 || true)
+require_version "Python" "${latest_python}"
 export latest_python
-yq --indent=2 e '(.python.setup_options[] | select(.name == "python-version").value) = env(latest_python)' -i "${LANGUAGE_FILE}"
+yq e --indent=2 '(.python.setup_options[] | select(.name == "python-version").value) = env(latest_python)' -i "${LANGUAGE_FILE}"
 
 # Ruby
 
-latest_ruby=$(rbenv install -l | grep -E '^[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^[[:space:]]*//' | sort -V | tail -n1)
+latest_ruby=$(rbenv install -l | grep -E '^[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^[[:space:]]*//' | sort -V | tail -n1 || true)
+require_version "Ruby" "${latest_ruby}"
 export latest_ruby
-yq --indent=2 e '(.ruby.setup_options[] | select(.name == "ruby-version").value) = env(latest_ruby)' -i "${LANGUAGE_FILE}"
+yq e --indent=2 '(.ruby.setup_options[] | select(.name == "ruby-version").value) = env(latest_ruby)' -i "${LANGUAGE_FILE}"
 
 # MongoDB (DocumentDB)
 
-latest_mongodb=$(aws docdb describe-db-engine-versions --engine docdb --query 'DBEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1)
+latest_mongodb=$(aws docdb describe-db-engine-versions --engine docdb --query 'DBEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1 || true)
 
 if [ -z "${latest_mongodb}" ]; then
-    latest_mongodb=$(curl -s https://api.github.com/repos/mongodb/mongo/releases | jq -r '[.[] | select(.tag_name | test("^r[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name | ltrimstr("r")] | map(select(. | startswith("5.0") or startswith("4."))) | sort_by(. | split(".") | map(tonumber)) | last')
+    latest_mongodb=$(curl -fsS https://api.github.com/repos/mongodb/mongo/releases | jq -r '[.[] | select(.tag_name | test("^r[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name | ltrimstr("r")] | map(select(. | startswith("5.0") or startswith("4."))) | sort_by(. | split(".") | map(tonumber)) | last' || true)
 fi
 
+require_version "MongoDB" "${latest_mongodb}"
 export latest_mongodb
-yq --indent=2 e '(.options[] | select(.name == "mongodb-version").value) = env(latest_mongodb)' -i "config/options/mongodb.yaml"
+yq e --indent=2 '(.options[] | select(.name == "mongodb-version").value) = env(latest_mongodb)' -i "config/options/mongodb.yaml"
 
 # MySQL (Aurora)
 
-latest_mysql=$(aws rds describe-db-engine-versions --engine aurora-mysql --query 'DBEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1 | sed -E 's/^([0-9]+\.[0-9]+).*/\1/')
+latest_mysql=$(aws rds describe-db-engine-versions --engine aurora-mysql --query 'DBEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1 | sed -E 's/^([0-9]+\.[0-9]+).*/\1/' || true)
 
 if [ -z "${latest_mysql}" ]; then
-    latest_mysql=$(curl -s https://dev.mysql.com/downloads/mysql/ | grep -oE 'MySQL Community Server [0-9]+\.[0-9]+\.[0-9]+' | head -n1 | grep -oE '[0-9]+\.[0-9]+' | head -n1)
+    latest_mysql=$(curl -fsS https://dev.mysql.com/downloads/mysql/ | grep -oE 'MySQL Community Server [0-9]+\.[0-9]+\.[0-9]+' | head -n1 | grep -oE '[0-9]+\.[0-9]+' | head -n1 || true)
 fi
 
+require_version "MySQL" "${latest_mysql}"
 export latest_mysql
-yq --indent=2 e '(.options[] | select(.name == "mysql-version").value) = env(latest_mysql)' -i "config/options/mysql.yaml"
+yq e --indent=2 '(.options[] | select(.name == "mysql-version").value) = env(latest_mysql)' -i "config/options/mysql.yaml"
 
 # Valkey (ElastiCache)
 
-latest_valkey=$(aws elasticache describe-cache-engine-versions --engine valkey --query 'CacheEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1)
+latest_valkey=$(aws elasticache describe-cache-engine-versions --engine valkey --query 'CacheEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1 || true)
 
 if [ -z "${latest_valkey}" ]; then
-    latest_valkey=$(curl -s https://api.github.com/repos/valkey-io/valkey/releases | jq -r '[.[] | select(.tag_name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name] | first')
+    latest_valkey=$(curl -fsS https://api.github.com/repos/valkey-io/valkey/releases | jq -r '[.[] | select(.tag_name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name] | first' || true)
 fi
 
-# Validate version against actions-setup-redis supported valkey versions
-valkey_versions=$(curl -s https://raw.githubusercontent.com/shogo82148/actions-setup-redis/main/src/versions/valkey.json | jq -r '[.[].version | split(".")[0:2] | join(".")] | unique | .[]')
-valkey_minor=$(echo "${latest_valkey}" | grep -oE '^[0-9]+\.[0-9]+')
+# Validate version against actions-setup-redis supported valkey versions. An
+# unsupported or unresolved version degrades to the "latest" tag rather than
+# failing the run.
+valkey_versions=$(curl -fsS https://raw.githubusercontent.com/shogo82148/actions-setup-redis/main/src/versions/valkey.json | jq -r '[.[].version | split(".")[0:2] | join(".")] | unique | .[]' || true)
+valkey_minor=$(echo "${latest_valkey}" | grep -oE '^[0-9]+\.[0-9]+' || true)
 
-if [ -z "${latest_valkey}" ] || ! echo "${valkey_versions}" | grep -q "^${valkey_minor}$"; then
+if [ -z "${latest_valkey}" ] || [ -z "${valkey_minor}" ] || ! echo "${valkey_versions}" | grep -q "^${valkey_minor}$"; then
     latest_valkey="latest"
 fi
 
 export latest_valkey
-yq --indent=2 e '(.options[] | select(.name == "redis-version").value) = env(latest_valkey)' -i "config/options/redis.yaml"
+yq e --indent=2 '(.options[] | select(.name == "redis-version").value) = env(latest_valkey)' -i "config/options/redis.yaml"
 
 # Elasticsearch (OpenSearch)
 
-latest_elasticsearch=$(aws opensearch list-versions --query 'Versions[*]' --output text 2>/dev/null | tr '\t' '\n' | grep -E '^Elasticsearch_[0-9]+\.[0-9]+$' | sed 's/Elasticsearch_//' | sort -V | tail -n1)
+latest_elasticsearch=$(aws opensearch list-versions --query 'Versions[*]' --output text 2>/dev/null | tr '\t' '\n' | grep -E '^Elasticsearch_[0-9]+\.[0-9]+$' | sed 's/Elasticsearch_//' | sort -V | tail -n1 || true)
 
 if [ -z "${latest_elasticsearch}" ]; then
-    latest_elasticsearch=$(curl -s https://api.github.com/repos/elastic/elasticsearch/releases | jq -r '[.[] | select(.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name | ltrimstr("v")] | first')
+    latest_elasticsearch=$(curl -fsS https://api.github.com/repos/elastic/elasticsearch/releases | jq -r '[.[] | select(.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name | ltrimstr("v")] | first' || true)
 fi
 
+require_version "Elasticsearch" "${latest_elasticsearch}"
 export latest_elasticsearch
-yq --indent=2 e '(.options[] | select(.name == "elasticsearch-version").value) = env(latest_elasticsearch)' -i "config/options/elasticsearch.yaml"
+yq e --indent=2 '(.options[] | select(.name == "elasticsearch-version").value) = env(latest_elasticsearch)' -i "config/options/elasticsearch.yaml"
