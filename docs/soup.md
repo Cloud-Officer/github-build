@@ -2,7 +2,7 @@
 
 | **Language** | **Package** | **Version** | **License** | **Description** | **Website** | **Last Verified** | **Risk Level** | **Requirements** | **Verification Reasoning** |
 | :---: | :--- | :---: | :---: | :--- | :--- | :---: | :---: | :--- | :--- |
-| Ruby | activesupport | 8.1.3 | MIT | A toolkit of support libraries and Ruby core extensions extracted from the Rails framework | <https://rubyonrails.org> | 2026-05-22 | Low | Provide the deep symbolize and stringify methods on hash | Official Rails ecosystem library maintained by the Rails core team |
+| Ruby | activesupport | 8.1.3.1 | MIT | A toolkit of support libraries and Ruby core extensions extracted from the Rails framework | <https://rubyonrails.org> | 2026-05-22 | Low | Provide the deep symbolize and stringify methods on hash | Official Rails ecosystem library maintained by the Rails core team |
 | Ruby | addressable | 2.9.0 | Apache-2.0 | Addressable is an alternative implementation to the URI implementation that is | <https://github.com/sporkmonger/addressable> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | ast | 2.4.3 | MIT | A library for working with Abstract Syntax Trees. | <https://whitequark.github.io/ast/> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | base64 | 0.3.0 | Ruby | Support for encoding and decoding binary data using a Base64 representation. | <https://github.com/ruby/base64> | 2026-05-22 | Low | Dependency | Dependency |
@@ -18,7 +18,7 @@
 | Ruby | hashdiff | 1.2.1 | MIT | Hashdiff is a diff lib to compute the smallest difference between two hashes | <https://github.com/liufengyun/hashdiff> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | httparty | 0.24.2 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2026-05-22 | High | HTTP client for GitHub REST API communication | Industry-standard Ruby HTTP client with active maintenance and security updates |
 | Ruby | i18n | 1.15.2 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | json | 2.21.1 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2026-05-22 | Low | Dependency | Dependency |
+| Ruby | json | 2.21.2 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | language_server-protocol | 3.17.0.6 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | lint_roller | 1.1.0 | MIT | A plugin specification for linter and formatter rulesets | <https://github.com/standardrb/lint_roller> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | logger | 1.7.0 | Ruby | Provides a simple logging utility for outputting messages. | <https://github.com/ruby/logger> | 2026-05-22 | Low | Dependency | Dependency |
