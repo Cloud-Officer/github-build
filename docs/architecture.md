@@ -143,7 +143,8 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `validate_option_entries(data, relative_path)`: Validates option config entries
 - `workflow_read`: Reads existing workflow YAML file
 - `workflow_set_defaults`: Sets workflow defaults from existing or new values
-- `collect_required_status_checks`: Collects status checks from generated jobs for branch protection
+- `collect_required_status_checks`: Collects status checks from generated jobs for branch protection, expanding matrix jobs into the per-combination check names GitHub actually creates (`Job (ubuntu-latest, 3.3)`); a job whose matrix cannot be expanded statically is warned about and skipped
+- `matrix_combinations(matrix)` and its helpers (`symbolize_matrix_keys`, `matrix_control_entries`, `matrix_control_entry`, `expandable_axis?`, `scalar_matrix_value?`, `expand_axes`, `reject_excluded`, `apply_includes`): Expand a job matrix in GitHub's documented order — `exclude:` rows dropped first, then `include:` rows merged — returning `nil` when the matrix carries dynamic or non-scalar values
 - `workflow_write`: Writes the generated workflow to YAML file
 
 **Includes:**
@@ -376,6 +377,13 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `initialize(context:, unit_tests_conditions:, dependencies_commands:)`: Accepts a `GHB::BuildContext` plus the unit-test conditions and accumulated dependency commands
 - `build`: Detects languages, checks for database dependencies (MongoDB, MySQL, Redis, Elasticsearch), validates versions, and creates test jobs. For Swift projects with Xcode Cloud (`ci_scripts` directory), removes the unit test job from the workflow while still collecting dependency info
+- `self.drop_injected_pat(env)`: Deletes a step's `GITHUB_TOKEN` entry only when its value is exactly the PAT reference this tool used to inject, so workflows generated before the fix self-heal on regeneration while a token the user set deliberately is left alone
+
+**Constants:**
+
+- `DEPENDENCY_STEP_TOKEN`: Token exposed to dependency-install steps — the ephemeral, repo-scoped `${{secrets.GITHUB_TOKEN}}` rather than the org-scoped `secrets.GH_PAT`, because install steps execute arbitrary third-party code (postinstall hooks, plugins). It is kept rather than dropped because Tuist's SwiftPM resolution reads it, and it raises the API rate limit to a per-repository budget instead of a shared org-wide one. The other package managers authenticate by other means (Composer github-oauth, Bundler `BUNDLE_GITHUB__COM`, npm/yarn/pnpm `NODE_AUTH_TOKEN`, Carthage `GITHUB_ACCESS_TOKEN`, private sibling repos over SSH)
+- `INJECTED_PAT`: The `${{secrets.GH_PAT}}` reference formerly injected, retained so `drop_injected_pat` can recognise and strip it
+- `SUBDIR_DEPENDENCY_SCAN_DEPTH`: How many directory levels below the repo root a sub-project dependency file may sit and still be detected (2)
 
 **Attributes:**
 
@@ -543,7 +551,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `initialize(name)`: Creates workflow with name
 - `read(file)`: Parses existing workflow YAML file
-- `write(file, header:)`: Writes workflow to YAML file, applying two transformations via `rewrite_github_refs`: rewrites `${GITHUB_*}` references to `${{github.*}}` in YAML values while preserving them in shell `run:` bodies (where they are runner-exported env vars), and substitutes `${{secrets.GITHUB_TOKEN}}` with `${{secrets.GH_PAT}}` for higher rate limits (except in the auto-approve workflow)
+- `write(file, header:)`: Writes workflow to YAML file, rewriting `${GITHUB_*}` references to `${{github.*}}` in YAML values via `rewrite_github_refs` while preserving them in shell `run:` bodies (where they are runner-exported env vars). `${{secrets.GITHUB_TOKEN}}` is deliberately **not** rewritten to `${{secrets.GH_PAT}}`: the former blanket rewrite put a long-lived org-scoped PAT into every step's environment and silently overrode a `GITHUB_TOKEN` a user had set on purpose in a preserved job. Steps needing cross-repo or PR-creation rights request `secrets.GH_PAT` explicitly instead
 - `do_job(id, &block)`: DSL method to define jobs
 - `do_name`, `do_run_name`, `do_on`, `do_permissions`, `do_env`, `do_defaults`, `do_concurrency`: DSL setters for the top-level workflow keys
 - `deploy_needs`: Returns the job ids a deploy job must wait on (linters, licenses, unit tests)
@@ -645,7 +653,7 @@ See [soup.md](soup.md) for the complete list of third-party dependencies.
 This project uses Ruby gems for:
 
 - **Core functionality:** activesupport (hash manipulation), httparty (HTTP client), psych (YAML parsing), optparse (CLI arguments), duplicate (deep cloning)
-- **Development:** rubocop and extensions (code linting), rspec (testing), webmock (HTTP stubbing)
+- **Development:** rubocop and extensions (code linting), rspec (testing), webmock (HTTP stubbing), simplecov (coverage reporting)
 
 All dependencies are managed via Bundler with versions locked in `Gemfile.lock`. The soup.md file documents risk levels, requirements justification, and verification reasoning for each package.
 
@@ -700,7 +708,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 1. Validates `GITHUB_TOKEN` environment variable is present
 2. Retrieves current repository info to check visibility (public/private) via `GitHubAPIClient`
 3. Gets current branch protection via GitHub API (handles 404 for new repos without protection)
-4. Augments the checks collected from generated workflow jobs with a `Vercel` check (when `package.json` declares `"next"`) and the job names of a hand-maintained `.github/workflows/smoke.yml`. CodeQL languages are logged for visibility only — CodeQL default setup runs in "smart mode" and is intentionally not made a required check
+4. Augments the checks collected from generated workflow jobs (matrix jobs already expanded into their per-combination check names by `GHB::Application#collect_required_status_checks`) with a `Vercel` check (when `package.json` declares `"next"`) and the job names of a hand-maintained `.github/workflows/smoke.yml`. CodeQL languages are logged for visibility only — CodeQL default setup runs in "smart mode" and is intentionally not made a required check
 5. Discovers Xcode Cloud checks dynamically when `ci_scripts` directory exists: extracts from existing branch protection or from commit statuses on the default branch for new repos
 6. Validates existing checks match expected checks (only for existing protection); on mismatch, raises an error unless `--sync_required_status_checks` is set, in which case the remote check list is rebuilt from `expected_checks` while preserving `app_id` values for existing entries (so integration-specific configurations such as Xcode Cloud checks are not clobbered)
 7. Builds the protection payload, preserving existing dismissal restrictions and bypass allowances while dropping entries GitHub returns without a `login`/`slug` so the request body never contains a `[null]` users/teams array
@@ -738,7 +746,8 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 **Authentication:**
 
-- GitHub API calls use personal access tokens (`GH_PAT` secret for most workflows; `GH_BOT_PAT` for auto-merge approvals so the bot identity satisfies the code-owner review rule)
+- GitHub API calls use personal access tokens where cross-repository or PR-creation rights are genuinely required (`GH_PAT`; `GH_BOT_PAT` for auto-merge approvals so the bot identity satisfies the code-owner review rule). Each such step requests the secret explicitly — there is no blanket token rewrite at workflow-write time
+- Dependency-install steps receive the ephemeral, repo-scoped `secrets.GITHUB_TOKEN` (`GHB::LanguageJobBuilder::DEPENDENCY_STEP_TOKEN`) rather than the org-scoped PAT, since those steps run arbitrary third-party code; unit-test steps receive no token at all
 - Repository configuration uses `GITHUB_TOKEN` from the runtime environment
 - SSH keys used for repository checkout (`SSH_KEY` secret)
 - AWS credentials for CodeDeploy operations
@@ -762,6 +771,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 - Token permissions scoped appropriately in workflow files
 - The generated dependency-update `git config ... insteadOf` rewrites (built in `GHB::Application#initialize`) are scoped to `${{github.repository_owner}}/` rather than bare `github.com/`, so `GH_PAT` is not attached to arbitrary GitHub URLs fetched later in the run (e.g. transitive git-source dependencies), limiting the exfiltration surface to the owning organization's own repositories
 - `GHB::Options::EPHEMERAL_FLAGS` keeps one-shot flags out of the argument comment persisted in the generated workflow header
+- Regeneration strips the previously injected `${{secrets.GH_PAT}}` from unit-test step environments via `GHB::LanguageJobBuilder.drop_injected_pat`, so repos whose `build.yml` predates the fix stop carrying the PAT once rebuilt
 
 ### Error Handling
 
