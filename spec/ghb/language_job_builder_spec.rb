@@ -62,6 +62,30 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
   end
 
   let(:go_language_yaml) { Psych.dump(go_language_config.deep_stringify_keys) }
+
+  # Mirrors the js entry in config/languages.yaml: opted into dependency caching, with a
+  # cache_name per package manager so the value follows the lockfile actually found.
+  let(:js_language_config) do
+    {
+      js: {
+        short_name: 'js',
+        long_name: 'JavaScript',
+        file_extension: 'js',
+        version_files: ['.node-version', '.nvmrc'],
+        setup_options: [{ name: 'node-version', value: '26.5.1' }, { name: 'node-cache', value: nil }, { name: 'node-cache-dependency-path', value: nil }],
+        cache_option: 'node-cache',
+        cache_dependency_path_option: 'node-cache-dependency-path',
+        dependencies: [
+          { dependency_file: 'package-lock.json', cache_name: 'npm', package_manager_name: 'NPM', package_manager_default: 'npm install', dependabot_ecosystem: 'npm' },
+          { dependency_file: 'yarn.lock', cache_name: 'yarn', package_manager_name: 'Yarn', package_manager_default: 'yarn install', dependabot_ecosystem: 'npm' }
+        ],
+        unit_test_framework_name: 'Jest',
+        unit_test_framework_default: 'npx jest'
+      }
+    }
+  end
+
+  let(:js_language_yaml)          { Psych.dump(js_language_config.deep_stringify_keys)                                                      }
   let(:apt_config_yaml)           { Psych.dump({ options: [{ name: 'apt-packages', value: nil }] }.deep_stringify_keys)                     }
   let(:mongodb_config_yaml)       { Psych.dump({ options: [{ name: 'mongodb-version', value: '8.0.0' }] }.deep_stringify_keys)              }
   let(:mysql_config_yaml)         { Psych.dump({ options: [{ name: 'mysql-version', value: '8.0' }] }.deep_stringify_keys)                  }
@@ -740,6 +764,130 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     end
   end
 
+  # Issue #263: NODE-CACHE was declared as a workflow env var but never reached the Setup
+  # step, so npm caching was silently off. Wiring the cache without the lockfile path is
+  # worse than leaving it off -- the setup action then fails with "Dependencies lock file
+  # is not found" on any repo whose lockfile lives in a sub-project -- so the two options
+  # are asserted as a pair throughout.
+  describe 'dependency cache wiring' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    it 'passes the cache and the root lockfile path to the setup step', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      stub_config_file_reads(js_language_yaml)
+      stub_js_language_detection
+
+      builder.build
+
+      setup = new_workflow.jobs[:js_unit_tests].steps.find { |step| step.name == 'Setup' }
+      expect(setup.with[:'node-cache']).to(eq('${{env.NODE-CACHE}}'))
+      expect(setup.with[:'node-cache-dependency-path']).to(eq('package-lock.json'))
+      expect(new_workflow.env[:'NODE-CACHE']).to(eq('npm'))
+    end
+
+    it 'points the cache at a sub-project lockfile when there is none at the root' do
+      stub_config_file_reads(js_language_yaml)
+      stub_js_language_detection(root_lockfiles: [], subdir_lockfiles: ['slack/package-lock.json'])
+
+      builder.build
+
+      setup = new_workflow.jobs[:js_unit_tests].steps.find { |step| step.name == 'Setup' }
+      expect(setup.with[:'node-cache-dependency-path']).to(eq('slack/package-lock.json'))
+    end
+
+    it 'lists every detected lockfile path' do
+      stub_config_file_reads(js_language_yaml)
+      stub_js_language_detection(subdir_lockfiles: ['slack/package-lock.json'])
+
+      builder.build
+
+      setup = new_workflow.jobs[:js_unit_tests].steps.find { |step| step.name == 'Setup' }
+      expect(setup.with[:'node-cache-dependency-path']).to(eq("package-lock.json\nslack/package-lock.json"))
+    end
+
+    # The regression itself: a workflow generated before the cache was wired already has a
+    # populated `with`, and setup options were only merged when `with` was empty.
+    it 'adds the cache to a Setup step inherited from a previously generated workflow', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      stub_config_file_reads(js_language_yaml)
+      stub_js_language_detection
+
+      old_workflow.do_job(:js_unit_tests) do
+        do_name('JavaScript Unit Tests')
+        do_step('Setup') do
+          do_uses('cloud-officer/ci-actions/setup@v2')
+          do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'github-token': '${{secrets.GH_PAT}}', 'node-version': '${{env.NODE-VERSION}}' })
+        end
+      end
+
+      builder.build
+
+      setup = new_workflow.jobs[:js_unit_tests].steps.find { |step| step.name == 'Setup' }
+      expect(setup.with[:'node-cache']).to(eq('${{env.NODE-CACHE}}'))
+      expect(setup.with[:'node-cache-dependency-path']).to(eq('package-lock.json'))
+      expect(setup.with[:'node-version']).to(eq('${{env.NODE-VERSION}}'))
+    end
+
+    it 'leaves an operator-supplied cache value alone' do # rubocop:disable RSpec/ExampleLength
+      stub_config_file_reads(js_language_yaml)
+      stub_js_language_detection
+
+      old_workflow.do_job(:js_unit_tests) do
+        do_name('JavaScript Unit Tests')
+        do_step('Setup') do
+          do_uses('cloud-officer/ci-actions/setup@v2')
+          do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'node-cache-dependency-path': 'custom/package-lock.json' })
+        end
+      end
+
+      builder.build
+
+      setup = new_workflow.jobs[:js_unit_tests].steps.find { |step| step.name == 'Setup' }
+      expect(setup.with[:'node-cache-dependency-path']).to(eq('custom/package-lock.json'))
+    end
+
+    it 'keeps an existing workflow env value rather than overwriting it with the detected manager' do
+      stub_config_file_reads(js_language_yaml)
+      stub_js_language_detection
+      new_workflow.env[:'NODE-CACHE'] = 'yarn'
+
+      builder.build
+
+      expect(new_workflow.env[:'NODE-CACHE']).to(eq('yarn'))
+    end
+
+    it 'selects the detected package manager, not a hardcoded default', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      stub_config_file_reads(js_language_yaml)
+      stub_js_language_detection(root_lockfiles: ['yarn.lock'])
+
+      builder.build
+
+      setup = new_workflow.jobs[:js_unit_tests].steps.find { |step| step.name == 'Setup' }
+      expect(new_workflow.env[:'NODE-CACHE']).to(eq('yarn'))
+      expect(setup.with[:'node-cache-dependency-path']).to(eq('yarn.lock'))
+    end
+
+    # The setup actions take one package manager, so a repo running npm and yarn side by
+    # side cannot be expressed. Caching the wrong tree is worse than not caching.
+    it 'leaves the cache off when two package managers are detected', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      stub_config_file_reads(js_language_yaml)
+      stub_js_language_detection(root_lockfiles: %w[package-lock.json yarn.lock])
+
+      builder.build
+
+      setup = new_workflow.jobs[:js_unit_tests].steps.find { |step| step.name == 'Setup' }
+      expect(setup.with).not_to(have_key(:'node-cache'))
+      expect(setup.with).not_to(have_key(:'node-cache-dependency-path'))
+    end
+
+    it 'adds no cache options for a language that has not opted in', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      stub_config_file_reads(go_language_yaml)
+      stub_go_language_detection
+
+      builder.build
+
+      setup = new_workflow.jobs[:go_unit_tests].steps.find { |step| step.name == 'Setup' }
+      expect(setup.with.keys.grep(/cache/)).to(be_empty)
+      expect(new_workflow.env.keys.grep(/CACHE/)).to(be_empty)
+    end
+  end
+
   describe '#version_file_mismatch?' do # rubocop:disable RSpec/MultipleMemoizedHelpers
     it 'treats a recommendation that only adds a more specific patch as a match (.php-version 8.5 vs 8.5.6)' do
       expect(builder.__send__(:version_file_mismatch?, '8.5', '8.5.6')).to(be(false))
@@ -773,6 +921,26 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     allow(builder).to(receive_messages(find_files_matching: ['./main.go'], file_contains?: false))
     allow(File).to(receive(:file?).with('go.mod').and_return(true))
     allow(File).to(receive(:exist?).with('.go-version').and_return(false))
+    allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
+  end
+
+  # root_lockfiles sit at the repo root (File.file? finds them); subdir_lockfiles sit in a
+  # sub-project and are only reachable through find_subdir_dependencies' depth-limited scan,
+  # which is the case issue #263 turns on -- ci-actions' own lockfile is slack/package-lock.json.
+  def stub_js_language_detection(root_lockfiles: ['package-lock.json'], subdir_lockfiles: [])
+    allow(builder).to(receive(:file_contains?).and_return(false))
+    subdir_paths = subdir_lockfiles.map { |path| "./#{path}" }
+
+    allow(builder).to(receive(:find_files_matching)) do |_dir, pattern, _excluded, **kwargs|
+      kwargs[:max_depth] ? subdir_paths.grep(pattern) : ['./index.js']
+    end
+
+    %w[package-lock.json yarn.lock].each do |lockfile|
+      allow(File).to(receive(:file?).with(lockfile).and_return(root_lockfiles.include?(lockfile)))
+    end
+
+    allow(File).to(receive(:exist?).with('.node-version').and_return(false))
+    allow(File).to(receive(:exist?).with('.nvmrc').and_return(false))
     allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
   end
 

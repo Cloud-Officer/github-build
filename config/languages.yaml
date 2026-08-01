@@ -21,6 +21,16 @@
 #                                         (cloud-officer/ci-actions/setup@v2). Each option has:
 #                                           name:  option name, converted to an uppercase env var
 #                                           value: default value (empty means not set)
+#   cache_option     (string, optional) - Name of the setup option selecting the dependency cache
+#                                         (e.g. node-cache). Opting a language in enables caching;
+#                                         the value is derived from the package manager actually
+#                                         detected in the repo, never hardcoded here
+#   cache_dependency_path_option
+#                    (string, optional) - Name of the setup option taking the lockfile path(s) to
+#                                         hash (e.g. node-cache-dependency-path). Required
+#                                         alongside cache_option: without it the setup action only
+#                                         looks at the repo root and fails on a repo whose lockfile
+#                                         lives in a sub-project
 #   dependencies     (array, optional)  - Package manager and service dependency definitions. Each entry:
 #                                           dependency_file:            file indicating the package manager
 #                                                                       is in use (e.g., go.mod, Gemfile)
@@ -37,6 +47,11 @@
 #                                           package_manager_default:    install command
 #                                           package_manager_update:     update command (used in cron job)
 #                                           dependabot_ecosystem:       Dependabot ecosystem identifier
+#                                           cache_name:                 value the language's cache_option
+#                                                                       takes when this package manager is
+#                                                                       detected (e.g. npm, yarn, pnpm).
+#                                                                       Omit to leave this lockfile out of
+#                                                                       the cache
 #   unit_test_framework_name    (string, optional) - Display name for the test step
 #   unit_test_framework_default (string, optional) - Default test command
 #   runs-on                     (string, optional) - GitHub Actions runner OS override
@@ -109,11 +124,14 @@ js:
     - name: node-token
       value:
     - name: node-cache
-      value: npm
+      value:
     - name: node-cache-dependency-path
       value:
+  cache_option: node-cache
+  cache_dependency_path_option: node-cache-dependency-path
   dependencies:
     - dependency_file: package-lock.json
+      cache_name: npm
       install_dirs:
         - node_modules
         - .npm
@@ -127,6 +145,7 @@ js:
       package_manager_update: npm upgrade
       dependabot_ecosystem: npm
     - dependency_file: yarn.lock
+      cache_name: yarn
       install_dirs:
         - node_modules
         - .yarn
@@ -140,6 +159,7 @@ js:
       package_manager_update: yarn upgrade
       dependabot_ecosystem: npm
     - dependency_file: pnpm-lock.yaml
+      cache_name: pnpm
       install_dirs:
         - node_modules
         - .pnpm

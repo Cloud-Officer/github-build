@@ -102,13 +102,20 @@ module GHB
       if matches.any?
         dependency_detected = false
         mono_dependency_locations = []
+        # Every lockfile found, root and sub-project alike, so the dependency cache can be
+        # pointed at the paths it must hash (issue #263).
+        detected_dependencies = []
 
         language[:dependencies].each do |dependency|
-          dependency_detected = true if File.file?(dependency[:dependency_file])
+          if File.file?(dependency[:dependency_file])
+            dependency_detected = true
+            detected_dependencies << { dependency: dependency, path: dependency[:dependency_file] }
+          end
 
           mono_dependency_locations.concat(find_subdir_dependencies(dependency, excluded_paths))
         end
 
+        detected_dependencies.concat(mono_dependency_locations)
         dependency_detected = true if mono_dependency_locations.any?
 
         return unless dependency_detected
@@ -132,8 +139,53 @@ module GHB
       version_file = language[:version_files]&.find { |f| File.exist?(f) }
       add_setup_options(setup_options, language[:setup_options], version_file)
       SERVICES.each { |service| add_setup_options(setup_options, service_options[service]) if detected_services.include?(service) }
+      cache_options = cache_setup_options(language, detected_dependencies)
+      setup_options.merge!(cache_options)
 
-      add_language_job(language, setup_options, version_file, mono_dependency_locations)
+      add_language_job(language, setup_options, version_file, mono_dependency_locations, cache_options)
+    end
+
+    # Wire the language's dependency cache (e.g. actions/setup-node's `cache:`) to the
+    # lockfiles actually present in the repo.
+    #
+    # The cache is only ever enabled together with the paths it must hash: with a bare
+    # `cache: npm` the setup action looks for a lockfile at the repo root and fails with
+    # "Dependencies lock file is not found" in any repo whose lockfile lives in a
+    # sub-project (ci-actions' slack/package-lock.json). That is why the two options are
+    # derived here as a pair rather than carrying a static value in the config (#263).
+    def cache_setup_options(language, detected_dependencies)
+      cache_option = language[:cache_option]
+      path_option = language[:cache_dependency_path_option]
+
+      return {} unless cache_option && path_option
+      return {} if detected_dependencies.empty?
+
+      cacheable = detected_dependencies.select { |found| found[:dependency][:cache_name] }
+      cache_names = cacheable.map { |found| found[:dependency][:cache_name] }
+      cache_names.uniq!
+
+      # The setup actions take a single package manager, so a repo mixing two (npm and
+      # yarn side by side) cannot be expressed. Leave caching off rather than guess and
+      # cache the wrong dependency tree.
+      unless cache_names.one?
+        puts("        Skipping #{cache_option}: #{cache_skip_reason(cache_names)}")
+
+        return {}
+      end
+
+      env_key = cache_option.upcase.to_sym
+      @new_workflow.env[env_key] = cache_names.first unless @new_workflow.env[env_key]
+      paths = cacheable.map { |found| found[:path] }
+      paths.uniq!
+      paths.sort!
+
+      { cache_option => "${{env.#{cache_option.upcase}}}", path_option => paths.join("\n") }
+    end
+
+    def cache_skip_reason(cache_names)
+      return 'no cacheable package manager detected' if cache_names.empty?
+
+      "multiple package managers detected (#{cache_names.join(', ')})"
     end
 
     # Services whose marker string (the `<service>_dependency` key) appears in the given
@@ -189,7 +241,7 @@ module GHB
       " || #{checks.join(' || ')}"
     end
 
-    def add_language_job(language, setup_options, version_file, mono_dependency_locations)
+    def add_language_job(language, setup_options, version_file, mono_dependency_locations, cache_options = {})
       additional_checks = additional_unit_test_checks(language)
       skip_license_check = @options.skip_license_check
       needs_codedeploy_setup = needs_codedeploy_setup?(language)
@@ -206,7 +258,7 @@ module GHB
         do_needs(%w[variables])
         do_if("${{#{unit_tests_conditions}#{additional_checks}}}")
 
-        builder.__send__(:build_setup_step, self, language, version_file, setup_options, needs_codedeploy_setup)
+        builder.__send__(:build_setup_step, self, language, version_file, setup_options, needs_codedeploy_setup, cache_options)
         dependency_detected = builder.__send__(:build_dependency_steps, self, language, needs_codedeploy_setup)
         builder.__send__(:build_mono_dependency_steps, self, language, mono_dependency_locations)
 
@@ -223,7 +275,7 @@ module GHB
       puts("        Skipping #{language[:long_name]} Unit Tests job (Xcode Cloud handles tests via ci_scripts)")
     end
 
-    def build_setup_step(job, language, version_file, setup_options, needs_codedeploy_setup)
+    def build_setup_step(job, language, version_file, setup_options, needs_codedeploy_setup, cache_options = {})
       old_workflow = @old_workflow
       code_deploy_pre_steps = @code_deploy_pre_steps
       dependencies_steps = @dependencies_steps
@@ -248,6 +300,13 @@ module GHB
         end
 
         with[:'github-token'] = '${{secrets.GH_PAT}}'
+
+        # Applied outside the `with.empty?` branch above on purpose. A workflow generated
+        # before the cache was wired already carries a populated `with`, so merging only on
+        # the empty path would leave the cache dead in every existing repo -- exactly the
+        # NODE-CACHE-is-declared-but-never-passed state issue #263 reported. An operator's
+        # own value still wins: only keys absent from `with` are filled in.
+        cache_options.each { |key, value| with[key.to_sym] = value unless with.key?(key.to_sym) }
 
         code_deploy_pre_steps << duplicate(self) if needs_codedeploy_setup
         dependencies_steps << duplicate(self)
