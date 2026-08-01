@@ -9,6 +9,60 @@ require_relative 'github_api_client'
 module GHB
   # Configures GitHub repository settings including branch protection, security features, and CodeQL.
   class RepositoryConfigurator
+    # Reads the force-push actor allowlist for the default branch. The classic REST
+    # branch-protection API does not expose this list at all: it collapses "nobody may
+    # force push" and "only these actors may force push" into the same
+    # allow_force_pushes boolean, so a REST read cannot tell the two apart.
+    FORCE_PUSH_ALLOWANCES_QUERY = <<~GRAPHQL
+      query($owner: String!, $repository: String!, $qualifiedName: String!) {
+        repository(owner: $owner, name: $repository) {
+          ref(qualifiedName: $qualifiedName) {
+            branchProtectionRule {
+              id
+              allowsForcePushes
+              bypassForcePushAllowances(first: 100) {
+                nodes {
+                  actor {
+                    __typename
+                    ... on User { login }
+                    ... on Team { slug }
+                    ... on App { slug }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    GRAPHQL
+
+    # Empties the allowlist. Selecting the allowances back out of the mutation result
+    # re-verifies the change in the same round trip, so the caller never has to trust
+    # that the mutation did what it said.
+    CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION = <<~GRAPHQL
+      mutation($ruleId: ID!) {
+        updateBranchProtectionRule(input: { branchProtectionRuleId: $ruleId, bypassForcePushActorIds: [] }) {
+          branchProtectionRule {
+            id
+            allowsForcePushes
+            bypassForcePushAllowances(first: 100) {
+              nodes {
+                actor {
+                  __typename
+                  ... on User { login }
+                  ... on Team { slug }
+                  ... on App { slug }
+                }
+              }
+            }
+          }
+        }
+      }
+    GRAPHQL
+
+    private_constant :FORCE_PUSH_ALLOWANCES_QUERY
+    private_constant :CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION
+
     def initialize(options:, required_status_checks:, default_branch: 'master')
       @options = options
       @required_status_checks = required_status_checks
@@ -37,7 +91,7 @@ module GHB
       protection_exists = response.code == 200
       current_protection = protection_exists ? JSON.parse(response.body) : {}
 
-      configure_branch_protection(github_client, repo_url, current_protection, protection_exists)
+      configure_branch_protection(github_client, repo_url, current_protection, protection_exists, repository)
       configure_repository_options(github_client, repo_url)
       if is_private
         disable_security_features(github_client, repo_url)
@@ -52,7 +106,7 @@ module GHB
 
     private
 
-    def configure_branch_protection(github_client, repo_url, current_protection, protection_exists)
+    def configure_branch_protection(github_client, repo_url, current_protection, protection_exists, repository)
       augment_required_status_checks
       log_codeql_languages(github_client, repo_url)
 
@@ -76,6 +130,80 @@ module GHB
         "#{repo_url}/branches/#{@default_branch}/protection/required_signatures",
         expected_codes: [200, 204]
       )
+
+      enforce_force_push_allowlist(github_client, repository)
+    end
+
+    # The `allow_force_pushes: false` sent in the PUT above is silently a no-op when
+    # the branch sits in GitHub's "Allow force pushes -> Specify who can force push"
+    # mode: the PUT still returns 200 and the rest of the payload applies, but the
+    # actor allowlist survives and the branch stays force-pushable. Only GraphQL can
+    # see that list, and only GraphQL can empty it, so read it back here and clear it,
+    # rather than reporting success over a branch history anyone on the list can rewrite.
+    def enforce_force_push_allowlist(github_client, repository)
+      puts('    Checking force-push allowlist...')
+
+      rule = fetch_branch_protection_rule(github_client, repository)
+      return if rule.nil?
+
+      actors = force_push_actors(rule)
+
+      if actors.empty?
+        puts('        No force-push actor allowlist')
+        return
+      end
+
+      warn("        WARNING: #{@default_branch} is force-pushable despite allow_force_pushes: false — #{actors.length} actor(s) on the force-push allowlist:")
+      actors.each { |actor| warn("          ! #{actor}") }
+
+      remaining = clear_force_push_allowlist(github_client, rule['id'])
+      raise("Error: force-push allowlist on #{@default_branch} not cleared, still allows: #{remaining.join(', ')}") if remaining.any?
+
+      puts('        Force-push allowlist cleared')
+    end
+
+    # Returns the branch protection rule covering the default branch, or nil when there
+    # is none. A GraphQL failure (a token without GraphQL access, say) leaves the drift
+    # undetectable rather than proven, so it warns and lets the run continue; a proven
+    # non-empty allowlist is what fails the run, in enforce_force_push_allowlist above.
+    def fetch_branch_protection_rule(github_client, repository)
+      data = github_client.graphql(
+        FORCE_PUSH_ALLOWANCES_QUERY,
+        variables: {
+          owner: @options.organization,
+          repository: repository,
+          qualifiedName: "refs/heads/#{@default_branch}"
+        }
+      )
+
+      rule = data.dig('repository', 'ref', 'branchProtectionRule')
+      puts('        No classic branch protection rule found for the default branch') if rule.nil?
+      rule
+    rescue GitHubAPIError => e
+      warn("        WARNING: could not read the force-push allowlist over GraphQL: #{e.message}")
+      nil
+    end
+
+    # Empties the allowlist and returns whatever GitHub reports as still allowed
+    # (empty on success).
+    def clear_force_push_allowlist(github_client, rule_id)
+      puts('        Clearing force-push allowlist...')
+      data = github_client.graphql(CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION, variables: { ruleId: rule_id })
+      force_push_actors(data.dig('updateBranchProtectionRule', 'branchProtectionRule') || {})
+    rescue GitHubAPIError => e
+      raise("Error: could not clear the force-push allowlist on #{@default_branch}: #{e.message}")
+    end
+
+    # Flattens bypassForcePushAllowances into "User octocat" / "Team core-team" labels.
+    def force_push_actors(rule)
+      nodes = rule.dig('bypassForcePushAllowances', 'nodes') || []
+
+      nodes.filter_map do |node|
+        actor = node&.dig('actor')
+        next unless actor
+
+        "#{actor['__typename'] || 'Actor'} #{actor['login'] || actor['slug'] || '(unnamed)'}"
+      end
     end
 
     def augment_required_status_checks

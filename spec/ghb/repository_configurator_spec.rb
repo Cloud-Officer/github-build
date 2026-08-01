@@ -20,6 +20,24 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
     described_class.new(options: mock_options, required_status_checks: required_status_checks.dup, default_branch: default_branch)
   end
 
+  # Shape of the GraphQL force-push allowlist read. Defaults to a protected branch
+  # with nobody on the allowlist, which is the state every pre-existing example assumes.
+  # JSON.parse(...to_json) so the fixture has the string keys a real GraphQL
+  # response carries, without writing string-keyed hash literals by hand.
+  def branch_protection_rule_data(actors, rule_id: 'BPR_kwDOabcdef')
+    JSON.parse({ repository: { ref: { branchProtectionRule: branch_protection_rule(actors, rule_id) } } }.to_json)
+  end
+
+  def branch_protection_rule(actors, rule_id = 'BPR_kwDOabcdef')
+    {
+      id: rule_id,
+      allowsForcePushes: actors.any?,
+      # A nil actor becomes a null node, so fixtures can cover both shapes GitHub
+      # can hand back for an allowance it will not describe.
+      bypassForcePushAllowances: { nodes: actors.map { |actor| actor && { actor: actor } } }
+    }
+  end
+
   before do
     allow($stdout).to(receive(:puts))
     allow(ENV).to(receive(:fetch).with('GITHUB_TOKEN', nil).and_return(github_token))
@@ -28,6 +46,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
     allow(File).to(receive(:exist?).with('package.json').and_return(false))
     allow(File).to(receive(:exist?).with('.github/workflows/smoke.yml').and_return(false))
     allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(false))
+    allow(github_client).to(receive(:graphql).and_return(branch_protection_rule_data([])))
   end
 
   describe '#configure' do # rubocop:disable RSpec/MultipleMemoizedHelpers
@@ -1399,6 +1418,168 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
             )
           )
         )
+      end
+    end
+
+    # allow_force_pushes: false in the REST PUT is silently ignored while a force-push
+    # actor allowlist exists, so asserting only that the `false` was *sent* passes on a
+    # branch that is still force-pushable. These examples assert the GraphQL state instead.
+    context 'when the default branch has a force-push actor allowlist' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:repo_info_response) do
+        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
+      end
+
+      let(:protection_response) do
+        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
+      end
+
+      let(:codeql_default_setup_response) do
+        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
+      end
+
+      let(:codeql_get_response) do
+        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
+      end
+
+      let(:ok_response) do
+        instance_double(HTTParty::Response, code: 200, body: '{}')
+      end
+
+      let(:accepted_response) do
+        instance_double(HTTParty::Response, code: 202, body: '{}')
+      end
+
+      let(:allowed_actors) do
+        [
+          { __typename: 'User', login: 'force-pusher' },
+          { __typename: 'Team', slug: 'release-team' }
+        ]
+      end
+
+      let(:cleared_mutation_data) do
+        JSON.parse({ updateBranchProtectionRule: { branchProtectionRule: branch_protection_rule([]) } }.to_json)
+      end
+
+      before do
+        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
+        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
+        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
+
+        allow(github_client).to(receive(:graphql).with(/\Aquery/, variables: anything).and_return(branch_protection_rule_data(allowed_actors)))
+        allow(github_client).to(receive(:graphql).with(/updateBranchProtectionRule/, variables: anything).and_return(cleared_mutation_data))
+      end
+
+      it 'clears the allowlist with an empty bypassForcePushActorIds mutation' do
+        configurator.configure
+
+        expect(github_client).to(have_received(:graphql).with(/bypassForcePushActorIds: \[\]/, variables: { ruleId: 'BPR_kwDOabcdef' }))
+      end
+
+      it 'names every actor still allowed to force push' do
+        expect { configurator.configure }
+          .to(output(/! User force-pusher.*! Team release-team/m).to_stderr)
+      end
+
+      it 'does not report success while the branch is still force-pushable' do
+        uncleared = JSON.parse({ updateBranchProtectionRule: { branchProtectionRule: branch_protection_rule(allowed_actors) } }.to_json)
+        allow(github_client).to(receive(:graphql).with(/updateBranchProtectionRule/, variables: anything).and_return(uncleared))
+
+        expect { configurator.configure }
+          .to(raise_error(RuntimeError, /force-push allowlist on master not cleared, still allows: User force-pusher, Team release-team/))
+      end
+
+      it 'fails loudly when the clearing mutation itself errors' do
+        allow(github_client).to(receive(:graphql).with(/updateBranchProtectionRule/, variables: anything).and_raise(GHB::GitHubAPIError, 'GraphQL request failed: Resource not accessible by integration'))
+
+        expect { configurator.configure }
+          .to(raise_error(RuntimeError, /could not clear the force-push allowlist on master: GraphQL request failed/))
+      end
+
+      it 'reports app actors and skips null or unnamed allowance nodes without crashing' do
+        allow(github_client).to(receive(:graphql).with(/\Aquery/, variables: anything).and_return(branch_protection_rule_data([nil, {}, { __typename: 'App', slug: 'renovate' }])))
+
+        expect { configurator.configure }
+          .to(output(/2 actor\(s\).*! Actor \(unnamed\).*! App renovate/m).to_stderr)
+      end
+    end
+
+    context 'when the default branch has an empty force-push allowlist' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:repo_info_response) do
+        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
+      end
+
+      let(:protection_response) do
+        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
+      end
+
+      let(:codeql_default_setup_response) do
+        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
+      end
+
+      let(:codeql_get_response) do
+        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
+      end
+
+      let(:ok_response) do
+        instance_double(HTTParty::Response, code: 200, body: '{}')
+      end
+
+      let(:accepted_response) do
+        instance_double(HTTParty::Response, code: 202, body: '{}')
+      end
+      let(:expected_query_variables) do
+        { owner: organization, repository: repository, qualifiedName: "refs/heads/#{default_branch}" }
+      end
+
+      before do
+        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
+        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
+        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
+        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
+      end
+
+      it 'reads the allowlist for the default branch ref' do
+        configurator.configure
+
+        expect(github_client).to(have_received(:graphql).with(/bypassForcePushAllowances/, variables: expected_query_variables))
+      end
+
+      it 'issues no clearing mutation' do
+        configurator.configure
+
+        expect(github_client).not_to(have_received(:graphql).with(/updateBranchProtectionRule/, variables: anything))
+      end
+
+      it 'emits no force-push warning' do
+        expect { configurator.configure }
+          .not_to(output(/force-push/).to_stderr)
+      end
+
+      it 'skips the allowlist check when the branch has no classic protection rule' do
+        allow(github_client).to(receive(:graphql).and_return(JSON.parse({ repository: { ref: { branchProtectionRule: nil } } }.to_json)))
+
+        expect { configurator.configure }
+          .not_to(raise_error)
+      end
+
+      it 'warns but keeps going when the allowlist cannot be read over GraphQL' do
+        allow(github_client).to(receive(:graphql).and_raise(GHB::GitHubAPIError, 'GraphQL request failed: Bad credentials'))
+
+        expect { configurator.configure }
+          .to(output(/could not read the force-push allowlist over GraphQL: GraphQL request failed: Bad credentials/).to_stderr)
       end
     end
   end

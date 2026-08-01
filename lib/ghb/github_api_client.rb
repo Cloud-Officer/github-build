@@ -10,6 +10,7 @@ require_relative '../ghb'
 module GHB
   # Centralized GitHub API client with shared headers, retry logic, and error handling.
   class GitHubAPIClient
+    GRAPHQL_URL = 'https://api.github.com/graphql'
     MAX_RETRIES = 3
     # Cap a single rate-limit back-off so a far-future X-RateLimit-Reset can't hang CI.
     MAX_RETRY_WAIT = 60
@@ -19,6 +20,7 @@ module GHB
     READ_TIMEOUT = 30
     RETRYABLE_ERRORS = [Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNRESET, Errno::ECONNREFUSED, SocketError, OpenSSL::SSL::SSLError].freeze
 
+    private_constant :GRAPHQL_URL
     private_constant :MAX_RETRIES
     private_constant :MAX_RETRY_WAIT
     private_constant :OPEN_TIMEOUT
@@ -26,6 +28,7 @@ module GHB
     private_constant :RETRYABLE_ERRORS
 
     def initialize(token)
+      @token = token
       @headers = {
         Authorization: "token #{token}",
         Accept: 'application/vnd.github.v3+json'
@@ -46,6 +49,37 @@ module GHB
 
     def patch(url, body: nil, expected_codes: [200])
       execute(:patch, url, body: body, expected_codes: expected_codes)
+    end
+
+    # Runs a GraphQL query or mutation and returns its `data` hash.
+    #
+    # GraphQL is needed for the settings the classic REST API cannot represent
+    # (notably branch-protection actor allowlists). It reports failures inside a
+    # 200 response's `errors` array rather than through the status code, so those
+    # are surfaced here as GitHubAPIError just like a failed REST call.
+    def graphql(query, variables: {})
+      response = execute(
+        :post,
+        GRAPHQL_URL,
+        body: { query: query, variables: variables },
+        headers: { Authorization: "bearer #{@token}", Accept: 'application/json' }
+      )
+
+      payload =
+        begin
+          JSON.parse(response.body)
+        rescue JSON::ParserError => e
+          raise(GitHubAPIError, "GraphQL response was not valid JSON: #{e.message}")
+        end
+
+      errors = payload['errors']
+
+      if errors.is_a?(Array) && errors.any?
+        messages = errors.filter_map { |error| error['message'] }
+        raise(GitHubAPIError, "GraphQL request failed: #{messages.join('; ')}")
+      end
+
+      payload['data'] || {}
     end
 
     private
