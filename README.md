@@ -128,8 +128,8 @@ dropped with a warning on the next run, so old headers self-heal instead of fail
 
 ### Configuration Files
 
-`github-build` ships sensible defaults under `config/`. Each file can be overridden with a CLI flag pointing at your
-own copy. Required top-level keys are validated at startup — a missing key fails fast with a clear `ConfigError`.
+`github-build` ships sensible defaults under `config/`. Each file below can be overridden with a CLI flag pointing at
+your own copy. Required top-level keys are validated at startup — a missing key fails fast with a clear `ConfigError`.
 
 #### Linters (`--linters_config_file`, default `config/linters.yaml`)
 
@@ -202,6 +202,18 @@ custom_patterns:
     patterns:
       - "# Claude Code"
       - ".claude/"
+```
+
+#### External actions (`config/actions.yaml`, no CLI override)
+
+A map of external (non `cloud-officer/*`) action name → pinned version, used as the single source of truth for the
+third-party actions emitted into generated workflows. It has no CLI flag: the weekly
+`.github/workflows/external-actions-bump.yml` cron bumps these entries to the latest upstream major and opens a pull
+request for review. `cloud-officer/*` actions are versioned separately.
+
+```yaml
+actions/checkout: v7
+peter-evans/create-pull-request: v8
 ```
 
 ### Feature Triggers

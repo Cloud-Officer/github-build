@@ -124,9 +124,9 @@ module GHB
 
       if linter[:preserve_config] && File.exist?(config_name) && !File.symlink?(config_name)
         puts("            Preserving existing #{config_name} (project-specific config)")
-      elsif File.exist?("#{script_path}/linters/#{config_name}") && config_name != '.editorconfig'
+      elsif File.exist?("#{script_path}/linters/#{config_name}") && config_name != '.editorconfig' && !project_owned_config?(config_name)
         FileUtils.ln_s("#{script_path}/linters/#{config_name}", config_name, force: true)
-      elsif File.exist?("linters/#{config_name}") && config_name != '.editorconfig'
+      elsif File.exist?("linters/#{config_name}") && config_name != '.editorconfig' && !project_owned_config?(config_name)
         FileUtils.ln_s("linters/#{config_name}", config_name, force: true)
       else
         # Use atomic file operation to prevent data loss if copy fails. For
@@ -145,6 +145,15 @@ module GHB
           content
         end
       end
+    end
+
+    # True when a merge-managed config has been deliberately turned from a symlink
+    # into a real file carrying our sentinel block. Re-symlinking it to the shared
+    # copy would discard whatever the project added outside the block, so such a
+    # file takes the merge path instead: the managed block is still refreshed from
+    # the single source of truth, and the project's own entries survive.
+    def project_owned_config?(config_name)
+      merges_existing?(config_name) && File.exist?(config_name) && !File.symlink?(config_name) && managed_block?(File.read(config_name))
     end
 
     # Resolves the content source for a config: the project's existing file when

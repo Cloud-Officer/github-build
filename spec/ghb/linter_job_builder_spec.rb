@@ -810,6 +810,38 @@ RSpec.describe(GHB::LinterJobBuilder) do
           expect(result).to(include('- "**/my/project/dir"')) # project addition preserved
         end
       end
+
+      # A project whose shared configs come from a scripts submodule normally gets
+      # trivy.yaml re-symlinked on every run. Turning it into a real file is how a
+      # project carries an exclusion that must not leak into the other repos
+      # sharing that submodule, so the symlink must not be restored over it.
+      it 'keeps a project-owned trivy.yaml instead of re-symlinking it to the scripts submodule' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        allow(File).to(receive(:delete).and_call_original)
+        Dir.mktmpdir do |dir|
+          FileUtils.mkdir_p(File.join(dir, 'scripts/linters'))
+          File.write(File.join(dir, 'scripts/linters/trivy.yaml'), "shared\n")
+          File.write(File.join(dir, '.gitmodules'), "[submodule \"scripts\"]\n  path = scripts\n")
+          File.write(File.join(dir, 'trivy.yaml'), <<~YAML)
+            scan:
+              skip-files:
+                - "**/config/ssl/jwt/*.pem"
+              skip-dirs:
+                # ghb:excluded-dirs:start
+                - "**/stale-entry"
+                # ghb:excluded-dirs:end
+          YAML
+
+          Dir.chdir(dir) { build_trivy_only.build } # rubocop:disable ThreadSafety/DirChdir
+          result = File.read(File.join(dir, 'trivy.yaml'))
+
+          # ln_s is stubbed suite-wide, so assert the call was never made rather
+          # than inspecting the file type, which cannot change under the stub.
+          expect(FileUtils).not_to(have_received(:ln_s).with('scripts/linters/trivy.yaml', 'trivy.yaml', force: true))
+          expect(result).to(include('- "**/config/ssl/jwt/*.pem"')) # repo-local exclusion kept
+          expect(result).to(include('- "**/node_modules"')) # still tracks the shared block
+          expect(result).not_to(include('- "**/stale-entry"'))
+        end
+      end
     end
   end
 
