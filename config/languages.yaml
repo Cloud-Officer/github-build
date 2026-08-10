@@ -108,7 +108,7 @@ js:
     - .nvmrc
   setup_options:
     - name: node-version
-      value: 26.6.0
+      value: 26.7.0
     - name: node-always-auth
       value:
     - name: node-version-file
@@ -359,7 +359,7 @@ python:
     - .python-version
   setup_options:
     - name: python-version
-      value: 3.14.6
+      value: 3.14.7
     - name: python-version-file
       value:
     - name: python-cache
