@@ -180,6 +180,46 @@ RSpec.describe(GHB::GitignoreRules) do
       expect(result).not_to(include("# Claude Code\n"))
       expect(result).not_to(include(".claude/\n"))
     end
+
+    it 'drops a hand-added copy of a managed pattern sitting outside the section' do # rubocop:disable RSpec/MultipleExpectations
+      git_ignore = "# End of gitignore.io\n\n# BEGIN AI Assistants\n\n# Claude Code\n.claude/\n\n# END AI Assistants\n\n.claude/\n# My custom\nmy-dir/\n"
+
+      result = rules.preserve_custom_entries(git_ignore, custom_patterns)
+
+      expect(result).not_to(include(".claude/\n"))
+      expect(result).to(include("my-dir/\n"))
+    end
+
+    it 'keeps an out-of-section entry that only prefix-matches a managed pattern' do
+      git_ignore = "# End of gitignore.io\n\ndocs/migration/keep.md\n"
+
+      result = rules.preserve_custom_entries(git_ignore, ['docs/migration/'])
+
+      expect(result).to(include("docs/migration/keep.md\n"))
+    end
+  end
+
+  describe '#detect_custom_pattern_groups' do
+    it 'keeps each tool\'s patterns together as one group' do # rubocop:disable RSpec/ExampleLength
+      config = {
+        custom_patterns: {
+          claudecode: { patterns: ['# Claude Code', '.claude/'] },
+          claudecodeskills: { patterns: ['# Claude Code skill review artifacts', 'docs/code-review.md', 'docs/seo-audit.md'] }
+        }
+      }
+
+      expect(rules.detect_custom_pattern_groups(config)).to(eq([['# Claude Code', '.claude/'], ['# Claude Code skill review artifacts', 'docs/code-review.md', 'docs/seo-audit.md']]))
+    end
+
+    it 'skips tools with no patterns' do
+      config = { custom_patterns: { claudecode: { patterns: ['# Claude Code', '.claude/'] }, empty: { patterns: [] }, missing: {} } }
+
+      expect(rules.detect_custom_pattern_groups(config)).to(eq([['# Claude Code', '.claude/']]))
+    end
+
+    it 'returns empty array when no custom_patterns configured' do
+      expect(rules.detect_custom_pattern_groups({ custom_patterns: nil })).to(eq([]))
+    end
   end
 
   describe '#detect_custom_patterns' do
@@ -192,6 +232,17 @@ RSpec.describe(GHB::GitignoreRules) do
       }
 
       expect(rules.detect_custom_patterns(config)).to(eq(['# Claude Code', '.claude/', '# Cursor', '.cursor/']))
+    end
+
+    it 'flattens a multi-pattern tool into the pattern list' do # rubocop:disable RSpec/ExampleLength
+      config = {
+        custom_patterns: {
+          claudecode: { patterns: ['# Claude Code', '.claude/'] },
+          claudecodeskills: { patterns: ['# Claude Code skill review artifacts', 'docs/code-review.md', 'docs/seo-audit.md'] }
+        }
+      }
+
+      expect(rules.detect_custom_patterns(config)).to(eq(['# Claude Code', '.claude/', '# Claude Code skill review artifacts', 'docs/code-review.md', 'docs/seo-audit.md']))
     end
 
     it 'returns empty array when no custom_patterns configured' do
