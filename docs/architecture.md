@@ -481,7 +481,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(context:, rules:)`: Accepts a `GHB::BuildContext` and an optional `GHB::GitignoreRules` (defaults to one built from the context)
-- `update`: Detects templates, fetches from API, applies modifications, and writes `.gitignore`
+- `update`: Detects templates, fetches from API, applies modifications, appends the per-tool AI Assistants sections built from `GHB::GitignoreRules#detect_custom_pattern_groups`, and writes `.gitignore`
 
 **Internal Dependencies:**
 
@@ -506,8 +506,9 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `build_gitignore_excluded_paths`: Builds excluded paths from `languages.yaml` config, submodules, and `--excluded_folders`
 - `uncomment_jetbrains_patterns(content)`: Uncomments JetBrains IDE patterns
 - `comment_conflicting_patterns(content)`: Comments out directory patterns (`bin/`, `lib/`, `var/`) that conflict with common project directories
-- `preserve_custom_entries(git_ignore, custom_patterns)`: Preserves custom entries from an existing `.gitignore`
-- `detect_custom_patterns(config)`: Returns the always-appended custom patterns (AI assistant ignore rules) regardless of whether the corresponding tool is detected, so they cannot be accidentally committed
+- `preserve_custom_entries(git_ignore, custom_patterns)`: Preserves custom entries from an existing `.gitignore`, dropping a hand-added copy of a now-managed pattern that sits outside the AI Assistants section (exact line match only, so `docs/migration/keep.md` survives even though `docs/migration/` is managed) — the regenerated block is the single source of truth, and keeping the stray line would emit it twice
+- `detect_custom_pattern_groups(config)`: Returns the always-appended custom patterns grouped per tool (comment line plus that tool's ignore rules), regardless of whether the corresponding tool is detected, so they cannot be accidentally committed. Grouping keeps a tool contributing several rules (e.g. the Claude Code skill review artifacts) rendered as one commented block instead of being split into arbitrary pairs
+- `detect_custom_patterns(config)`: Flattened view of `detect_custom_pattern_groups` used for the "skip already-managed lines" comparison in `preserve_custom_entries`
 
 ### GHB::RepositoryConfigurator
 
@@ -736,7 +737,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 **Purpose:** Detects project types to generate comprehensive .gitignore files.
 
-**Location:** `lib/ghb/gitignore_manager.rb` in `GHB::GitignoreManager#update`; rule logic in `lib/ghb/gitignore_rules.rb` in `GHB::GitignoreRules#detect_gitignore_templates` and `GHB::GitignoreRules#detect_custom_patterns`
+**Location:** `lib/ghb/gitignore_manager.rb` in `GHB::GitignoreManager#update`; rule logic in `lib/ghb/gitignore_rules.rb` in `GHB::GitignoreRules#detect_gitignore_templates` and `GHB::GitignoreRules#detect_custom_pattern_groups`
 
 **Implementation:**
 
@@ -745,8 +746,8 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 3. For each extension detection entry, checks file extensions using `find_files_matching` (with excluded paths combining config-driven directories from `languages.yaml`, submodules, the `--excluded_folders` option, and gitignored paths), specific files that indicate the technology, and package dependencies in manifest files using pure Ruby regex
 4. Fetches templates from gitignore.io API via HTTParty
 5. Applies project-specific modifications (uncomment JetBrains patterns, comment out conflicting directory patterns like `bin/`, `lib/`, `var/`)
-6. Always appends AI assistant ignore patterns (Claude Code, Cursor, Copilot, OpenAI Codex) via `detect_custom_patterns` to prevent accidental commits even if the tool isn't actively used
-7. Preserves custom entries from existing .gitignore
+6. Always appends AI assistant ignore patterns (Claude Code, Claude Code skill review artifacts, Cursor, Copilot, OpenAI Codex) via `detect_custom_pattern_groups` to prevent accidental commits even if the tool isn't actively used, writing one sentinel-delimited section per tool (`# BEGIN AI Assistants` / `# END AI Assistants`) so a tool with several ignore rules stays a single commented block
+7. Preserves custom entries from existing .gitignore, dropping stray hand-added copies of the now-managed patterns so they are not emitted twice
 
 ## Risk controls
 
