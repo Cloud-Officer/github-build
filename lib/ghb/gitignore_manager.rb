@@ -59,11 +59,12 @@ module GHB
       @rules.comment_conflicting_patterns(new_git_ignore)
 
       # Add AI Assistants section right after gitignore.io content
-      custom_patterns = @rules.detect_custom_patterns(gitignore_config)
+      pattern_groups = @rules.detect_custom_pattern_groups(gitignore_config)
+      custom_patterns = pattern_groups.flatten
 
       unless custom_patterns.empty?
-        # Group patterns into pairs (comment + pattern) and join with blank lines between sections
-        grouped_patterns = custom_patterns.each_slice(2).map { |group| group.join("\n") }
+        # One section per tool (comment + its ignore rules), joined with blank lines between sections
+        grouped_patterns = pattern_groups.map { |group| group.join("\n") }
         ai_section = "\n# BEGIN AI Assistants\n\n#{grouped_patterns.join("\n\n")}\n\n# END AI Assistants\n"
         new_git_ignore = "#{new_git_ignore}#{ai_section}"
         tool_names = custom_patterns.filter_map { |p| p.sub('# ', '') if p.start_with?('#') }

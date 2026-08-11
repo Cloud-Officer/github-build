@@ -76,24 +76,36 @@ module GHB
         # Skip individual AI tool patterns when in old-style AI section (no END marker)
         next if in_ai_section && custom_patterns.any? { |pattern| line.start_with?(pattern) }
 
+        # Drop a hand-added copy of a now-managed pattern sitting outside the section:
+        # the regenerated block is the single source of truth, so preserving the stray
+        # line would emit it twice. Exact match only, so docs/migration/keep.md survives
+        # even though docs/migration/ is managed.
+        next if found && !in_ai_section && custom_patterns.include?(line.strip)
+
         custom_lines << line if found && !in_ai_section
       end
 
       custom_lines
     end
 
-    def detect_custom_patterns(config)
-      patterns = []
+    # Patterns kept grouped per tool, so a tool contributing several ignore rules
+    # renders as one commented block instead of being split into arbitrary pairs.
+    def detect_custom_pattern_groups(config)
+      groups = []
 
       # Always include all custom patterns to prevent accidental commits
       # even if the tool isn't detected (developer may start using it later)
       config[:custom_patterns]&.each_value do |tool_config|
-        tool_config[:patterns]&.each do |pattern|
-          patterns << pattern
-        end
+        patterns = tool_config[:patterns]
+
+        groups << patterns unless patterns.nil? || patterns.empty?
       end
 
-      patterns
+      groups
+    end
+
+    def detect_custom_patterns(config)
+      detect_custom_pattern_groups(config).flatten
     end
 
     private

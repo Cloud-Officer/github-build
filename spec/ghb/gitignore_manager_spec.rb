@@ -67,6 +67,34 @@ RSpec.describe(GHB::GitignoreManager) do
       expect(written_content).to(include('Linux'))
     end
 
+    it 'renders a multi-pattern tool as one block instead of splitting it into pairs' do # rubocop:disable RSpec/ExampleLength
+      multi_config = minimal_gitignore_config.merge(
+        custom_patterns: {
+          claudecode: { patterns: ['# Claude Code', '.claude/'] },
+          claudecodeskills: { patterns: ['# Claude Code skill review artifacts', 'docs/code-review.md', 'docs/seo-audit.md'] }
+        }
+      )
+      config_yaml = Psych.dump(multi_config.deep_stringify_keys)
+
+      allow(manager).to(receive(:cached_file_read).and_return(config_yaml))
+
+      allow(gitignore_rules).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
+      allow(File).to(receive(:exist?).with('.gitignore').and_return(false))
+      allow(File).to(receive(:exist?).with(anything).and_return(false))
+
+      api_response = instance_double(HTTParty::Response, code: 200, body: "# Created by gitignore.io\n# Edit at gitignore.io\n\n### Linux ###\n*~\n")
+      allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
+
+      written_content = nil
+      allow(File).to(receive(:write).with('.gitignore', anything)) do |_path, content|
+        written_content = content
+      end
+
+      manager.update
+
+      expect(written_content).to(include("# Claude Code skill review artifacts\ndocs/code-review.md\ndocs/seo-audit.md"))
+    end
+
     it 'updates an existing .gitignore and preserves custom entries' do # rubocop:disable RSpec/ExampleLength
       existing_gitignore = +"# Created by gitignore.io\n# End of gitignore.io\n\n# My custom pattern\nmy-custom-dir/\n"
       config_yaml = Psych.dump(minimal_gitignore_config.deep_stringify_keys)

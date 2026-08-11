@@ -20,12 +20,20 @@
 
 # Custom patterns for tools not available on gitignore.io
 # These are always appended to .gitignore to prevent accidental commits
-# Each entry contains a list of patterns (comment line + ignore rule)
+# Each entry contains a list of patterns (comment line + one or more ignore rules)
 custom_patterns:
   claudecode:
     patterns:
       - "# Claude Code"
       - ".claude/"
+  claudecodeskills:
+    patterns:
+      - "# Claude Code skill review artifacts"
+      - "docs/code-review.md"
+      - "docs/copy-review.md"
+      - "docs/migration/"
+      - "docs/prompt-review.md"
+      - "docs/seo-audit.md"
   cursor:
     patterns:
       - "# Cursor"
