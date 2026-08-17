@@ -200,7 +200,8 @@ options:
 * `always_enabled:` — list of [gitignore.io](https://gitignore.io) template names always included.
 * `extension_detection:` — map of template → detection rule (`extensions[]`, `files[]`, and/or
   `packages: { <file>: [<regex>...] }`); the template is added when the project matches.
-* `custom_patterns:` — map of tool → `{ patterns: [...] }`, always appended under an AI-Assistants section.
+* `custom_patterns:` — map of tool → `{ patterns: [...] }`, always appended under a section delimited by
+  `# BEGIN AI Assistants` / `# END AI Assistants` markers.
 
 ```yaml
 always_enabled:
