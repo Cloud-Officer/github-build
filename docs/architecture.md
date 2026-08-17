@@ -270,7 +270,10 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **External Dependencies:**
 
+- `active_support/core_ext/hash/keys`
+- `fileutils` (Ruby stdlib, for `atomic_copy_config`)
 - `find` (Ruby stdlib)
+- `psych`
 - `git` CLI (via `git ls-files` for gitignore-aware exclusion)
 
 ### GHB::LinterIgnoreRenderer (Module)
@@ -457,7 +460,15 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(new_workflow:, cron_workflow:, dependencies_steps:, dependencies_commands:)`: Accepts workflow objects and dependency configuration
-- `save`: Removes `.github/dependabot.yml` if present and writes the dependencies workflow
+- `save`: Removes `.github/dependabot.yml` if present (CVE alerts are handled by repository settings), then writes `.github/workflows/dependencies.yml` when the licenses job exists and dependency steps were collected; otherwise removes that workflow so a repo that no longer has dependencies does not keep a stale cron
+
+**Private Methods:**
+
+- `save_dependencies_workflow`: Builds the weekly cron workflow (`0 9 * * 1`) from the collected dependency steps and commands, and removes the legacy `.github/workflows/soup.yml`
+
+**External Dependencies:**
+
+- `fileutils`
 
 ### GHB::DockerhubManager
 
@@ -468,7 +479,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(dockerhub_workflow:)`: Accepts DockerHub workflow object
-- `save`: Configures and writes the DockerHub workflow if `.dockerhub` file exists
+- `save`: Configures and writes `.github/workflows/docker.yml` if a `.dockerhub` file exists. The workflow declares a `contents: read` least-privilege default and the single publish job opts into the scopes `cloud-officer/ci-actions/docker` needs (`attestations: write`, `id-token: write` for build-provenance signing); Docker Hub itself authenticates via `DOCKER_USERNAME` / `DOCKER_PASSWORD`, so `packages: write` is deliberately not requested
 
 ### GHB::GitignoreManager
 
@@ -489,7 +500,9 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **External Dependencies:**
 
+- `active_support/core_ext/hash/keys`
 - `httparty`
+- `psych`
 
 ### GHB::GitignoreRules
 
@@ -547,6 +560,8 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **External Dependencies:**
 
 - `json`
+- `psych`
+- `uri`
 
 ### GHB::Workflow
 
@@ -578,9 +593,14 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(id)`: Creates job with identifier
-- `copy_properties(object, properties)`: Copies properties from another job
+- `copy_properties(object, properties)`: Copies properties from another job, defaulting to `COPYABLE_PROPERTIES`
 - `do_step(name, options, &block)`: DSL method to define steps
+- `do_name`, `do_permissions`, `do_needs`, `do_if`, `do_runs_on`, `do_environment`, `do_concurrency`, `do_outputs`, `do_env`, `do_defaults`, `do_timeout_minutes`, `do_strategy`, `do_continue_on_error`, `do_container`, `do_services`, `do_uses`, `do_with`, `do_secrets`: DSL setters for the job keys
 - `to_h`: Converts job to hash for YAML serialization
+
+**Constants:**
+
+- `COPYABLE_PROPERTIES`: Job keys carried over from a previously generated workflow so hand-made edits survive regeneration (every attribute except `id` and `steps`)
 
 **Attributes:**
 
@@ -597,9 +617,14 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(name, options)`: Creates step with name and optional configuration
-- `copy_properties(object, properties)`: Copies properties from another step
+- `copy_properties(object, properties)`: Copies properties from another step, defaulting to `COPYABLE_PROPERTIES`
+- `do_id`, `do_if`, `do_name`, `do_uses`, `do_run`, `do_shell`, `do_with`, `do_env`, `do_continue_on_error`, `do_timeout_minutes`: DSL setters for the step keys
 - `find_step(steps, step_name)`: Finds a step by name in a list
 - `to_h`: Converts step to hash for YAML serialization
+
+**Constants:**
+
+- `COPYABLE_PROPERTIES`: Step keys carried over from a previously generated workflow (every attribute except `name`, which is the lookup key)
 
 **Attributes:**
 
