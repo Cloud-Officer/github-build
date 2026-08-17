@@ -492,7 +492,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(context:, rules:)`: Accepts a `GHB::BuildContext` and an optional `GHB::GitignoreRules` (defaults to one built from the context)
-- `update`: Detects templates, fetches from API, applies modifications, appends the per-tool AI Assistants sections built from `GHB::GitignoreRules#detect_custom_pattern_groups`, and writes `.gitignore`
+- `update`: Detects templates, fetches from API, applies modifications, appends a single AI Assistants section — one `# BEGIN AI Assistants` / `# END AI Assistants` block whose body holds one blank-line-separated group per tool, built from `GHB::GitignoreRules#detect_custom_pattern_groups` — and writes `.gitignore`
 
 **Internal Dependencies:**
 
@@ -771,7 +771,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 3. For each extension detection entry, checks file extensions using `find_files_matching` (with excluded paths combining config-driven directories from `languages.yaml`, submodules, the `--excluded_folders` option, and gitignored paths), specific files that indicate the technology, and package dependencies in manifest files using pure Ruby regex
 4. Fetches templates from gitignore.io API via HTTParty
 5. Applies project-specific modifications (uncomment JetBrains patterns, comment out conflicting directory patterns like `bin/`, `lib/`, `var/`)
-6. Always appends AI assistant ignore patterns (Claude Code, Claude Code skill review artifacts, Cursor, Copilot, OpenAI Codex) via `detect_custom_pattern_groups` to prevent accidental commits even if the tool isn't actively used, writing one sentinel-delimited section per tool (`# BEGIN AI Assistants` / `# END AI Assistants`) so a tool with several ignore rules stays a single commented block
+6. Always appends AI assistant ignore patterns (Claude Code, Claude Code skill review artifacts, Cursor, Copilot, OpenAI Codex) via `detect_custom_pattern_groups` to prevent accidental commits even if the tool isn't actively used, writing them into one sentinel-delimited section (`# BEGIN AI Assistants` / `# END AI Assistants`) whose body carries one blank-line-separated group per tool, so a tool with several ignore rules stays a single commented block
 7. Preserves custom entries from existing .gitignore, dropping stray hand-added copies of the now-managed patterns so they are not emitted twice
 
 ## Risk controls
