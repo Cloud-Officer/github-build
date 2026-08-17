@@ -353,15 +353,17 @@ module GHB
     def discover_xcode_cloud_checks_from_statuses(github_client, repo_url)
       response = github_client.get("#{repo_url}/commits/#{@default_branch}/status", expected_codes: [200])
       statuses = JSON.parse(response.body)['statuses'] || []
-      xcode_checks = statuses.filter_map do |s|
-        url = s['target_url']
-        next unless url
+      xcode_checks =
+        statuses.filter_map do |s|
+          url = s['target_url']
+          next unless url
 
-        host = URI.parse(url).host
-        s['context'] if host == 'appstoreconnect.apple.com'
-      rescue URI::InvalidURIError
-        nil
-      end.uniq
+          host = URI.parse(url).host
+          s['context'] if host == 'appstoreconnect.apple.com'
+        rescue URI::InvalidURIError
+          nil
+        end
+      xcode_checks.uniq!
 
       if xcode_checks.empty?
         puts('        WARNING: ci_scripts directory exists but no Xcode Cloud checks found on default branch')
