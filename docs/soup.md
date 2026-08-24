@@ -29,7 +29,7 @@
 | Ruby | parallel | 2.1.0 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | parser | 3.3.12.0 | MIT | A Ruby parser written in pure Ruby. | <https://github.com/whitequark/parser> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | prism | 1.9.0 | MIT | Prism Ruby parser | <https://github.com/ruby/prism> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | psych | 5.4.0 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2026-05-22 | Low | Yaml parser | Ruby standard library gem maintained by the Ruby core team |
+| Ruby | psych | 5.5.0 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2026-05-22 | Low | Yaml parser | Ruby standard library gem maintained by the Ruby core team |
 | Ruby | public_suffix | 7.0.5 | MIT | PublicSuffix can parse and decompose a domain name into top level domain, domain and subdomains. | <https://simonecarletti.com/code/publicsuffix-ruby> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | racc | 1.8.1 | Ruby | Racc is an LALR(1) parser generator. | <https://github.com/ruby/racc> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | rainbow | 3.1.1 | MIT | Colorize printed text on ANSI terminals | <https://github.com/sickill/rainbow> | 2026-05-22 | Low | Dependency | Dependency |
@@ -43,7 +43,7 @@
 | Ruby | rubocop | 1.89.0 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2026-05-22 | Low | Ruby linter | Most popular gem on rubygems |
 | Ruby | rubocop-ast | 1.50.0 | MIT | RuboCop's Node and NodePattern classes. | <https://www.rubocop.org/> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | rubocop-capybara | 3.0.0 | MIT | Code style checking for Capybara test files (RSpec, Cucumber, Minitest). | <https://github.com/rubocop/rubocop-capybara> | 2026-05-22 | Low | Ruby linter | Most popular gem |
-| Ruby | rubocop-graphql | 1.7.0 | MIT | A collection of RuboCop cops to improve GraphQL-related code | <https://github.com/DmitryTsepelev/rubocop-graphql> | 2026-05-22 | Low | Ruby linter | Most popular gem |
+| Ruby | rubocop-graphql | 1.8.0 | MIT | A collection of RuboCop cops to improve GraphQL-related code | <https://github.com/DmitryTsepelev/rubocop-graphql> | 2026-05-22 | Low | Ruby linter | Most popular gem |
 | Ruby | rubocop-minitest | 0.40.0 | MIT | Automatic Minitest code style checking tool. | <https://docs.rubocop.org/rubocop-minitest/> | 2026-05-22 | Low | Ruby linter | Most popular gem |
 | Ruby | rubocop-performance | 1.27.0 | MIT | A collection of RuboCop cops to check for performance optimizations | <https://docs.rubocop.org/rubocop-performance/> | 2026-05-22 | Low | A collection of RuboCop cops to check for performance optimizations in Ruby code | Most popular gem |
 | Ruby | rubocop-rspec | 3.10.2 | MIT | Code style checking for RSpec files. | <https://github.com/rubocop/rubocop-rspec> | 2026-05-22 | Low | Code style checking for RSpec files. A plugin for the RuboCop code style enforcing & linting tool | Most popular gem |
@@ -56,4 +56,4 @@
 | Ruby | unicode-display_width | 3.2.0 | MIT | [Unicode 17.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, Emoji specification, and other data. | <https://github.com/janlelis/unicode-display_width> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | unicode-emoji | 4.2.0 | MIT | [Emoji 17.0] Provides Unicode Emoji data and regexes, incorporating the latest Unicode and Emoji standards | <https://github.com/janlelis/unicode-emoji> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | uri | 1.1.1 | Ruby | URI is a module providing classes to handle Uniform Resource Identifiers | <https://github.com/ruby/uri> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | webmock | 3.26.2 | MIT | WebMock allows stubbing HTTP requests and setting expectations on HTTP requests. | <https://github.com/bblimke/webmock> | 2026-05-22 | Low | HTTP request stubbing for tests | Most popular gem |
+| Ruby | webmock | 3.26.3 | MIT | WebMock allows stubbing HTTP requests and setting expectations on HTTP requests. | <https://github.com/bblimke/webmock> | 2026-05-22 | Low | HTTP request stubbing for tests | Most popular gem |
