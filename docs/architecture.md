@@ -143,7 +143,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `validate_option_entries(data, relative_path)`: Validates option config entries
 - `workflow_read`: Reads existing workflow YAML file
 - `workflow_set_defaults`: Sets workflow defaults from existing or new values
-- `collect_required_status_checks`: Collects status checks from generated jobs for branch protection, expanding matrix jobs into the per-combination check names GitHub actually creates (`Job (ubuntu-latest, 3.3)`); a job whose matrix cannot be expanded statically is warned about and skipped
+- `collect_required_status_checks`: Collects status checks from generated jobs for branch protection, expanding matrix jobs into the per-combination check names GitHub actually creates (`Job (ubuntu-latest, 3.3)`); a job whose matrix cannot be expanded statically is warned about and skipped. Called from `execute` immediately after `LanguageJobBuilder` and *before* `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder` and `SlackJobBuilder` run, so only the variables, linter, licenses and unit-test jobs become required checks — deploy and notification jobs are gated by `deploy_if_statement` and must not block a merge
 - `matrix_combinations(matrix)` and its helpers (`symbolize_matrix_keys`, `matrix_control_entries`, `matrix_control_entry`, `expandable_axis?`, `scalar_matrix_value?`, `expand_axes`, `reject_excluded`, `apply_includes`): Expand a job matrix in GitHub's documented order — `exclude:` rows dropped first, then `include:` rows merged — returning `nil` when the matrix carries dynamic or non-scalar values
 - `workflow_write`: Writes the generated workflow to YAML file
 
@@ -389,6 +389,8 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `DEPENDENCY_STEP_TOKEN`: Token exposed to dependency-install steps — the ephemeral, repo-scoped `${{secrets.GITHUB_TOKEN}}` rather than the org-scoped `secrets.GH_PAT`, because install steps execute arbitrary third-party code (postinstall hooks, plugins). It is kept rather than dropped because Tuist's SwiftPM resolution reads it, and it raises the API rate limit to a per-repository budget instead of a shared org-wide one. The other package managers authenticate by other means (Composer github-oauth, Bundler `BUNDLE_GITHUB__COM`, npm/yarn/pnpm `NODE_AUTH_TOKEN`, Carthage `GITHUB_ACCESS_TOKEN`, private sibling repos over SSH)
 - `INJECTED_PAT`: The `${{secrets.GH_PAT}}` reference formerly injected, retained so `drop_injected_pat` can recognise and strip it
 - `SUBDIR_DEPENDENCY_SCAN_DEPTH`: How many directory levels below the repo root a sub-project dependency file may sit and still be detected (2)
+- `SWIFT_DEPLOY_CHECK_FLAGS`: Deploy flags (`DEPLOY_ON_BETA`, `DEPLOY_ON_RC`, `DEPLOY_ON_PROD`, `DEPLOY_MACOS`, `DEPLOY_TVOS`) that extend the Swift unit-test `if:` so the job also runs on deploy triggers
+- `CODEDEPLOY_SETUP_LANGUAGES`: Languages (`go`, `php`) whose dependency steps are also staged as CodeDeploy pre-steps for `CodeDeployJobBuilder`
 
 **Attributes:**
 
@@ -417,6 +419,13 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `initialize(context:)`: Accepts a `GHB::BuildContext`
 - `build`: Creates the three per-environment Vercel CLI deploy jobs (`prod` publishes with `--prod`; `beta`/`rc` deploy a preview build and capture the URL). Generated steps are Setup, Install Vercel CLI, Pull Vercel Environment Information, and Deploy Project to Vercel; any other step on an existing `*_deploy` job (e.g. project-specific `vercel alias` steps) is preserved across regenerations.
+
+**Constants:**
+
+- `DEPLOYS`: The generated deploy jobs, mapping each environment key to its display name and Vercel CLI target (`beta` → "Beta Deploy"/`preview`, `rc` → "RC Deploy"/`preview`, `prod` → "Prod Deploy"/`production`)
+- `GENERATED_STEP_NAMES`: The step names this builder owns; every other step found on an existing `*_deploy` job is treated as a custom step to preserve
+- `NODE_VERSION_FILES`: Version files (`.node-version`, `.nvmrc`) that make the ci-actions setup read the Node version from the repository, so a `node-version` carried over from a previous Setup step is dropped (mirrors `LanguageJobBuilder#build_setup_step`)
+- `DEPLOY_JOB_TIMEOUT_MINUTES`: Timeout for the deploy jobs (60), double the `GHB::DEFAULT_JOB_TIMEOUT_MINUTES` used elsewhere, because a Vercel build runs inside the deploy step
 
 ### GHB::AwsJobBuilder
 
@@ -740,7 +749,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 1. Validates `GITHUB_TOKEN` environment variable is present
 2. Retrieves current repository info to check visibility (public/private) via `GitHubAPIClient`
 3. Gets current branch protection via GitHub API (handles 404 for new repos without protection)
-4. Augments the checks collected from generated workflow jobs (matrix jobs already expanded into their per-combination check names by `GHB::Application#collect_required_status_checks`) with a `Vercel` check (when `package.json` declares `"next"`) and the job names of a hand-maintained `.github/workflows/smoke.yml`. CodeQL languages are logged for visibility only — CodeQL default setup runs in "smart mode" and is intentionally not made a required check
+4. Augments the checks collected from generated workflow jobs (the variables, linter, licenses and unit-test jobs only — deploy and notification jobs are built after collection and are deliberately not required; matrix jobs already expanded into their per-combination check names by `GHB::Application#collect_required_status_checks`) with a `Vercel` check (when `package.json` declares `"next"`) and the job names of a hand-maintained `.github/workflows/smoke.yml`. CodeQL languages are logged for visibility only — CodeQL default setup runs in "smart mode" and is intentionally not made a required check
 5. Discovers Xcode Cloud checks dynamically when `ci_scripts` directory exists: extracts from existing branch protection or from commit statuses on the default branch for new repos
 6. Validates existing checks match expected checks (only for existing protection); on mismatch, raises an error unless `--sync_required_status_checks` is set, in which case the remote check list is rebuilt from `expected_checks` while preserving `app_id` values for existing entries (so integration-specific configurations such as Xcode Cloud checks are not clobbered)
 7. Builds the protection payload, preserving existing dismissal restrictions and bypass allowances while dropping entries GitHub returns without a `login`/`slug` so the request body never contains a `[null]` users/teams array

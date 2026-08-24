@@ -228,8 +228,8 @@ peter-evans/create-pull-request: v8
 
 ### Feature Triggers
 
-Certain features are automatically activated based on the presence of specific files or directories in the repository
-root. No CLI flags are needed for these; they are detected on every run.
+Certain features are automatically activated based on the presence of specific files or directories in the
+repository. No CLI flags are needed for these; they are detected on every run.
 
 | File / Directory | Effect | How to Disable |
 | ---------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------- |
@@ -238,6 +238,7 @@ root. No CLI flags are needed for these; they are detected on every run.
 | `vercel.json` (or a `"vercel"`/`"next"` dependency in `package.json`) | Adds Vercel deployment jobs (`beta_deploy`, `rc_deploy`, `prod_deploy`) driving the Vercel CLI. Ignored when `appspec.yml` is present (CodeDeploy wins). Custom steps such as `vercel alias` are preserved across regenerations | Remove `vercel.json` and the `vercel`/`next` dependency |
 | `.dockerhub` | Generates a separate Docker Hub workflow (`.github/workflows/docker.yml`) that pushes images on tag events | Remove the `.dockerhub` file |
 | `ci_scripts/` | Adds `Xcode` to the expected branch protection status checks and, for Swift projects, drops the `Swift Unit Tests` job since Xcode Cloud runs the tests (dependency information is still collected) | Remove the `ci_scripts/` directory |
+| `.github/workflows/smoke.yml` | Adds that hand-maintained workflow's job names to the expected branch protection status checks so they stay required across regenerations. The workflow itself is never generated or modified | Remove `.github/workflows/smoke.yml` |
 
 ### Required Secrets
 
