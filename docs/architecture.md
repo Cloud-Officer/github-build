@@ -656,6 +656,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `config/options/redis.yaml`: Redis service version and settings
 - `config/options/elasticsearch.yaml`: Elasticsearch service version and settings
 - `config/linters/`: Bundled linter config templates copied or symlinked into target repositories by `GHB::LinterJobBuilder` (`.rubocop.yml`, `.eslintrc.json`, `.flake8`, `.bandit`, `.yamllint.yml`, `.pmd.xml`, `.semgrepignore`, `.cfnlintrc`, `.swiftlint.yml`, `trivy.yaml`, `.trivyignore`, `.golangci.yml`, `.hadolint.yaml`, `.protolint.yaml`, `.markdownlint-cli2.yaml`, `.shellcheckrc`, `.editorconfig`). The subset listed in `GHB::LinterIgnoreRenderer::FORMATS` has its excluded-dirs block regenerated on copy
+- `config/linters/.trivyignore`: Shared baseline of Trivy IDs (CVE, secret and misconfiguration check IDs are all accepted) suppressed in every repository, each annotated with the reason it is wrong or unfixable everywhere. Unlike `trivy.yaml` it is not merge-managed: it is symlinked from the scripts submodule's or a local `linters/` directory when present, otherwise copied fresh from the bundled template on each run, so repo-local additions to it do not survive a rebuild. Repo-specific exclusions belong in that repo's `trivy.yaml`, outside the managed `ghb:excluded-dirs` block
 
 ### bin/update_versions.sh
 
