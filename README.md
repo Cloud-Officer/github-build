@@ -18,10 +18,11 @@ This is a GitHub Action build file generator. It will detect and enable linters,
 languages including dependencies like mongodb, mysql, redis and elasticsearch, enable the unit tests framework, enable CodeDeploy,
 detect custom AWS and Vercel deployments and enable Slack notification.
 
-Alongside `.github/workflows/build.yml`, it generates the companion workflows `dependencies.yml` (weekly cron
-dependency updates), `auto-approve.yml` (approves pull requests opened by code owners) and, when a `.dockerhub`
-file is present, `docker.yml`. Any legacy `.github/dependabot.yml` is removed, as CVE alerts are handled through
-the repository settings instead.
+Alongside `.github/workflows/build.yml`, it generates the companion workflows `auto-approve.yml` (approves pull
+requests opened by code owners), `dependencies.yml` (weekly cron dependency updates, generated only when the
+license check job is enabled and at least one dependency update command was detected — otherwise it is removed)
+and, when a `.dockerhub` file is present, `docker.yml`. Any legacy `.github/dependabot.yml` or
+`.github/workflows/soup.yml` is removed, as CVE alerts are handled through the repository settings instead.
 
 It will also update the `.gitignore` file and check the repository settings.
 
