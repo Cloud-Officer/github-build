@@ -30,5 +30,9 @@ AWS-0098
 AWS-0132
 # Central log-destination buckets cannot log to themselves; all other buckets have access logging enabled.
 AWS-0089
-# Multi-Factor authentication is not enforced for group; it is, but Trivy wants an inline policy and we use a customer managed one
+# MFA is not enforced on the generated groups. A blanket deny under Bool aws:MultiFactorAuthPresent=false does not
+# match long-term access keys (the key is absent from their request context) but does match the temporary credentials
+# of forwarded service sessions, so it blocked every write to an SSE-KMS bucket while stopping nothing. Enforcing MFA
+# for real requires BoolIfExists plus an aws:ViaAWSService exemption and moving automation off static keys; until then
+# this stays suppressed rather than shipping a policy that only breaks deploys.
 AWS-0123
