@@ -196,15 +196,31 @@ kotlin:
       value:
     - name: java-architecture
       value:
-    - name: java-jdkFile
+    - name: java-jdk-file
       value:
     - name: java-check-latest
       value:
+    - name: java-force-download
+      value:
+    - name: java-set-default
+      value:
+    - name: java-verify-signature
+      value:
+    - name: java-verify-signature-public-key
+      value:
     - name: java-server-id
       value:
-    - name: java-server-username
+    - name: java-server-username-env-var
       value:
-    - name: java-server-password
+    - name: java-server-password-env-var
+      value:
+    - name: java-mvn-server-credentials
+      value:
+    - name: java-mvn-repositories
+      value:
+    - name: java-mvn-repositories-include-central
+      value:
+    - name: java-mvn-repositories-prioritize-central
       value:
     - name: java-settings-path
       value:
@@ -212,11 +228,17 @@ kotlin:
       value:
     - name: java-gpg-private-key
       value:
-    - name: java-gpg-passphrase
+    - name: java-gpg-passphrase-env-var
       value:
     - name: java-cache
       value:
+    - name: java-cache-jdk
+      value:
     - name: java-cache-dependency-path
+      value:
+    - name: java-cache-path
+      value:
+    - name: java-cache-read-only
       value:
     - name: java-job-status
       value:
@@ -225,6 +247,10 @@ kotlin:
     - name: java-mvn-toolchain-id
       value:
     - name: java-mvn-toolchain-vendor
+      value:
+    - name: java-show-download-progress
+      value:
+    - name: java-problem-matcher
       value:
     - name: android-sdk-version
       value: 36
