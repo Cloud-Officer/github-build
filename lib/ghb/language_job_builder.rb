@@ -62,6 +62,10 @@ module GHB
       @dependencies_steps = []
       @dependencies_commands = dependencies_commands
       @dependencies_commands_additions = []
+      # Package managers marked `package_manager_once` that have already emitted an
+      # install step in this job, so a system-wide tool install is not repeated per
+      # detected sub-project. Scoped to the builder, which is per language job.
+      @installed_once = []
     end
 
     def build
@@ -323,6 +327,7 @@ module GHB
         next unless File.file?(dependency[:dependency_file])
 
         dependency_detected = true
+        @installed_once << dependency[:package_manager_name] if dependency[:package_manager_once]
 
         job.do_step(dependency[:package_manager_name]) do
           copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
@@ -354,15 +359,37 @@ module GHB
         dep = loc[:dependency]
         subdir = loc[:subdir]
 
-        job.do_step("#{dep[:package_manager_name]} (#{subdir})") do
-          copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
-          do_shell('bash')
-          do_run("cd #{subdir} && #{dep[:package_manager_default]}") if run.nil?
-          env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
-          # Sub-project update commands run from the repo root in a single combined
-          # block, so each must cd into its own folder; a subshell keeps the cwd
-          # local so the next command still starts from the root.
-          dependencies_commands_additions << "(cd #{subdir} && #{dep[:package_manager_update]})" if dep[:package_manager_update]
+        # `package_manager_once` marks a dependency whose command installs a tool
+        # system-wide rather than that sub-project's dependencies -- shell_script's
+        # `.bats` is a zero-byte marker and the command installs the bats runner
+        # itself. Every other ecosystem's command (npm install, composer install,
+        # bundle install, pip install -r) resolves a manifest in its own directory,
+        # so repeating it per sub-project is required. Emitting a system-wide
+        # install once per detected directory only repeats `apt-get update` on the
+        # same runner and multiplies the chances of a transient apt failure.
+        if dep[:package_manager_once]
+          unless @installed_once.include?(dep[:package_manager_name])
+            @installed_once << dep[:package_manager_name]
+
+            job.do_step(dep[:package_manager_name]) do
+              copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
+              do_shell('bash')
+              do_run(dep[:package_manager_default]) if run.nil?
+              env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
+              dependencies_commands_additions << dep[:package_manager_update] if dep[:package_manager_update]
+            end
+          end
+        else
+          job.do_step("#{dep[:package_manager_name]} (#{subdir})") do
+            copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
+            do_shell('bash')
+            do_run("cd #{subdir} && #{dep[:package_manager_default]}") if run.nil?
+            env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
+            # Sub-project update commands run from the repo root in a single combined
+            # block, so each must cd into its own folder; a subshell keeps the cwd
+            # local so the next command still starts from the root.
+            dependencies_commands_additions << "(cd #{subdir} && #{dep[:package_manager_update]})" if dep[:package_manager_update]
+          end
         end
 
         job.do_step("#{language[:unit_test_framework_name]} (#{subdir})") do

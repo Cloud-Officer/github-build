@@ -45,6 +45,11 @@
 #                                           opensearch_dependency:      string to grep for OpenSearch
 #                                           package_manager_name:       display name for workflow steps
 #                                           package_manager_default:    install command
+#                                           package_manager_once:       true when package_manager_default
+#                                                                       installs a tool system-wide rather
+#                                                                       than this directory's dependencies,
+#                                                                       so the step is emitted once per job
+#                                                                       instead of once per sub-project
 #                                           package_manager_update:     update command (used in cron job)
 #                                           dependabot_ecosystem:       Dependabot ecosystem identifier
 #                                           cache_name:                 value the language's cache_option
@@ -443,6 +448,10 @@ shell_script:
   dependencies:
     - dependency_file: .bats
       package_manager_name: Bats Install
+      # .bats is a zero-byte marker, not a manifest, and the command below installs
+      # the bats runner system-wide rather than this directory's dependencies. Emit
+      # it once per job instead of once per detected sub-project.
+      package_manager_once: true
       package_manager_default: |-
         if [[ "$RUNNER_OS" == "macOS" ]]; then
           brew install bats-core
