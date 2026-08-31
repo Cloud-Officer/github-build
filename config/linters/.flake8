@@ -1,5 +1,9 @@
 [flake8]
-ignore = E501,W503,D200,D202,D204,D205,D210,D400,D401,D403,E402
+# D100-D107 (the "missing docstring" family) are ignored deliberately: flake8-docstrings
+# is installed by linters/flake8, so the remaining D codes are real docstring-quality
+# checks, but requiring a docstring on every module/class/method/function is a
+# documentation policy call rather than a lint fix.
+ignore = E501,W503,D100,D101,D102,D103,D104,D105,D106,D107,D200,D202,D204,D205,D210,D400,D401,D403,E402
 # ghb:excluded-dirs:start - managed by github-build from config/languages.yaml; do not edit by hand
 extend-exclude = .build,.bundle,.git,.gradle,.hg,.m2,.npm,.pnpm,.pytest_cache,.svn,.venv,.yarn,__pycache__,build,Carthage,coverage,DerivedData,dist,env,Libraries,node_modules,Pods,target,vendor,venv
 # ghb:excluded-dirs:end

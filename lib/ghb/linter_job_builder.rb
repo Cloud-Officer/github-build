@@ -201,7 +201,12 @@ module GHB
             do_with(default_with)
           end
 
+          # github-token stays the PAT: the linter action's own actions/checkout needs it
+          # for private cross-repo submodules. reviewdog only posts PR comments, so it gets
+          # the job's own GITHUB_TOKEN -- scoped to this repo and expiring with the job --
+          # rather than a long-lived org credential handed to a third-party action.
           with[:'github-token'] = '${{secrets.GH_PAT}}'
+          with[:'reviewdog-token'] = '${{secrets.GITHUB_TOKEN}}' if linter[:reviewdog]
         end
       end
     end
