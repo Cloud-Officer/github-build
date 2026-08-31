@@ -1,0 +1,17 @@
+---
+# OpenSearch Service Options
+#
+# Options for the OpenSearch service, added when a language's dependency file
+# contains the opensearch_dependency string (e.g., "opensearch" in go.mod or package.json).
+#
+# Each option's name is converted to an uppercase environment variable
+# and passed to the cloud-officer/ci-actions/setup@v2 action.
+# Empty values mean the option is not set (service defaults apply).
+
+options:
+  # OpenSearch server version
+  - name: opensearch-version
+    value: 3.5
+  # Comma-separated list of plugins to install
+  - name: opensearch-plugins
+    value:

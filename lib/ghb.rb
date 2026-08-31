@@ -19,7 +19,7 @@ module GHB
   # language's Setup step. Everything per-service (default config file path, CLI flag,
   # config validation entry, YAML loading and dependency detection) is derived from this
   # list, so adding a service means adding one symbol here plus its config/options file.
-  SERVICES = %i[apt mongodb mysql redis elasticsearch].freeze
+  SERVICES = %i[apt mongodb mysql redis opensearch].freeze
   # Services applied to every detected language, without any dependency-file detection.
   ALWAYS_ENABLED_SERVICES = %i[apt].freeze
   # Services enabled only when a language dependency file mentions their marker string
@@ -27,7 +27,7 @@ module GHB
   DETECTABLE_SERVICES = (SERVICES - ALWAYS_ENABLED_SERVICES).freeze
   # Display names used in the `--options-<service>` help text; anything absent falls
   # back to a capitalized service name (e.g. redis -> Redis).
-  SERVICE_DISPLAY_NAMES = { apt: 'APT', mongodb: 'MongoDB', mysql: 'MySQL', elasticsearch: 'Elasticsearch' }.freeze
+  SERVICE_DISPLAY_NAMES = { apt: 'APT', mongodb: 'MongoDB', mysql: 'MySQL', opensearch: 'OpenSearch' }.freeze
   DEFAULT_UBUNTU_VERSION = 'ubuntu-latest'
   DEFAULT_MACOS_VERSION = 'macos-26'
   DEFAULT_JOB_TIMEOUT_MINUTES = 30

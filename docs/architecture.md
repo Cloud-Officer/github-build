@@ -111,7 +111,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `DEFAULT_GITIGNORE_CONFIG_FILE`: Path to gitignore configuration
 - `DEFAULT_LANGUAGES_CONFIG_FILE`: Path to languages configuration
 - `DEFAULT_LINTERS_CONFIG_FILE`: Path to linters configuration
-- `SERVICES`: Registry of supported services (`apt`, `mongodb`, `mysql`, `redis`, `elasticsearch`); config file paths, CLI flags, config validation entries and dependency detection are all derived from it, so adding a service means adding one symbol plus a `config/options/<service>.yaml` file
+- `SERVICES`: Registry of supported services (`apt`, `mongodb`, `mysql`, `redis`, `opensearch`); config file paths, CLI flags, config validation entries and dependency detection are all derived from it, so adding a service means adding one symbol plus a `config/options/<service>.yaml` file
 - `ALWAYS_ENABLED_SERVICES`: Services applied to every detected language without dependency detection (`apt`)
 - `DETECTABLE_SERVICES`: Services enabled only when a language dependency file contains their marker string
 - `service_config_file(service)`: Default options file path for a service (`config/options/<service>.yaml`)
@@ -380,7 +380,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(context:, unit_tests_conditions:, dependencies_commands:)`: Accepts a `GHB::BuildContext` plus the unit-test conditions and accumulated dependency commands
-- `build`: Detects languages, checks for database dependencies (MongoDB, MySQL, Redis, Elasticsearch), validates versions, and creates test jobs. For Swift projects with Xcode Cloud (`ci_scripts` directory), removes the unit test job from the workflow while still collecting dependency info
+- `build`: Detects languages, checks for database dependencies (MongoDB, MySQL, Redis, OpenSearch), validates versions, and creates test jobs. For Swift projects with Xcode Cloud (`ci_scripts` directory), removes the unit test job from the workflow while still collecting dependency info
 - `self.drop_injected_pat(env)`: Deletes a step's `GITHUB_TOKEN` entry only when its value is exactly the PAT reference this tool used to inject, so workflows generated before the fix self-heal on regeneration while a token the user set deliberately is left alone
 - `cache_setup_options(language, detected_dependencies)`: For a language that opted in via `cache_option`/`cache_dependency_path_option` in `config/languages.yaml`, derives the dependency-cache pair from the lockfiles actually found — the cache value from the detected package manager's `cache_name` (npm/yarn/pnpm), the dependency path from every lockfile path, root and sub-project alike. The two are always emitted together: a bare `cache:` makes the setup action look only at the repo root and fail with "Dependencies lock file is not found" in a repo whose lockfile sits in a sub-project. Caching is left off when no package manager is cacheable or when two are detected, since the setup actions accept only one. Unlike the other setup options, the cache pair is applied to the Setup step even when its `with:` was inherited non-empty from a previously generated workflow — otherwise the cache would stay dead in every existing repo
 
@@ -654,7 +654,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `config/options/mongodb.yaml`: MongoDB service version and settings
 - `config/options/mysql.yaml`: MySQL service version and settings
 - `config/options/redis.yaml`: Redis service version and settings
-- `config/options/elasticsearch.yaml`: Elasticsearch service version and settings
+- `config/options/opensearch.yaml`: OpenSearch service version and settings
 - `config/linters/`: Bundled linter config templates copied or symlinked into target repositories by `GHB::LinterJobBuilder` (`.rubocop.yml`, `.eslintrc.json`, `.flake8`, `.bandit`, `.yamllint.yml`, `.pmd.xml`, `.semgrepignore`, `.cfnlintrc`, `.swiftlint.yml`, `trivy.yaml`, `.trivyignore`, `.golangci.yml`, `.hadolint.yaml`, `.protolint.yaml`, `.markdownlint-cli2.yaml`, `.shellcheckrc`, `.editorconfig`). The subset listed in `GHB::LinterIgnoreRenderer::FORMATS` has its excluded-dirs block regenerated on copy
 - `config/linters/.trivyignore`: Shared baseline of Trivy IDs (CVE, secret and misconfiguration check IDs are all accepted) suppressed in every repository, each annotated with the reason it is wrong or unfixable everywhere. Unlike `trivy.yaml` it is not merge-managed: it is symlinked from the scripts submodule's or a local `linters/` directory when present, otherwise copied fresh from the bundled template on each run, so repo-local additions to it do not survive a rebuild. Repo-specific exclusions belong in that repo's `trivy.yaml`, outside the managed `ghb:excluded-dirs` block
 
@@ -731,7 +731,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 2. For each language entry (skipping non-Hash values like `excluded_dirs`), uses pure Ruby `find_files_matching` to search for files matching the language's file extension
 3. Verifies dependency files exist (e.g., `go.mod`, `package.json`)
 4. Scans up to two directory levels below the repo root for sub-project dependency files (excluding vendored/ignored directories) and generates per-subdirectory package manager and test steps
-5. Checks dependency files (including sub-project files) for database dependencies (MongoDB, MySQL, Redis, Elasticsearch) using `file_contains?`
+5. Checks dependency files (including sub-project files) for database dependencies (MongoDB, MySQL, Redis, OpenSearch) using `file_contains?`
 6. Detects version files (`.ruby-version`, `.nvmrc`, etc.) and validates against recommended versions
 7. Merges setup options with version validation (strict mode auto-updates version files and env vars to recommended values, non-strict warns)
 8. Creates unit test workflow job with appropriate setup, package manager, and test steps

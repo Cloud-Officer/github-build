@@ -15,7 +15,7 @@
 ## Introduction
 
 This is a GitHub Action build file generator. It will detect and enable linters, enable license check, detect the
-languages including dependencies like mongodb, mysql, redis and elasticsearch, enable the unit tests framework, enable CodeDeploy,
+languages including dependencies like mongodb, mysql, redis and opensearch, enable the unit tests framework, enable CodeDeploy,
 detect custom AWS and Vercel deployments and enable Slack notification.
 
 Alongside `.github/workflows/build.yml`, it generates the companion workflows `auto-approve.yml` (approves pull
@@ -62,7 +62,7 @@ options
         --options-mongodb file       Path to MongoDB options file
         --options-mysql file         Path to MySQL options file
         --options-redis file         Path to Redis options file
-        --options-elasticsearch file Path to Elasticsearch options file
+        --options-opensearch file    Path to OpenSearch options file
         --application_name application_name
                                      Name of the CodeDeploy application
         --organization organization  GitHub organization
@@ -185,7 +185,7 @@ ruby:
   unit_test_framework_default: bundle exec rspec
 ```
 
-#### Service options (`--options-apt`, `--options-mongodb`, `--options-mysql`, `--options-redis`, `--options-elasticsearch`)
+#### Service options (`--options-apt`, `--options-mongodb`, `--options-mysql`, `--options-redis`, `--options-opensearch`)
 
 Each file has a top-level `options:` list; every entry **must** define `name` (an optional `value` becomes the
 default). These map to environment variables consumed by the generated setup step.

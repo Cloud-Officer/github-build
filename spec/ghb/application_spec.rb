@@ -18,7 +18,7 @@ RSpec.describe(GHB::Application) do
         GHB::Options,
         linters_config_file: 'config/linters.yaml',
         languages_config_file: 'config/languages.yaml',
-        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' },
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' },
         gitignore_config_file: 'config/gitignore.yaml'
       )
     end
@@ -35,7 +35,7 @@ RSpec.describe(GHB::Application) do
         GHB::Options,
         linters_config_file: 'config/nonexistent.yaml',
         languages_config_file: 'config/languages.yaml',
-        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' },
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' },
         gitignore_config_file: 'config/gitignore.yaml'
       )
       config_app = config_test_class.new(bad_options)
@@ -154,7 +154,7 @@ RSpec.describe(GHB::Application) do
         GHB::Options,
         linters_config_file: 'custom/path/linters.yaml',
         languages_config_file: 'config/languages.yaml',
-        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' },
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' },
         gitignore_config_file: 'config/gitignore.yaml'
       )
       config_app = config_test_class.new(bad_options)

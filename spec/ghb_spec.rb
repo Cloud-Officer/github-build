@@ -8,13 +8,13 @@ RSpec.describe(GHB) do
     end
 
     it 'exposes the service registry', :aggregate_failures do
-      expect(described_class::SERVICES).to(eq(%i[apt mongodb mysql redis elasticsearch]))
+      expect(described_class::SERVICES).to(eq(%i[apt mongodb mysql redis opensearch]))
       expect(described_class::SERVICES).to(be_frozen)
     end
 
     it 'splits the registry into always enabled and detectable services', :aggregate_failures do
       expect(described_class::ALWAYS_ENABLED_SERVICES).to(eq(%i[apt]))
-      expect(described_class::DETECTABLE_SERVICES).to(eq(%i[mongodb mysql redis elasticsearch]))
+      expect(described_class::DETECTABLE_SERVICES).to(eq(%i[mongodb mysql redis opensearch]))
       expect(described_class::ALWAYS_ENABLED_SERVICES + described_class::DETECTABLE_SERVICES).to(match_array(described_class::SERVICES))
     end
 
@@ -34,7 +34,7 @@ RSpec.describe(GHB) do
       expect(described_class.service_display_name(:apt)).to(eq('APT'))
       expect(described_class.service_display_name(:mongodb)).to(eq('MongoDB'))
       expect(described_class.service_display_name(:mysql)).to(eq('MySQL'))
-      expect(described_class.service_display_name(:elasticsearch)).to(eq('Elasticsearch'))
+      expect(described_class.service_display_name(:opensearch)).to(eq('OpenSearch'))
     end
 
     it 'falls back to a capitalized name for services absent from the table', :aggregate_failures do
