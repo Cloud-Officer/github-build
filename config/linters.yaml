@@ -37,6 +37,9 @@
 #   content_match_pattern (string, optional) - When set, `content_match` only applies to files
 #                                         matching this sub-pattern. Other files pass through
 #                                         unconditionally. If omitted, `content_match` applies to all files
+#   reviewdog        (bool, optional)   - Linter reports through reviewdog, so the generated
+#                                         step is given reviewdog-token (the job's GITHUB_TOKEN)
+#                                         instead of letting the org PAT reach that third-party action
 #   permissions      (hash, optional)   - Job-level GitHub Actions permissions override
 #                                         (e.g., {actions: read, contents: read})
 #   directory        (string, optional) - Additional directory hint for the linter
@@ -44,6 +47,7 @@
 actionlint:
   short_name: Actionlint
   long_name: Github Actions Linter
+  reviewdog: true
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/actionlint
   config:
@@ -70,6 +74,7 @@ cfnlint:
 eslint:
   short_name: ESLint
   long_name: JavaScript ES Linter
+  reviewdog: true
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/eslint
   config: ".eslintrc.json"
@@ -83,6 +88,7 @@ eslint:
 flake8:
   short_name: Flake8
   long_name: Python Flake8 Linter
+  reviewdog: true
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/flake8
   config: ".flake8"
@@ -91,6 +97,7 @@ flake8:
 golangci:
   short_name: Golangci-lint
   long_name: Go Linter
+  reviewdog: true
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/golangci
   config: ".golangci.yml"
@@ -99,6 +106,7 @@ golangci:
 hadolint:
   short_name: Hadolint
   long_name: Docker Linter
+  reviewdog: true
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/hadolint
   config: ".hadolint.yaml"
@@ -107,6 +115,7 @@ hadolint:
 ktlint:
   short_name: KTLint
   long_name: Kotlin Linter
+  reviewdog: true
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/ktlint
   config: ".editorconfig"
@@ -116,6 +125,7 @@ ktlint:
 markdownlint:
   short_name: Markdownlint
   long_name: Markdown Linter
+  reviewdog: true
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/markdownlint
   config: ".markdownlint-cli2.yaml"
@@ -138,6 +148,7 @@ phpstan:
 pmd:
   short_name: PMD
   long_name: Java Linter
+  reviewdog: true
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/pmd
   config: ".pmd.xml"
@@ -146,6 +157,7 @@ pmd:
 protolint:
   short_name: Protolint
   long_name: Protocol Buffer Linter
+  reviewdog: true
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/protolint
   config: ".protolint.yaml"
@@ -154,6 +166,7 @@ protolint:
 rubocop:
   short_name: Rubocop
   long_name: Ruby Linter
+  reviewdog: true
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/rubocop
   config: ".rubocop.yml"
@@ -176,6 +189,7 @@ semgrep:
 shellcheck:
   short_name: ShellCheck
   long_name: Shell Scripts Linter
+  reviewdog: true
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/shellcheck
   config: ".shellcheckrc"
@@ -184,6 +198,7 @@ shellcheck:
 swiftlint:
   short_name: Swiftlint
   long_name: Swift Linter
+  reviewdog: true
   uses: cloud-officer/ci-actions/linters/swiftlint
   config: ".swiftlint.yml"
   path: "."
@@ -208,6 +223,7 @@ trivy:
 yamllint:
   short_name: Yamllint
   long_name: YAML Linter
+  reviewdog: true
   condition: "github.event_name == 'pull_request'"
   uses: cloud-officer/ci-actions/linters/yamllint
   config: ".yamllint.yml"
