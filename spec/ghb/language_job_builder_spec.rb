@@ -16,7 +16,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       force_codedeploy_setup: false,
       strict_version_check: true,
       languages_config_file: 'config/languages.yaml',
-      options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' }
+      options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' }
     )
   end
 
@@ -48,7 +48,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
             mongodb_dependency: 'mongodb',
             mysql_dependency: 'sql',
             redis_dependency: 'redis',
-            elasticsearch_dependency: 'elasticsearch',
+            opensearch_dependency: 'opensearch',
             package_manager_name: 'Go Modules',
             package_manager_default: 'go mod vendor',
             package_manager_update: 'go mod tidy',
@@ -90,7 +90,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
   let(:mongodb_config_yaml)       { Psych.dump({ options: [{ name: 'mongodb-version', value: '8.0.0' }] }.deep_stringify_keys)              }
   let(:mysql_config_yaml)         { Psych.dump({ options: [{ name: 'mysql-version', value: '8.0' }] }.deep_stringify_keys)                  }
   let(:redis_config_yaml)         { Psych.dump({ options: [{ name: 'redis-version', value: '8.2' }] }.deep_stringify_keys)                  }
-  let(:elasticsearch_config_yaml) { Psych.dump({ options: [{ name: 'elasticsearch-version', value: '7.10' }] }.deep_stringify_keys)         }
+  let(:opensearch_config_yaml)    { Psych.dump({ options: [{ name: 'opensearch-version', value: '3.5' }] }.deep_stringify_keys)             }
 
   let(:swift_only_config) do
     {
@@ -216,15 +216,15 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(new_workflow.env).to(have_key(:'REDIS-VERSION'))
     end
 
-    it 'sets up elasticsearch options when dependency file contains elasticsearch string' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+    it 'sets up opensearch options when dependency file contains opensearch string' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       stub_config_file_reads(go_language_yaml)
       stub_go_language_detection
-      allow(builder).to(receive(:file_contains?).with('go.mod', 'elasticsearch').and_return(true))
+      allow(builder).to(receive(:file_contains?).with('go.mod', 'opensearch').and_return(true))
 
       builder.build
 
       expect(new_workflow.jobs).to(have_key(:go_unit_tests))
-      expect(new_workflow.env).to(have_key(:'ELASTICSEARCH-VERSION'))
+      expect(new_workflow.env).to(have_key(:'OPENSEARCH-VERSION'))
     end
 
     it 'uses version file when it exists instead of setup option value' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
@@ -361,7 +361,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         force_codedeploy_setup: false,
         strict_version_check: false,
         languages_config_file: 'config/languages.yaml',
-        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' }
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' }
       )
 
       non_strict_builder = described_class.new(
@@ -398,7 +398,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         force_codedeploy_setup: true,
         strict_version_check: true,
         languages_config_file: 'config/languages.yaml',
-        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' }
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' }
       )
 
       codedeploy_builder = described_class.new(
@@ -435,7 +435,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         force_codedeploy_setup: false,
         strict_version_check: false,
         languages_config_file: 'config/languages.yaml',
-        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' }
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' }
       )
 
       env_mismatch_workflow = GHB::Workflow.new('CI')
@@ -522,7 +522,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         force_codedeploy_setup: false,
         strict_version_check: true,
         languages_config_file: 'config/languages.yaml',
-        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', elasticsearch: 'config/options/elasticsearch.yaml' }
+        options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' }
       )
 
       license_builder = described_class.new(
@@ -914,7 +914,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     allow(builder).to(receive(:cached_file_read).with(/mongodb\.yaml/).and_return(mongodb_config_yaml))
     allow(builder).to(receive(:cached_file_read).with(/mysql\.yaml/).and_return(mysql_config_yaml))
     allow(builder).to(receive(:cached_file_read).with(/redis\.yaml/).and_return(redis_config_yaml))
-    allow(builder).to(receive(:cached_file_read).with(/elasticsearch\.yaml/).and_return(elasticsearch_config_yaml))
+    allow(builder).to(receive(:cached_file_read).with(/opensearch\.yaml/).and_return(opensearch_config_yaml))
   end
 
   def stub_go_language_detection
@@ -950,6 +950,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     allow(target_builder).to(receive(:cached_file_read).with(/mongodb\.yaml/).and_return(mongodb_config_yaml))
     allow(target_builder).to(receive(:cached_file_read).with(/mysql\.yaml/).and_return(mysql_config_yaml))
     allow(target_builder).to(receive(:cached_file_read).with(/redis\.yaml/).and_return(redis_config_yaml))
-    allow(target_builder).to(receive(:cached_file_read).with(/elasticsearch\.yaml/).and_return(elasticsearch_config_yaml))
+    allow(target_builder).to(receive(:cached_file_read).with(/opensearch\.yaml/).and_return(opensearch_config_yaml))
   end
 end

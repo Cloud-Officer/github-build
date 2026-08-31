@@ -64,8 +64,8 @@ case "${url}" in
     fi ;;
   *actions-setup-redis*)
     printf '[{"version":"8.1.0"},{"version":"7.2.5"}]\n' ;;
-  *elastic/elasticsearch/releases*)
-    printf '[{"tag_name":"v9.1.2"},{"tag_name":"v8.19.0"}]\n' ;;
+  *opensearch-project/OpenSearch/releases*)
+    printf '[{"tag_name":"3.8.0"},{"tag_name":"3.7.0"}]\n' ;;
   *)
     echo "unexpected url: ${url}" >&2; exit 1 ;;
 esac
@@ -82,7 +82,9 @@ case "$1" in
   docdb)       printf '5.0.0\t4.0.0\n' ;;
   rds)         printf '8.0.mysql_aurora.3.05.2\t5.7.mysql_aurora.2.11.4\n' ;;
   elasticache) printf '8.1.0\t7.2.6\n' ;;
-  opensearch)  printf 'Elasticsearch_7.10\tOpenSearch_2.13\tElasticsearch_8.1\n' ;;
+  # Elasticsearch_ entries are deliberate: 8.1 sorts above every OpenSearch_ entry,
+  # so this fixture fails if the filter ever tracks that lineage again.
+  opensearch)  printf 'Elasticsearch_7.10\tOpenSearch_2.13\tElasticsearch_8.1\tOpenSearch_3.5\n' ;;
   *)           echo "unexpected aws command: $1" >&2; exit 1 ;;
 esac
 EOF
@@ -142,7 +144,7 @@ value_of() {
   [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "5.0.31" ]
   [ "$(value_of config/options/mysql.yaml options mysql-version)" = "9.2" ]
   [ "$(value_of config/options/redis.yaml options redis-version)" = "8.1.1" ]
-  [ "$(value_of config/options/elasticsearch.yaml options elasticsearch-version)" = "9.1.2" ]
+  [ "$(value_of config/options/opensearch.yaml options opensearch-version)" = "3.8" ]
 }
 
 @test "the rewritten config files stay valid two-space YAML" {
@@ -158,7 +160,7 @@ value_of() {
   [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "5.0.0" ]
   [ "$(value_of config/options/mysql.yaml options mysql-version)" = "8.0" ]
   [ "$(value_of config/options/redis.yaml options redis-version)" = "8.1.0" ]
-  [ "$(value_of config/options/elasticsearch.yaml options elasticsearch-version)" = "8.1" ]
+  [ "$(value_of config/options/opensearch.yaml options opensearch-version)" = "3.5" ]
 }
 
 @test "a failing aws CLI falls back to the public sources instead of aborting" {
@@ -167,7 +169,7 @@ value_of() {
   run "${SCRIPT}"
   [ "${status}" -eq 0 ]
   [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "5.0.31" ]
-  [ "$(value_of config/options/elasticsearch.yaml options elasticsearch-version)" = "9.1.2" ]
+  [ "$(value_of config/options/opensearch.yaml options opensearch-version)" = "3.8" ]
 }
 
 # ===========================================================================
@@ -232,7 +234,7 @@ api.adoptium.net Java
 php.net PHP
 xcodereleases.com Xcode
 dev.mysql.com MySQL
-elastic/elasticsearch Elasticsearch
+opensearch-project/OpenSearch OpenSearch
 EOF
 }
 

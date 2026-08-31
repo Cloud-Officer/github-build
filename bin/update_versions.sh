@@ -126,14 +126,19 @@ fi
 export latest_valkey
 yq e --indent=2 '(.options[] | select(.name == "redis-version").value) = env(latest_valkey)' -i "config/options/redis.yaml"
 
-# Elasticsearch (OpenSearch)
+# OpenSearch
+#
+# Track the `OpenSearch_*` line, not `Elasticsearch_*`. AWS forked OpenSearch after
+# Elastic's 2021 licence change, so `list-versions` caps Elasticsearch compatibility at
+# 7.10 permanently -- filtering on it pinned us to a dead lineage while our domains run
+# AWS::OpenSearchService::Domain. Major.minor is what ankane/setup-opensearch expects.
 
-latest_elasticsearch=$(aws opensearch list-versions --query 'Versions[*]' --output text 2>/dev/null | tr '\t' '\n' | grep -E '^Elasticsearch_[0-9]+\.[0-9]+$' | sed 's/Elasticsearch_//' | sort -V | tail -n1 || true)
+latest_opensearch=$(aws opensearch list-versions --query 'Versions[*]' --output text 2>/dev/null | tr '\t' '\n' | grep -E '^OpenSearch_[0-9]+\.[0-9]+$' | sed 's/OpenSearch_//' | sort -V | tail -n1 || true)
 
-if [ -z "${latest_elasticsearch}" ]; then
-    latest_elasticsearch=$(curl -fsS https://api.github.com/repos/elastic/elasticsearch/releases | jq -r '[.[] | select(.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name | ltrimstr("v")] | first' || true)
+if [ -z "${latest_opensearch}" ]; then
+    latest_opensearch=$(curl -fsS https://api.github.com/repos/opensearch-project/OpenSearch/releases | jq -r '[.[] | select(.tag_name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name | split(".")[0:2] | join(".")] | first' || true)
 fi
 
-require_version "Elasticsearch" "${latest_elasticsearch}"
-export latest_elasticsearch
-yq e --indent=2 '(.options[] | select(.name == "elasticsearch-version").value) = env(latest_elasticsearch)' -i "config/options/elasticsearch.yaml"
+require_version "OpenSearch" "${latest_opensearch}"
+export latest_opensearch
+yq e --indent=2 '(.options[] | select(.name == "opensearch-version").value) = env(latest_opensearch)' -i "config/options/opensearch.yaml"
