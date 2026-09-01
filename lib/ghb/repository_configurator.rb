@@ -166,7 +166,7 @@ module GHB
       actors.each { |actor| warn("          ! #{actor}") }
 
       remaining = clear_force_push_allowlist(github_client, rule['id'])
-      raise("Error: force-push allowlist on #{@default_branch} not cleared, still allows: #{remaining.join(', ')}") if remaining.any?
+      raise(RepositorySettingsError, "force-push allowlist on #{@default_branch} not cleared, still allows: #{remaining.join(', ')}") if remaining.any?
 
       puts('        Force-push allowlist cleared')
     end
@@ -200,7 +200,7 @@ module GHB
       data = github_client.graphql(CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION, variables: { ruleId: rule_id })
       force_push_actors(data.dig('updateBranchProtectionRule', 'branchProtectionRule') || {})
     rescue GitHubAPIError => e
-      raise("Error: could not clear the force-push allowlist on #{@default_branch}: #{e.message}")
+      raise(RepositorySettingsError, "could not clear the force-push allowlist on #{@default_branch}: #{e.message}")
     end
 
     # Flattens bypassForcePushAllowances into "User octocat" / "Team core-team" labels.
@@ -287,7 +287,7 @@ module GHB
         extra_checks.each { |check| warn("          + #{check}") }
       end
 
-      raise('Error: branch protection checks mismatch!') unless @options.sync_required_status_checks
+      raise(RepositorySettingsError, 'branch protection checks mismatch!') unless @options.sync_required_status_checks
 
       puts('        --sync_required_status_checks set: overwriting remote check list with expected')
       nil

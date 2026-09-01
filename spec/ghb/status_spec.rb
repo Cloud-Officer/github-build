@@ -10,16 +10,10 @@ RSpec.describe(GHB::Status) do
       expect(described_class::ERROR_EXIT_CODE).to(eq(1))
     end
 
-    it 'defines FAILURE_EXIT_CODE as 2' do
-      expect(described_class::FAILURE_EXIT_CODE).to(eq(2))
-    end
-
-    it 'makes constants publicly accessible' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+    it 'makes constants publicly accessible' do # rubocop:disable RSpec/MultipleExpectations
       expect { described_class::SUCCESS_EXIT_CODE }
         .not_to(raise_error)
       expect { described_class::ERROR_EXIT_CODE }
-        .not_to(raise_error)
-      expect { described_class::FAILURE_EXIT_CODE }
         .not_to(raise_error)
     end
   end

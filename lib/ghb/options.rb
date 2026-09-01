@@ -47,11 +47,6 @@ module GHB
 
     attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :options_config_files, :organization, :original_argv, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check, :sync_required_status_checks
 
-    # Path of a single service's options file, e.g. options_config_file(:mysql).
-    def options_config_file(service)
-      @options_config_files[service]
-    end
-
     def parse
       @parser.parse!(@argv)
 

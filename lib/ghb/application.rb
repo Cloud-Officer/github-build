@@ -8,7 +8,7 @@ require 'json'
 require 'psych'
 
 require_relative '../ghb'
-require_relative 'auto_merge_manager'
+require_relative 'auto_approve_manager'
 require_relative 'aws_job_builder'
 require_relative 'build_context'
 require_relative 'code_deploy_job_builder'
@@ -47,10 +47,9 @@ module GHB
     def initialize(argv)
       @code_deploy_pre_steps = []
       @default_branch = detect_default_branch
-      @exit_code = Status::SUCCESS_EXIT_CODE
       @dependencies_steps = []
       @file_cache = {}
-      @auto_merge_workflow = Workflow.new('Auto-approve for code owners')
+      @auto_approve_workflow = Workflow.new('Auto-approve for code owners')
       @cron_workflow = Workflow.new('Cron Dependencies')
       @dockerhub_workflow = Workflow.new('Publish Docker image')
       @new_workflow = Workflow.new('Build')
@@ -128,12 +127,12 @@ module GHB
         dependencies_commands: @dependencies_commands
       ).save
 
-      AutoMergeManager.new(auto_merge_workflow: @auto_merge_workflow).save
+      AutoApproveManager.new(auto_approve_workflow: @auto_approve_workflow).save
       DockerhubManager.new(dockerhub_workflow: @dockerhub_workflow).save
       GitignoreManager.new(context: context).update
       RepositoryConfigurator.new(options: @options, required_status_checks: @required_status_checks, default_branch: @default_branch).configure
 
-      @exit_code
+      Status::SUCCESS_EXIT_CODE
     end
 
     private
@@ -146,8 +145,7 @@ module GHB
     def configure_options(argv)
       Options.new(argv).parse
     rescue OptionParser::ParseError => e
-      warn("Error: #{e}")
-      exit(Status::ERROR_EXIT_CODE)
+      raise(ConfigError, e.message)
     end
 
     # Validates that all required config files exist, have valid YAML syntax,

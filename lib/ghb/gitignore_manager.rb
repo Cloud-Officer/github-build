@@ -47,10 +47,10 @@ module GHB
         begin
           HTTParty.get(api_url, timeout: 30)
         rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNRESET, Errno::ECONNREFUSED, SocketError => e
-          raise("Cannot fetch gitignore templates: #{e.class}: #{e.message}")
+          raise(ConfigError, "Cannot fetch gitignore templates: #{e.class}: #{e.message}")
         end
 
-      raise("Cannot fetch gitignore templates: #{response.message}") unless response.code == 200
+      raise(ConfigError, "Cannot fetch gitignore templates: #{response.message}") unless response.code == 200
 
       # Skip the first line (gitignore.io header comment), default to empty string if response is empty
       new_git_ignore = response.body.to_s.split("\n", 2).last || ''

@@ -360,6 +360,22 @@ RSpec.describe(GHB::GitHubAPIClient) do
       expect(client.get(base_url).code).to(eq(200))
     end
 
+    it 'retries a 403 secondary rate limit that carries Retry-After with the quota intact' do
+      stub_request(:get, base_url)
+        .to_return(status: 403, headers: { 'Retry-After': '3', 'X-RateLimit-Remaining': '4999' }, body: '{"message":"You have exceeded a secondary rate limit"}')
+        .then.to_return(status: 200, body: '{"ok":true}')
+
+      expect(client.get(base_url).code).to(eq(200))
+    end
+
+    it 'retries a 403 whose body names a secondary rate limit even without headers' do
+      stub_request(:get, base_url)
+        .to_return(status: 403, body: '{"message":"You have exceeded a secondary rate limit. Please wait."}')
+        .then.to_return(status: 200, body: '{"ok":true}')
+
+      expect(client.get(base_url).code).to(eq(200))
+    end
+
     it 'honors the Retry-After header for the back-off' do
       stub_request(:get, base_url)
         .to_return(status: 429, headers: { 'Retry-After': '7' }, body: '{}')

@@ -471,7 +471,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
 
       it 'raises an error when checks do not match' do
         expect { configurator.configure }
-          .to(raise_error(RuntimeError, 'Error: branch protection checks mismatch!'))
+          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
       end
     end
 
@@ -506,7 +506,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
 
       it 'raises an error when expected checks are missing from branch protection' do
         expect { configurator.configure }
-          .to(raise_error(RuntimeError, 'Error: branch protection checks mismatch!'))
+          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
       end
     end
 
@@ -1435,14 +1435,14 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:graphql).with(/updateBranchProtectionRule/, variables: anything).and_return(uncleared))
 
         expect { configurator.configure }
-          .to(raise_error(RuntimeError, /force-push allowlist on master not cleared, still allows: User force-pusher, Team release-team/))
+          .to(raise_error(GHB::RepositorySettingsError, /force-push allowlist on master not cleared, still allows: User force-pusher, Team release-team/))
       end
 
       it 'fails loudly when the clearing mutation itself errors' do
         allow(github_client).to(receive(:graphql).with(/updateBranchProtectionRule/, variables: anything).and_raise(GHB::GitHubAPIError, 'GraphQL request failed: Resource not accessible by integration'))
 
         expect { configurator.configure }
-          .to(raise_error(RuntimeError, /could not clear the force-push allowlist on master: GraphQL request failed/))
+          .to(raise_error(GHB::RepositorySettingsError, /could not clear the force-push allowlist on master: GraphQL request failed/))
       end
 
       it 'reports app actors and skips null or unnamed allowance nodes without crashing' do

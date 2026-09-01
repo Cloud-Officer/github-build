@@ -9,6 +9,9 @@ module GHB
   # Custom error for failed GitHub REST API calls (carries the response body for diagnosis)
   class GitHubAPIError < StandardError; end
 
+  # Repository settings (branch protection, allowlists) could not be applied.
+  class RepositorySettingsError < StandardError; end
+
   CI_ACTIONS_VERSION = 'v3'
   EXTERNAL_ACTIONS_CONFIG_FILE = 'config/actions.yaml'
   DEFAULT_BUILD_FILE = '.github/workflows/build.yml'

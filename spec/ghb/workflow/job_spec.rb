@@ -56,7 +56,7 @@ RSpec.describe(GHB::Job) do # rubocop:disable RSpec/SpecFilePathFormat
       target = described_class.new(:target)
 
       expect { target.copy_properties(source, %i[unknown_property]) }
-        .to(raise_error(RuntimeError))
+        .to(raise_error(ArgumentError, /does not have a/))
     end
   end
 
