@@ -29,7 +29,7 @@ module GHB
   # back to a capitalized service name (e.g. redis -> Redis).
   SERVICE_DISPLAY_NAMES = { apt: 'APT', mongodb: 'MongoDB', mysql: 'MySQL', opensearch: 'OpenSearch' }.freeze
   DEFAULT_UBUNTU_VERSION = 'ubuntu-latest'
-  DEFAULT_MACOS_VERSION = 'macos-26'
+  DEFAULT_MACOS_VERSION = 'macos-latest'
   DEFAULT_JOB_TIMEOUT_MINUTES = 30
 
   private_constant :CI_ACTIONS_VERSION
