@@ -18,7 +18,7 @@
 #                                         .ruby-version). When present, the version from the file takes
 #                                         precedence over the setup_options value
 #   setup_options    (array, optional)  - Options passed to the GitHub Actions setup action
-#                                         (cloud-officer/ci-actions/setup@v2). Each option has:
+#                                         (cloud-officer/ci-actions/setup@v3). Each option has:
 #                                           name:  option name, converted to an uppercase env var
 #                                           value: default value (empty means not set)
 #   cache_option     (string, optional) - Name of the setup option selecting the dependency cache

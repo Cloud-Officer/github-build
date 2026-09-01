@@ -53,7 +53,7 @@ RSpec.describe(GHB::DependabotManager) do
         new_workflow.do_job(:licenses) do
           do_name('Licenses')
           do_step('Licenses') do
-            do_uses('cloud-officer/ci-actions/soup@v2')
+            do_uses('cloud-officer/ci-actions/soup@v3')
             do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'github-token': '${{secrets.GH_PAT}}' })
           end
         end
@@ -87,7 +87,7 @@ RSpec.describe(GHB::DependabotManager) do
         new_workflow.do_job(:licenses) do
           do_name('Licenses')
           do_step('Licenses') do
-            do_uses('cloud-officer/ci-actions/soup@v2')
+            do_uses('cloud-officer/ci-actions/soup@v3')
             do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'github-token': '${{secrets.GH_PAT}}' })
           end
         end
@@ -120,7 +120,7 @@ RSpec.describe(GHB::DependabotManager) do
         new_workflow.do_job(:licenses) do
           do_name('Licenses')
           do_step('Licenses') do
-            do_uses('cloud-officer/ci-actions/soup@v2')
+            do_uses('cloud-officer/ci-actions/soup@v3')
           end
         end
 
@@ -152,7 +152,7 @@ RSpec.describe(GHB::DependabotManager) do
         new_workflow.do_job(:licenses) do
           do_name('Licenses')
           do_step('Licenses') do
-            do_uses('cloud-officer/ci-actions/soup@v2')
+            do_uses('cloud-officer/ci-actions/soup@v3')
             do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'github-token': '${{secrets.GH_PAT}}' })
           end
         end
@@ -193,7 +193,7 @@ RSpec.describe(GHB::DependabotManager) do
         new_workflow.do_job(:licenses) do
           do_name('Licenses')
           do_step('Licenses') do
-            do_uses('cloud-officer/ci-actions/soup@v2')
+            do_uses('cloud-officer/ci-actions/soup@v3')
             do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'github-token': '${{secrets.GH_PAT}}' })
           end
         end
@@ -226,7 +226,7 @@ RSpec.describe(GHB::DependabotManager) do
         new_workflow.do_job(:licenses) do
           do_name('Licenses')
           do_step('Licenses') do
-            do_uses('cloud-officer/ci-actions/soup@v2')
+            do_uses('cloud-officer/ci-actions/soup@v3')
             do_with(
               {
                 'ssh-key': '${{secrets.SSH_KEY}}',

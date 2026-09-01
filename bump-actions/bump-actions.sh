@@ -32,6 +32,10 @@ function is_exact_semver()   { [[ "$1" =~ ^v?[0-9]+\.[0-9]+ ]]; }
 function major_of()          { local v="${1#v}"; echo "${v%%.*}"; }
 function esc_re()            { printf '%s' "$1" | sed 's/[.[\*^$/]/\\&/g'; }
 
+# Upstream tag names are attacker-controlled and git permits |, the sed
+# delimiter in apply_bump.
+function is_valid_version() { [[ "$1" =~ ^v?[0-9]+(\.[0-9]+)*$ ]]; }
+
 # version_gt A B -> true when A is a strictly newer version than B, comparing
 # with `sort -V` and ignoring a leading v (so 0.36.0 > v0.35.0, v0.10.0 > v0.9.1,
 # and v0.35.0 == 0.35.0 -> not greater, avoiding cosmetic churn).
@@ -57,6 +61,10 @@ function latest_version()
 {
   local or="$1" tag
   tag="$(gh api "repos/${or}/releases/latest" --jq '.tag_name' 2>/dev/null || true)"
+  if [ -n "${tag}" ] && [ "${tag}" != "null" ] && ! is_valid_version "${tag}"; then
+    echo "::warning::${or} published a release tag that is not a plain version (${tag}); ignoring it" >&2
+    tag=""
+  fi
   if [ -z "${tag}" ] || [ "${tag}" == "null" ]; then
     tag="$(gh api "repos/${or}/tags?per_page=100" --jq '.[].name' 2>/dev/null \
             | grep -E '^v?[0-9]+(\.[0-9]+)*$' | sort -V | tail -1 || true)"
@@ -109,6 +117,10 @@ function resolve_bump()
 function apply_bump()
 {
   local manifest="$1" name="$2" new="$3" name_re tmp
+  if ! is_valid_version "${new}"; then
+    echo "::error::refusing to write an invalid version for ${name}: ${new}" >&2
+    return 1
+  fi
   name_re="$(esc_re "${name}")"
   tmp="$(mktemp)"
   sed -E "s|^(${name_re}:[[:space:]]*).*\$|\1${new}|" "${manifest}" > "${tmp}"

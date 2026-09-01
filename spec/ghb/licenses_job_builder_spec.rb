@@ -7,7 +7,7 @@ RSpec.describe(GHB::LicensesJobBuilder) do
       workflow.do_job(:licenses) do
         do_name('Licenses Check')
         do_step('Licenses') do
-          do_uses('cloud-officer/ci-actions/soup@v2')
+          do_uses('cloud-officer/ci-actions/soup@v3')
         end
       end
       workflow
@@ -74,7 +74,7 @@ RSpec.describe(GHB::LicensesJobBuilder) do
       old_wf.do_job(:licenses) do
         do_name('Licenses Check')
         do_step('Licenses') do
-          do_uses('cloud-officer/ci-actions/soup@v2')
+          do_uses('cloud-officer/ci-actions/soup@v3')
           do_with(
             {
               'ssh-key': '${{secrets.SSH_KEY}}',

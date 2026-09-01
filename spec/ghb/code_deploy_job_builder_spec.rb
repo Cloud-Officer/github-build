@@ -112,7 +112,7 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
         old_wf.do_job(:codedeploy) do
           do_name('Code Deploy')
           do_step('Checkout') do
-            do_uses('cloud-officer/ci-actions/codedeploy/checkout@v2')
+            do_uses('cloud-officer/ci-actions/codedeploy/checkout@v3')
             do_with({ 'ssh-key': 'existing-key' })
           end
           do_step('Update Packages') do
@@ -125,7 +125,7 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
             do_run('custom zip command')
           end
           do_step('S3Copy') do
-            do_uses('cloud-officer/ci-actions/codedeploy/s3copy@v2')
+            do_uses('cloud-officer/ci-actions/codedeploy/s3copy@v3')
             do_with({ source: 'custom-source' })
           end
         end
@@ -176,7 +176,7 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
         old_wf.do_job(:beta_deploy) do
           do_name('Beta Deploy')
           do_step('Beta Deploy') do
-            do_uses('cloud-officer/ci-actions/codedeploy/deploy@v2')
+            do_uses('cloud-officer/ci-actions/codedeploy/deploy@v3')
             do_with(
               {
                 'aws-access-key-id': '${{secrets.CUSTOM_KEY}}',

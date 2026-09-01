@@ -11,7 +11,9 @@ setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/../bump-actions/bump-actions.sh"
   BIN="$(mktemp -d)"
   MANIFEST="$(mktemp)"
+  PWNED_MARKER="$(mktemp -u)"
   export BUMP_MANIFEST="${MANIFEST}"
+  export PWNED_MARKER
   export PATH="${BIN}:${PATH}"
   make_fake_gh
   make_manifest
@@ -21,7 +23,7 @@ setup() {
 
 teardown() {
   rm -rf "${BIN}"
-  rm -f "${MANIFEST}"
+  rm -f "${MANIFEST}" "${PWNED_MARKER}"
 }
 
 # Fake gh: latest versions per repo, single-ref tag existence, and notes.
@@ -37,6 +39,10 @@ case "$args" in
   *"repos/ahead/action/releases/latest"*)             echo "v7.0.0" ;;
   *"repos/tagonly/action/releases/latest"*)           echo "" ;;
   *"repos/tagonly/action/tags"*)                      printf 'v3.1.0\nv3.0.0\nv2.0.0\n' ;;
+  *"repos/evil/action/releases/latest"*)              echo "v9.0.1|e touch ${PWNED_MARKER}|" ;;
+  *"repos/evil/action/tags"*)                         echo "" ;;
+  *"repos/salvageable/action/releases/latest"*)       echo "v2.0.0|e touch ${PWNED_MARKER}|" ;;
+  *"repos/salvageable/action/tags"*)                  printf 'v2.0.0\nv1.0.0\n' ;;
   *"repos/actions/checkout/git/ref/tags/v7"*)         echo "refs/tags/v7" ;;
   *"git/ref/tags/"*)                                  exit 1 ;;
   "release view"*)                                    echo "fake release notes" ;;
@@ -48,7 +54,8 @@ EOF
 
 # Manifest fixture covering: floating major to bump, exact semver to bump, an
 # already-current major, a cloud-officer entry (skipped), a SHA pin, a branch
-# pin, an exact pin ahead of latest, and a tag-only repo.
+# pin, an exact pin ahead of latest, a tag-only repo, and two repos whose
+# release tags are hostile.
 make_manifest() {
   cat > "${MANIFEST}" <<'EOF'
 ---
@@ -61,6 +68,8 @@ pinned/by-sha: 0123456789abcdef0123456789abcdef01234567
 branchy/action: main
 ahead/action: v8.0.0
 tagonly/action: v2
+evil/action: v9.0.0
+salvageable/action: v1
 EOF
 }
 
@@ -100,6 +109,18 @@ EOF
 
 @test "esc_re escapes regex metacharacters" {
   [ "$(esc_re 'a.b/c')" = 'a\.b\/c' ]
+}
+
+@test "is_valid_version accepts plain versions and rejects anything else" {
+  is_valid_version v7
+  is_valid_version 7
+  is_valid_version v0.10.0
+  is_valid_version 1.2.3.4
+  ! is_valid_version main
+  ! is_valid_version 'v7|e touch /tmp/x|'
+  ! is_valid_version 'v7 && touch /tmp/x'
+  ! is_valid_version '$(touch /tmp/x)'
+  ! is_valid_version ''
 }
 
 @test "manifest_entries skips comments, the doc marker and cloud-officer entries" {
@@ -158,6 +179,44 @@ EOF
   run "${SCRIPT}"
   # releases/latest empty -> highest semver tag v3.1.0; no floating v3 tag -> exact
   [[ "${output}" == *"tagonly/action"*"v2 -> v3.1.0"* ]]
+}
+
+@test "a release tag that is not a plain version is rejected, not resolved" {
+  resolved="$(latest_version evil/action 2>/dev/null)"
+  [ -z "${resolved}" ]
+  resolved="$(latest_version salvageable/action 2>/dev/null)"
+  [ "${resolved}" = "v2.0.0" ]
+}
+
+@test "a hostile release tag with no usable fallback produces no bump" {
+  run "${SCRIPT}"
+  [ "${status}" -eq 0 ]
+  ! grep -qE '^BUMP[[:space:]]+evil/action' <<< "${output}"
+  [[ "${output}" == *"evil/action published a release tag that is not a plain version"* ]]
+  [[ "${output}" == *"could not resolve latest version for evil/action"* ]]
+}
+
+@test "a hostile release tag still falls back to the plain version tags" {
+  run "${SCRIPT}"
+  [ "${status}" -eq 0 ]
+  [[ "${output}" == *"salvageable/action"*"v1 -> v2.0.0"* ]]
+}
+
+@test "--apply cannot be made to execute a command through a tag name" {
+  run "${SCRIPT}" --apply
+  [ "${status}" -eq 0 ]
+  [ ! -e "${PWNED_MARKER}" ]
+  grep -q '^evil/action: v9.0.0$' "${MANIFEST}"
+  ! grep -q 'touch' "${MANIFEST}"
+}
+
+@test "apply_bump refuses a version carrying the sed delimiter" {
+  before="$(cat "${MANIFEST}")"
+  run apply_bump "${MANIFEST}" 'actions/checkout' "v7|e touch ${PWNED_MARKER}|"
+  [ "${status}" -ne 0 ]
+  [[ "${output}" == *"refusing to write an invalid version"* ]]
+  [ ! -e "${PWNED_MARKER}" ]
+  [ "$(cat "${MANIFEST}")" = "${before}" ]
 }
 
 # ===========================================================================

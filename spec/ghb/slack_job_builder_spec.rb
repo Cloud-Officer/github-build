@@ -7,7 +7,7 @@ RSpec.describe(GHB::SlackJobBuilder) do
       workflow.do_job(:slack) do
         do_name('Publish Statuses')
         do_step('Publish Statuses') do
-          do_uses('cloud-officer/ci-actions/slack@v2')
+          do_uses('cloud-officer/ci-actions/slack@v3')
         end
       end
       workflow
@@ -50,7 +50,7 @@ RSpec.describe(GHB::SlackJobBuilder) do
       old_wf.do_job(:slack) do
         do_name('Publish Statuses')
         do_step('Publish Statuses') do
-          do_uses('cloud-officer/ci-actions/slack@v2')
+          do_uses('cloud-officer/ci-actions/slack@v3')
           do_with(
             {
               'webhook-url': '${{secrets.CUSTOM_SLACK_URL}}',

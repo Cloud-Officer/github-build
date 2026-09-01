@@ -5,7 +5,7 @@
 # These options are always included in the setup step.
 #
 # Each option's name is converted to an uppercase environment variable
-# and passed to the cloud-officer/ci-actions/setup@v2 action.
+# and passed to the cloud-officer/ci-actions/setup@v3 action.
 # Empty values mean the option is not set.
 
 options:

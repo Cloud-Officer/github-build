@@ -162,7 +162,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       old_workflow.do_job(:go_unit_tests) do
         do_name('Go Unit Tests')
         do_step('Setup') do
-          do_uses('cloud-officer/ci-actions/setup@v2')
+          do_uses('cloud-officer/ci-actions/setup@v3')
           do_with(
             {
               'ssh-key': '${{secrets.SSH_KEY}}',
@@ -811,7 +811,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       old_workflow.do_job(:js_unit_tests) do
         do_name('JavaScript Unit Tests')
         do_step('Setup') do
-          do_uses('cloud-officer/ci-actions/setup@v2')
+          do_uses('cloud-officer/ci-actions/setup@v3')
           do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'github-token': '${{secrets.GH_PAT}}', 'node-version': '${{env.NODE-VERSION}}' })
         end
       end
@@ -831,7 +831,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       old_workflow.do_job(:js_unit_tests) do
         do_name('JavaScript Unit Tests')
         do_step('Setup') do
-          do_uses('cloud-officer/ci-actions/setup@v2')
+          do_uses('cloud-officer/ci-actions/setup@v3')
           do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'node-cache-dependency-path': 'custom/package-lock.json' })
         end
       end

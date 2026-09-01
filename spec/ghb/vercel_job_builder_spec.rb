@@ -125,7 +125,7 @@ RSpec.describe(GHB::VercelJobBuilder) do
         allow(File).to(receive(:exist?).with('.nvmrc').and_return(true))
         old_workflow.do_job(:prod_deploy) do
           do_step('Setup') do
-            do_uses('cloud-officer/ci-actions/setup@v2')
+            do_uses('cloud-officer/ci-actions/setup@v3')
             do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'node-version': '${{env.NODE-VERSION}}' })
           end
         end
@@ -176,7 +176,7 @@ RSpec.describe(GHB::VercelJobBuilder) do
 
         old_workflow.do_job(:rc_deploy) do
           do_name('RC Deploy')
-          do_step('Setup') { do_uses('cloud-officer/ci-actions/setup@v2') }
+          do_step('Setup') { do_uses('cloud-officer/ci-actions/setup@v3') }
           do_step('Pull Vercel Environment Information') do
             do_run('vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }} --custom')
           end

@@ -9,7 +9,7 @@ module GHB
   # Custom error for failed GitHub REST API calls (carries the response body for diagnosis)
   class GitHubAPIError < StandardError; end
 
-  CI_ACTIONS_VERSION = 'v2'
+  CI_ACTIONS_VERSION = 'v3'
   EXTERNAL_ACTIONS_CONFIG_FILE = 'config/actions.yaml'
   DEFAULT_BUILD_FILE = '.github/workflows/build.yml'
   DEFAULT_GITIGNORE_CONFIG_FILE = 'config/gitignore.yaml'
