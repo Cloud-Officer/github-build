@@ -103,16 +103,7 @@ module GHB
           copy_properties(new_workflow.jobs[:licenses]&.steps&.first)
           do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
 
-          if with.empty?
-            do_with(
-              {
-                'ssh-key': '${{secrets.SSH_KEY}}',
-                'github-token': '${{secrets.GH_PAT}}',
-                parameters: '--no_prompt',
-                'skip-checkout': 'true'
-              }
-            )
-          end
+          default_with(GHB.secrets(:ssh, :github_token).merge(parameters: '--no_prompt', 'skip-checkout': 'true'))
 
           with[:'github-token'] = '${{secrets.GH_PAT}}'
           with['skip-checkout'] = 'true'
@@ -133,7 +124,7 @@ module GHB
         end
       end
 
-      @cron_workflow.write('.github/workflows/dependencies.yml')
+      @cron_workflow.write('.github/workflows/dependencies.yml', header: GHB.generated_header('dependabot_manager.rb'))
     end
   end
 end

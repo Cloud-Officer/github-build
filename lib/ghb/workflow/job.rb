@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 require_relative '../../ghb'
+require_relative 'copyable_properties'
 require_relative 'step'
 
 module GHB
   # Data model for GitHub Actions job - instance variables map to YAML schema.
   # Any new copyable ivar must be added to COPYABLE_PROPERTIES.
   class Job
+    include CopyableProperties
+
     # Properties carried over from a previously-generated job by copy_properties.
     COPYABLE_PROPERTIES = %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets].freeze
     public_constant :COPYABLE_PROPERTIES
@@ -35,16 +38,6 @@ module GHB
     end
 
     attr_accessor :id, :name, :permissions, :needs, :if, :runs_on, :environment, :concurrency, :outputs, :env, :defaults, :steps, :timeout_minutes, :strategy, :continue_on_error, :container, :services, :uses, :with, :secrets
-
-    def copy_properties(object, properties = COPYABLE_PROPERTIES)
-      return if object.nil?
-
-      properties.each do |property|
-        raise("Error: #{object.class} does not have a #{property} property!") unless object.respond_to?(property)
-
-        public_send(:"#{property}=", object.public_send(property))
-      end
-    end
 
     def do_name(name)
       @name = name

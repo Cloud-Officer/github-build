@@ -131,17 +131,7 @@ module GHB
 
         with.delete(:'node-version') if drop_node_version
 
-        if with.empty?
-          do_with(
-            {
-              'ssh-key': '${{secrets.SSH_KEY}}',
-              'github-token': '${{secrets.GH_PAT}}',
-              'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
-              'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
-              'aws-region': '${{secrets.AWS_DEFAULT_REGION}}'
-            }
-          )
-        end
+        default_with(GHB.secrets(:ssh, :github_token, :aws))
 
         with[:'github-token'] = '${{secrets.GH_PAT}}'
       end

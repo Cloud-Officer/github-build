@@ -258,7 +258,7 @@ module GHB
       @new_workflow.do_job(:"#{language[:short_name]}_unit_tests") do
         copy_properties(old_workflow.jobs[id])
         do_name("#{language[:long_name]} Unit Tests")
-        do_runs_on(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.runs_on || language[:'runs-on'] || DEFAULT_UBUNTU_VERSION)
+        do_runs_on(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.runs_on || GHB.runner_image(language[:'runs-on']))
         do_needs(%w[variables])
         do_if("${{#{unit_tests_conditions}#{additional_checks}}}")
 
@@ -294,14 +294,7 @@ module GHB
           with.delete(version_option_key)
         end
 
-        if with.empty?
-          do_with(
-            {
-              'ssh-key': '${{secrets.SSH_KEY}}',
-              'github-token': '${{secrets.GH_PAT}}'
-            }.merge(setup_options)
-          )
-        end
+        default_with(GHB.secrets(:ssh, :github_token).merge(setup_options))
 
         with[:'github-token'] = '${{secrets.GH_PAT}}'
 
@@ -408,15 +401,7 @@ module GHB
         copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
         do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
 
-        if with.empty?
-          do_with(
-            {
-              'ssh-key': '${{secrets.SSH_KEY}}',
-              'github-token': '${{secrets.GH_PAT}}',
-              parameters: '--no_prompt'
-            }
-          )
-        end
+        default_with(GHB.secrets(:ssh, :github_token).merge(parameters: '--no_prompt'))
       end
     end
 

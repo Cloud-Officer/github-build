@@ -6,6 +6,23 @@ RSpec.describe(GHB::LinterJobBuilder) do
   let(:submodules)   { []                          }
   let(:file_cache)   { {}                          }
 
+  let(:options) do
+    instance_double(
+      GHB::Options,
+      skip_semgrep: false,
+      ignored_linters: {},
+      excluded_folders: [],
+      linters_config_file: 'config/linters.yaml',
+      languages_config_file: 'config/languages.yaml'
+    )
+  end
+
+  def build_linter_job_builder
+    described_class.new(
+      context: GHB::BuildContext.new(options: options, submodules: submodules, old_workflow: old_workflow, new_workflow: new_workflow, file_cache: file_cache)
+    )
+  end
+
   before do
     allow($stdout).to(receive(:puts))
     # Filesystem safety net. LinterJobBuilder#delete_linter_config /
@@ -19,31 +36,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
 
   describe '#build' do
     context 'when detecting linters' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
-      end
-
       it 'detects linters and adds jobs to workflow' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         # Allow File.exist? to work normally for config file reads
         allow(File).to(receive(:exist?).and_call_original)
         # Mock .gitmodules as not present
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            submodules: submodules,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow,
-            file_cache: file_cache
-          )
-        )
+        builder = build_linter_job_builder
 
         # Mock find_files_matching: return matches for rubocop pattern, empty for others
         allow(builder).to(receive(:find_files_matching).and_return([]))
@@ -66,28 +65,14 @@ RSpec.describe(GHB::LinterJobBuilder) do
 
     context 'when a linter is in ignored_linters' do
       let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: { rubocop: true, eslint: true },
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
+        instance_double(GHB::Options, skip_semgrep: false, ignored_linters: { rubocop: true, eslint: true }, excluded_folders: [], linters_config_file: 'config/linters.yaml', languages_config_file: 'config/languages.yaml')
       end
 
       it 'skips ignored linters' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            submodules: submodules,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow,
-            file_cache: file_cache
-          )
-        )
+        builder = build_linter_job_builder
 
         # Return matches for everything to prove ignored linters are skipped
         allow(builder).to(receive(:find_files_matching).and_return(['match.txt']))
@@ -102,28 +87,14 @@ RSpec.describe(GHB::LinterJobBuilder) do
 
     context 'when skip_semgrep is true' do
       let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: true,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
+        instance_double(GHB::Options, skip_semgrep: true, ignored_linters: {}, excluded_folders: [], linters_config_file: 'config/linters.yaml', languages_config_file: 'config/languages.yaml')
       end
 
       it 'skips the semgrep linter' do # rubocop:disable RSpec/ExampleLength
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            submodules: submodules,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow,
-            file_cache: file_cache
-          )
-        )
+        builder = build_linter_job_builder
 
         # Return matches for everything to prove semgrep is skipped
         allow(builder).to(receive(:find_files_matching).and_return(['match.txt']))
@@ -136,16 +107,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
 
     context 'when .gitmodules is present' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
-      end
-
       it 'populates submodules from .gitmodules file' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(true))
@@ -183,29 +144,11 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
 
     context 'when a linter has a condition' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
-      end
-
       it 'includes the condition in the job if statement' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            submodules: submodules,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow,
-            file_cache: file_cache
-          )
-        )
+        builder = build_linter_job_builder
 
         # Only match eslint pattern (js files)
         allow(builder).to(receive(:find_files_matching).and_return([]))
@@ -224,16 +167,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
 
     context 'when a linter has preserve_config and config already exists' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
-      end
-
       it 'preserves the existing config file' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
@@ -241,15 +174,7 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:write))
         allow(File).to(receive(:delete))
 
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            submodules: submodules,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow,
-            file_cache: file_cache
-          )
-        )
+        builder = build_linter_job_builder
 
         # Only match ktlint pattern. Match `(kt|kts)` -- unique to ktlint's pattern.
         allow(builder).to(receive(:find_files_matching).and_return([]))
@@ -272,16 +197,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
 
     context 'when a linter has options' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
-      end
-
       it 'merges linter options into the default_with hash' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         # Create a custom linters config with options field
         custom_linters_config = {
@@ -328,29 +243,11 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
 
     context 'when rubocop config is copied for a Rails project' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
-      end
-
       it 'uncomments Rails-specific rules in .rubocop.yml' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            submodules: submodules,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow,
-            file_cache: file_cache
-          )
-        )
+        builder = build_linter_job_builder
 
         # Only match rubocop pattern (Fastfile)
         allow(builder).to(receive(:find_files_matching).and_return([]))
@@ -382,15 +279,7 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            submodules: submodules,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow,
-            file_cache: file_cache
-          )
-        )
+        builder = build_linter_job_builder
 
         # Only match rubocop pattern (Fastfile)
         allow(builder).to(receive(:find_files_matching).and_return([]))
@@ -438,17 +327,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
 
     context 'when a managed linter config is copied' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml',
-          languages_config_file: 'config/languages.yaml'
-        )
-      end
-
       it 'renders the canonical excluded-dirs into the copied config' do # rubocop:disable RSpec/ExampleLength
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
@@ -486,31 +364,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
 
     context 'when linter is not enabled (no matches) and has a config file' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
-      end
-
       it 'deletes the stale config file' do # rubocop:disable RSpec/ExampleLength
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
         allow(File).to(receive(:symlink?).and_return(false))
         allow(File).to(receive(:delete))
 
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            submodules: submodules,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow,
-            file_cache: file_cache
-          )
-        )
+        builder = build_linter_job_builder
 
         # No files match any linter
         allow(builder).to(receive(:find_files_matching).and_return([]))
@@ -541,15 +401,7 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:symlink?).and_return(false))
         allow(File).to(receive(:delete))
 
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            submodules: submodules,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow,
-            file_cache: file_cache
-          )
-        )
+        builder = build_linter_job_builder
 
         # Return matches for non-ignored linters so they proceed normally
         allow(builder).to(receive(:find_files_matching).and_return([]))
@@ -564,31 +416,13 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
 
     context 'when linter has preserve_config and config is user-owned' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
-      end
-
       it 'does not delete the config file' do # rubocop:disable RSpec/ExampleLength
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
         allow(File).to(receive(:symlink?).and_return(false))
         allow(File).to(receive(:delete))
 
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            submodules: submodules,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow,
-            file_cache: file_cache
-          )
-        )
+        builder = build_linter_job_builder
 
         # No files match any linter pattern
         allow(builder).to(receive(:find_files_matching).and_return([]))
@@ -603,16 +437,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
 
     context 'when preserve_config is true and script_path has the config file' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
-      end
-
       it 'preserves the project config instead of symlinking from script_path' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(true))
@@ -656,16 +480,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
 
     context 'when script_path has the linter config file' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
-      end
-
       it 'creates a symlink from script_path instead of copying' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         allow(File).to(receive(:exist?).and_call_original)
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(true))
@@ -708,30 +522,12 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
 
     context 'when local linters/ directory has the config file' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml'
-        )
-      end
-
       it 'creates a symlink from local linters/ instead of copying' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         allow(File).to(receive(:exist?).and_call_original)
         # No .gitmodules -> no script_path
         allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
 
-        builder = described_class.new(
-          context: GHB::BuildContext.new(
-            options: options,
-            submodules: submodules,
-            old_workflow: old_workflow,
-            new_workflow: new_workflow,
-            file_cache: file_cache
-          )
-        )
+        builder = build_linter_job_builder
 
         # Only match eslint pattern. Match `(js|mjs|cjs)` -- unique to eslint;
         # Semgrep's catch-all has the bare tokens but never that exact grouping.
@@ -749,18 +545,51 @@ RSpec.describe(GHB::LinterJobBuilder) do
       end
     end
 
-    context 'when a linter ships multiple config files (Trivy)' do
-      let(:options) do
-        instance_double(
-          GHB::Options,
-          skip_semgrep: false,
-          ignored_linters: {},
-          excluded_folders: [],
-          linters_config_file: 'config/linters.yaml',
-          languages_config_file: 'config/languages.yaml'
-        )
+    context 'when a linter config was renamed upstream' do
+      def build_markdownlint
+        builder = build_linter_job_builder
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(md)')), anything).and_return(['README.md']))
+        builder
       end
 
+      it 'removes the superseded .markdownlint.yml when installing the current config' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        allow(File).to(receive(:delete).and_call_original)
+        Dir.mktmpdir do |dir|
+          File.write(File.join(dir, '.markdownlint.yml'), "old\n")
+
+          Dir.chdir(dir) { build_markdownlint.build } # rubocop:disable ThreadSafety/DirChdir
+
+          expect(File.exist?(File.join(dir, '.markdownlint.yml'))).to(be(false))
+          expect(new_workflow.jobs).to(have_key(:markdownlint))
+        end
+      end
+    end
+
+    context 'when a renamed-config linter is ignored' do
+      let(:options) do
+        instance_double(GHB::Options, skip_semgrep: false, ignored_linters: { markdownlint: true }, excluded_folders: [], linters_config_file: 'config/linters.yaml', languages_config_file: 'config/languages.yaml')
+      end
+
+      it 'removes both the current config and the superseded .markdownlint.yml' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        allow(File).to(receive(:delete).and_call_original)
+        builder = build_linter_job_builder
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+
+        Dir.mktmpdir do |dir|
+          File.write(File.join(dir, '.markdownlint.yml'), "old\n")
+          File.write(File.join(dir, '.markdownlint-cli2.yaml'), "new\n")
+
+          Dir.chdir(dir) { builder.build } # rubocop:disable ThreadSafety/DirChdir
+
+          expect(File.exist?(File.join(dir, '.markdownlint.yml'))).to(be(false))
+          expect(File.exist?(File.join(dir, '.markdownlint-cli2.yaml'))).to(be(false))
+          expect(new_workflow.jobs).not_to(have_key(:markdownlint))
+        end
+      end
+    end
+
+    context 'when a linter ships multiple config files (Trivy)' do
       def build_trivy_only
         builder = described_class.new(
           context: GHB::BuildContext.new(
@@ -847,7 +676,7 @@ RSpec.describe(GHB::LinterJobBuilder) do
 
   # Workflow DSL scripts (*.workflow.js) must not trigger the JS-based linters:
   # they are validated by the Workflow runtime, not eslint/semgrep.
-  describe 'workflow DSL detection patterns' do
+  describe 'workflow DSL detection patterns' do # rubocop:disable RSpec/MultipleMemoizedHelpers
     let(:linters) { Psych.safe_load(File.read('config/linters.yaml')) }
 
     it 'excludes *.workflow.js from eslint detection but matches regular JS' do
