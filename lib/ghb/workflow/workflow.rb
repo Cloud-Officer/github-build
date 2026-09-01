@@ -101,6 +101,8 @@ module GHB
       @jobs = {}
 
       workflow_data[:jobs]&.each do |job_id, job_data|
+        raise(ConfigError, "Invalid workflow file #{file}: job '#{job_id}' must be a mapping, got #{job_data.class}") unless job_data.is_a?(Hash)
+
         do_job(job_id) do
           do_name(job_data[:name])
           do_permissions(job_data[:permissions])
@@ -121,7 +123,9 @@ module GHB
           do_with(job_data[:with])
           do_secrets(job_data[:secrets])
 
-          job_data[:steps]&.each do |step|
+          job_data[:steps]&.each_with_index do |step, index|
+            raise(ConfigError, "Invalid workflow file #{file}: job '#{job_id}' step #{index} must be a mapping, got #{step.class}") unless step.is_a?(Hash)
+
             do_step(step[:name]) do
               do_id(step[:id])
               do_if(step[:if])

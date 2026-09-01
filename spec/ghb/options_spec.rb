@@ -318,6 +318,13 @@ RSpec.describe(GHB::Options) do
       expect(options.original_argv).to(eq(['--organization', 'My Org', '--skip_slack']))
     end
 
+    it 'escapes values containing whitespace so the persisted header round-trips' do
+      options = described_class.new(['--organization', 'Cloud Officer', '--application_name', 'My App']).parse
+      header = options.args_comment.sub('# github-build ', '').strip
+
+      expect(Shellwords.split(header)).to(eq(['--organization', 'Cloud Officer', '--application_name', 'My App']))
+    end
+
     it 'raises a clear ConfigError on malformed quoting instead of a raw Shellwords stack trace' do
       allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --organization 'unterminated\n"].each))
 

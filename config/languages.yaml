@@ -51,7 +51,6 @@
 #                                                                       so the step is emitted once per job
 #                                                                       instead of once per sub-project
 #                                           package_manager_update:     update command (used in cron job)
-#                                           dependabot_ecosystem:       Dependabot ecosystem identifier
 #                                           cache_name:                 value the language's cache_option
 #                                                                       takes when this package manager is
 #                                                                       detected (e.g. npm, yarn, pnpm).
@@ -101,7 +100,6 @@ go:
       package_manager_name: Go Modules
       package_manager_default: go mod vendor
       package_manager_update: go mod tidy
-      dependabot_ecosystem: gomod
   unit_test_framework_name: Testing
   unit_test_framework_default: go test
 js:
@@ -148,7 +146,6 @@ js:
       package_manager_name: NPM
       package_manager_default: npm install
       package_manager_update: npm upgrade
-      dependabot_ecosystem: npm
     - dependency_file: yarn.lock
       cache_name: yarn
       install_dirs:
@@ -162,7 +159,6 @@ js:
       package_manager_name: Yarn
       package_manager_default: yarn install
       package_manager_update: yarn upgrade
-      dependabot_ecosystem: npm
     - dependency_file: pnpm-lock.yaml
       cache_name: pnpm
       install_dirs:
@@ -176,7 +172,6 @@ js:
       package_manager_name: pnpm
       package_manager_default: pnpm install
       package_manager_update: pnpm update
-      dependabot_ecosystem: npm
   unit_test_framework_name: Jest
   unit_test_framework_default: npx jest
 kotlin:
@@ -255,7 +250,6 @@ kotlin:
       package_manager_name: Gradle
       package_manager_default: gradle build
       package_manager_update: gradle dependencies --refresh-dependencies --write-locks
-      dependabot_ecosystem: gradle
     - dependency_file: pom.xml
       install_dirs:
         - .m2
@@ -267,7 +261,6 @@ kotlin:
       package_manager_name: Maven
       package_manager_default: mvn install
       package_manager_update: mvn versions:use-latest-releases
-      dependabot_ecosystem: maven
   unit_test_framework_name: JUnit
   unit_test_framework_default: gradle test
 php:
@@ -302,7 +295,6 @@ php:
       package_manager_name: Composer
       package_manager_default: composer install
       package_manager_update: composer update --no-scripts
-      dependabot_ecosystem: composer
     - dependency_file: yarn.lock
       install_dirs:
         - node_modules
@@ -315,7 +307,6 @@ php:
       package_manager_name: Yarn
       package_manager_default: yarn install
       package_manager_update: yarn upgrade
-      dependabot_ecosystem: npm
   unit_test_framework_name: PHPUnit
   unit_test_framework_default: vendor/bin/phpunit
 proto:
@@ -352,7 +343,6 @@ proto:
       package_manager_name: Go Modules
       package_manager_default: go mod vendor
       package_manager_update: go mod tidy
-      dependabot_ecosystem: gomod
   unit_test_framework_name: Protoc
   unit_test_framework_default: protoc
   runs-on: macos-26
@@ -394,7 +384,6 @@ python:
       package_manager_name: Pip
       package_manager_default: pip install -r requirements.txt
       package_manager_update: pip install pip-tools ; pip-compile --resolver=backtracking --upgrade --strip-extras --unsafe-package pip --unsafe-package setuptools --unsafe-package certifi --unsafe-package cuda-bindings --unsafe-package cuda-pathfinder --unsafe-package cuda-toolkit --unsafe-package nvidia-cublas --unsafe-package nvidia-cublas-cu12 --unsafe-package nvidia-cublas-cu13 --unsafe-package nvidia-cuda-cupti --unsafe-package nvidia-cuda-cupti-cu12 --unsafe-package nvidia-cuda-cupti-cu13 --unsafe-package nvidia-cuda-nvrtc --unsafe-package nvidia-cuda-nvrtc-cu12 --unsafe-package nvidia-cuda-nvrtc-cu13 --unsafe-package nvidia-cuda-runtime --unsafe-package nvidia-cuda-runtime-cu12 --unsafe-package nvidia-cuda-runtime-cu13 --unsafe-package nvidia-cudnn --unsafe-package nvidia-cudnn-cu12 --unsafe-package nvidia-cudnn-cu13 --unsafe-package nvidia-cufft --unsafe-package nvidia-cufft-cu12 --unsafe-package nvidia-cufft-cu13 --unsafe-package nvidia-cufile --unsafe-package nvidia-cufile-cu12 --unsafe-package nvidia-cufile-cu13 --unsafe-package nvidia-curand --unsafe-package nvidia-curand-cu12 --unsafe-package nvidia-curand-cu13 --unsafe-package nvidia-cusolver --unsafe-package nvidia-cusolver-cu12 --unsafe-package nvidia-cusolver-cu13 --unsafe-package nvidia-cusparse --unsafe-package nvidia-cusparse-cu12 --unsafe-package nvidia-cusparse-cu13 --unsafe-package nvidia-cusparselt --unsafe-package nvidia-cusparselt-cu12 --unsafe-package nvidia-cusparselt-cu13 --unsafe-package nvidia-nccl --unsafe-package nvidia-nccl-cu12 --unsafe-package nvidia-nccl-cu13 --unsafe-package nvidia-nvjitlink --unsafe-package nvidia-nvjitlink-cu12 --unsafe-package nvidia-nvjitlink-cu13 --unsafe-package nvidia-nvshmem --unsafe-package nvidia-nvshmem-cu12 --unsafe-package nvidia-nvshmem-cu13 --unsafe-package nvidia-nvtx --unsafe-package nvidia-nvtx-cu12 --unsafe-package nvidia-nvtx-cu13 --unsafe-package triton
-      dependabot_ecosystem: pip
   unit_test_framework_name: Coverage
   unit_test_framework_default: coverage run -m unittest
 swift:
@@ -410,35 +399,30 @@ swift:
       package_manager_name: Bundler
       package_manager_default: bundle install
       package_manager_update: bundle config set frozen false ; bundle update
-      dependabot_ecosystem: bundler
     - dependency_file: Cartfile
       install_dirs:
         - Carthage
       package_manager_name: Carthage
       package_manager_default: carthage update
       package_manager_update: carthage update
-      dependabot_ecosystem: swift
     - dependency_file: Podfile
       install_dirs:
         - Pods
       package_manager_name: CocoaPods
       package_manager_default: pod install
       package_manager_update: pod update
-      dependabot_ecosystem: swift
     - dependency_file: Package.swift
       install_dirs:
         - .build
       package_manager_name: Swift Package Manager
       package_manager_default: swift package resolve
       package_manager_update: swift package update
-      dependabot_ecosystem: swift
     - dependency_file: Tuist/Package.swift
       install_dirs:
         - .build
       package_manager_name: Tuist Package Manager
       package_manager_default: tuist install
       package_manager_update: tuist install --update
-      dependabot_ecosystem: swift
   unit_test_framework_name: XCTest
   unit_test_framework_default: swift test
 shell_script:
@@ -494,7 +478,6 @@ ruby:
       package_manager_name: Bundler
       package_manager_default: bundle install
       package_manager_update: bundle config set frozen false ; bundle update
-      dependabot_ecosystem: bundler
   unit_test_framework_name: RSpec
   unit_test_framework_default: bundle exec rspec --format documentation
 # Directories to exclude from file scanning that are NOT package manager install dirs.
