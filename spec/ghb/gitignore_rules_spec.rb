@@ -222,7 +222,7 @@ RSpec.describe(GHB::GitignoreRules) do
     end
   end
 
-  describe '#detect_custom_patterns' do
+  describe '#detect_custom_pattern_groups flattened' do
     it 'returns patterns from config custom_patterns' do # rubocop:disable RSpec/ExampleLength
       config = {
         custom_patterns: {
@@ -231,7 +231,7 @@ RSpec.describe(GHB::GitignoreRules) do
         }
       }
 
-      expect(rules.detect_custom_patterns(config)).to(eq(['# Claude Code', '.claude/', '# Cursor', '.cursor/']))
+      expect(rules.detect_custom_pattern_groups(config).flatten).to(eq(['# Claude Code', '.claude/', '# Cursor', '.cursor/']))
     end
 
     it 'flattens a multi-pattern tool into the pattern list' do # rubocop:disable RSpec/ExampleLength
@@ -242,15 +242,15 @@ RSpec.describe(GHB::GitignoreRules) do
         }
       }
 
-      expect(rules.detect_custom_patterns(config)).to(eq(['# Claude Code', '.claude/', '# Claude Code skill review artifacts', 'docs/code-review.md', 'docs/seo-audit.md']))
+      expect(rules.detect_custom_pattern_groups(config).flatten).to(eq(['# Claude Code', '.claude/', '# Claude Code skill review artifacts', 'docs/code-review.md', 'docs/seo-audit.md']))
     end
 
     it 'returns empty array when no custom_patterns configured' do
-      expect(rules.detect_custom_patterns({ custom_patterns: nil })).to(eq([]))
+      expect(rules.detect_custom_pattern_groups({ custom_patterns: nil }).flatten).to(eq([]))
     end
 
     it 'returns empty array when custom_patterns is empty' do
-      expect(rules.detect_custom_patterns({ custom_patterns: {} })).to(eq([]))
+      expect(rules.detect_custom_pattern_groups({ custom_patterns: {} }).flatten).to(eq([]))
     end
   end
 end

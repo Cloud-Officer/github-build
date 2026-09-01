@@ -174,7 +174,7 @@ RSpec.describe(GHB::GitignoreManager) do
       allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
 
       expect { manager.update }
-        .to(raise_error(RuntimeError, /Cannot fetch gitignore templates/))
+        .to(raise_error(GHB::ConfigError, /Cannot fetch gitignore templates/))
     end
 
     [503, 504].each do |status|
@@ -191,7 +191,7 @@ RSpec.describe(GHB::GitignoreManager) do
         allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
 
         expect { manager.update }
-          .to(raise_error(RuntimeError, /Cannot fetch gitignore templates/))
+          .to(raise_error(GHB::ConfigError, /Cannot fetch gitignore templates/))
       end
     end
 
@@ -207,7 +207,7 @@ RSpec.describe(GHB::GitignoreManager) do
         allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_raise(error))
 
         expect { manager.update }
-          .to(raise_error(RuntimeError, /Cannot fetch gitignore templates: #{error}/))
+          .to(raise_error(GHB::ConfigError, /Cannot fetch gitignore templates: #{error}/))
       end
     end
   end

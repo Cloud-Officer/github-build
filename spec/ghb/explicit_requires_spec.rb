@@ -13,13 +13,22 @@ LIBRARY_PROBES = {
 # Every lib file that calls FileUtils, Psych or the ActiveSupport hash core
 # extensions, mapped to the libraries it must require itself.
 GUARDED_FILES = {
+  application: %i[psych],
+  auto_approve_manager: %i[fileutils],
   dependabot_manager: %i[fileutils],
   file_scanner: %i[active_support fileutils psych],
   gitignore_manager: %i[active_support psych],
   language_job_builder: %i[active_support psych],
   linter_job_builder: %i[active_support fileutils psych],
   repository_configurator: %i[psych],
-  'workflow/workflow': %i[active_support psych]
+  'workflow/workflow': %i[active_support fileutils psych]
+}.freeze
+
+# Source markers that mean a file uses each guarded library.
+LIBRARY_USAGE = {
+  active_support: /deep_symbolize_keys|deep_stringify_keys|deep_merge/,
+  fileutils: /FileUtils\./,
+  psych: /Psych\./
 }.freeze
 
 # Regression guard for BUG-009 (FileUtils) and CON-004 (Psych / ActiveSupport):
@@ -52,6 +61,26 @@ RSpec.describe('explicit library requires (BUG-009, CON-004)') do # rubocop:disa
       expect(status).to(be_success, "load failed: #{stderr}")
       expect(stdout).to(eq(expected_probes(libraries)))
     end
+  end
+
+  # Without this, a new lib file using FileUtils/Psych/ActiveSupport is simply
+  # absent from GUARDED_FILES and silently unguarded.
+  it 'lists every lib file that uses a guarded library' do # rubocop:disable RSpec/ExampleLength
+    lib_root = File.expand_path('../../lib/ghb', __dir__)
+    actual =
+      Dir.glob("#{lib_root}/**/*.rb").to_h do |path|
+        source = File.read(path)
+        key = path.delete_prefix("#{lib_root}/").delete_suffix('.rb')
+        [
+          key,
+          LIBRARY_USAGE.select { |_library, marker| source.match?(marker) }
+                       .keys.sort
+        ]
+      end
+    actual.reject! { |_key, libraries| libraries.empty? }
+    expected = GUARDED_FILES.to_h { |file, libraries| [file.to_s, libraries.sort] }
+
+    expect(actual).to(eq(expected))
   end
 
   # Control: proves the probes above actually detect a missing require, i.e. the

@@ -120,12 +120,15 @@ module GHB
       response.code >= 500 || rate_limited?(response)
     end
 
-    # GitHub signals rate limiting with 429, or 403 + X-RateLimit-Remaining: 0
-    # (primary and secondary/abuse limits).
+    # A secondary limit answers 403 with Retry-After while the primary quota,
+    # and so X-RateLimit-Remaining, is untouched.
     def rate_limited?(response)
       return true if response.code == 429
+      return false unless response.code == 403
 
-      response.code == 403 && response.headers['x-ratelimit-remaining'].to_s == '0'
+      response.headers['x-ratelimit-remaining'].to_s == '0' ||
+        !response.headers['retry-after'].nil? ||
+        response.body.to_s.include?('secondary rate limit')
     end
 
     # Honor Retry-After / X-RateLimit-Reset for rate-limited responses (capped);

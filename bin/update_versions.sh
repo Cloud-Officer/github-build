@@ -85,8 +85,9 @@ yq e --indent=2 '(.ruby.setup_options[] | select(.name == "ruby-version").value)
 
 latest_mongodb=$(aws docdb describe-db-engine-versions --engine docdb --query 'DBEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1 || true)
 
+# mongodb/mongo publishes no GitHub Releases, so the fallback reads tags.
 if [ -z "${latest_mongodb}" ]; then
-    latest_mongodb=$(curl -fsS https://api.github.com/repos/mongodb/mongo/releases | jq -r '[.[] | select(.tag_name | test("^r[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name | ltrimstr("r")] | map(select(. | startswith("5.0") or startswith("4."))) | sort_by(. | split(".") | map(tonumber)) | last' || true)
+    latest_mongodb=$(curl -fsS 'https://api.github.com/repos/mongodb/mongo/tags?per_page=100' | jq -r '[.[].name | select(test("^r[0-9]+\\.[0-9]+\\.[0-9]+$")) | ltrimstr("r")] | sort_by(split(".") | map(tonumber)) | last' || true)
 fi
 
 require_version "MongoDB" "${latest_mongodb}"

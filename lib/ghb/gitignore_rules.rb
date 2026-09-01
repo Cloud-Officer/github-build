@@ -104,10 +104,6 @@ module GHB
       groups
     end
 
-    def detect_custom_patterns(config)
-      detect_custom_pattern_groups(config).flatten
-    end
-
     private
 
     def template_detected?(detection_config, excluded_paths)

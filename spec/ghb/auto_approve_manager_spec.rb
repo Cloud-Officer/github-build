@@ -2,8 +2,8 @@
 
 require 'open3'
 
-RSpec.describe(GHB::AutoMergeManager) do
-  let(:auto_merge_workflow) { GHB::Workflow.new('Auto-approve for code owners') }
+RSpec.describe(GHB::AutoApproveManager) do
+  let(:auto_approve_workflow) { GHB::Workflow.new('Auto-approve for code owners') }
 
   before do
     allow($stdout).to(receive(:puts))
@@ -14,24 +14,24 @@ RSpec.describe(GHB::AutoMergeManager) do
 
   describe '#save' do
     it 'generates the auto-approve workflow file' do
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
       expect(File).to(have_received(:write).with('.github/workflows/auto-approve.yml', anything))
     end
 
     it 'removes the legacy auto-merge workflow file' do
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
       expect(FileUtils).to(have_received(:rm_f).with('.github/workflows/auto-merge.yml'))
     end
 
     it 'sets the correct trigger' do # rubocop:disable RSpec/ExampleLength
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
-      expect(auto_merge_workflow.on).to(
+      expect(auto_approve_workflow.on).to(
         eq(
           {
             pull_request_target:
@@ -44,10 +44,10 @@ RSpec.describe(GHB::AutoMergeManager) do
     end
 
     it 'sets least-privilege permissions (contents: read only)' do # rubocop:disable RSpec/ExampleLength
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
-      expect(auto_merge_workflow.permissions).to(
+      expect(auto_approve_workflow.permissions).to(
         eq(
           {
             contents: 'read'
@@ -57,27 +57,27 @@ RSpec.describe(GHB::AutoMergeManager) do
     end
 
     it 'creates the auto_approve job' do # rubocop:disable RSpec/MultipleExpectations
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
-      expect(auto_merge_workflow.jobs).to(have_key(:auto_approve))
-      expect(auto_merge_workflow.jobs[:auto_approve].name).to(eq('Auto-approve'))
+      expect(auto_approve_workflow.jobs).to(have_key(:auto_approve))
+      expect(auto_approve_workflow.jobs[:auto_approve].name).to(eq('Auto-approve'))
     end
 
     it 'skips drafts and blocks fork pull requests' do
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
-      expect(auto_merge_workflow.jobs[:auto_approve].if).to(
+      expect(auto_approve_workflow.jobs[:auto_approve].if).to(
         eq('github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository')
       )
     end
 
     it 'sets a per-PR concurrency group' do # rubocop:disable RSpec/ExampleLength
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
-      expect(auto_merge_workflow.concurrency).to(
+      expect(auto_approve_workflow.concurrency).to(
         eq(
           {
             group: 'auto-approve-${{github.event.pull_request.number}}',
@@ -88,7 +88,7 @@ RSpec.describe(GHB::AutoMergeManager) do
     end
 
     it 'writes an auto-generated header into the workflow file' do # rubocop:disable RSpec/ExampleLength
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
       expect(File).to(
@@ -100,20 +100,20 @@ RSpec.describe(GHB::AutoMergeManager) do
     end
 
     it 'includes a checkout step with base sha' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
-      checkout_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Checkout' }
+      checkout_step = auto_approve_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Checkout' }
       expect(checkout_step).not_to(be_nil)
       expect(checkout_step.uses).to(eq(GHB.external_action('actions/checkout')))
       expect(checkout_step.with[:ref]).to(eq('${{github.event.pull_request.base.sha}}'))
     end
 
     it 'includes a code owner check step' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
-      check_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Check if PR author is a code owner' }
+      check_step = auto_approve_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Check if PR author is a code owner' }
       expect(check_step).not_to(be_nil)
       expect(check_step.id).to(eq('check'))
       expect(check_step.run).to(include('CODEOWNERS'))
@@ -122,10 +122,10 @@ RSpec.describe(GHB::AutoMergeManager) do
     end
 
     it 'exposes only GH_TOKEN and AUTHOR to the code owner check step (no dead ORG var)' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
-      check_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Check if PR author is a code owner' }
+      check_step = auto_approve_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Check if PR author is a code owner' }
       expect(check_step.env).to(
         eq(
           {
@@ -139,10 +139,10 @@ RSpec.describe(GHB::AutoMergeManager) do
     end
 
     it 'includes an approve PR step' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
-      approve_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Approve PR' }
+      approve_step = auto_approve_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Approve PR' }
       expect(approve_step).not_to(be_nil)
       expect(approve_step.if).to(eq("steps.check.outputs.is_owner == 'true'"))
       expect(approve_step.run).to(include('gh pr review --approve "$PR"'))
@@ -151,19 +151,19 @@ RSpec.describe(GHB::AutoMergeManager) do
     end
 
     it 'skips self-approval when the approver is the PR author' do # rubocop:disable RSpec/MultipleExpectations
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
-      approve_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Approve PR' }
+      approve_step = auto_approve_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Approve PR' }
       expect(approve_step.run).to(include('APPROVER=$(gh api user --jq .login)'))
       expect(approve_step.run).to(include('skipping self-approval'))
     end
 
     it 'does not include a merge step' do
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
 
-      merge_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name&.match?(/merge/i) }
+      merge_step = auto_approve_workflow.jobs[:auto_approve].steps.find { |s| s.name&.match?(/merge/i) }
       expect(merge_step).to(be_nil)
     end
   end
@@ -174,9 +174,9 @@ RSpec.describe(GHB::AutoMergeManager) do
   # FileUtils stubs above do not interfere.
   describe 'generated CODEOWNERS check script (BUG-001)' do
     def run_check_script(codeowners:, author:)
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
-      check_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Check if PR author is a code owner' }
+      check_step = auto_approve_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Check if PR author is a code owner' }
       script = check_step.run
 
       Dir.mktmpdir do |dir|
@@ -224,9 +224,9 @@ RSpec.describe(GHB::AutoMergeManager) do
     end
 
     it 'still emits is_owner=false (exit 0) when no CODEOWNERS file exists' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-      manager = described_class.new(auto_merge_workflow: auto_merge_workflow)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
-      check_step = auto_merge_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Check if PR author is a code owner' }
+      check_step = auto_approve_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Check if PR author is a code owner' }
       script = check_step.run
 
       exit_status, output =

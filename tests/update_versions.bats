@@ -53,7 +53,9 @@ case "${url}" in
   *xcodereleases.com*)
     printf '[{"version":{"number":"26.2","release":{"beta":1}}},{"version":{"number":"26.1","release":{"release":true}}}]\n' ;;
   *mongodb/mongo/releases*)
-    printf '[{"tag_name":"r8.0.4"},{"tag_name":"r5.0.31"},{"tag_name":"r4.4.29"}]\n' ;;
+    printf '[]\n' ;;
+  *mongodb/mongo/tags*)
+    printf '[{"name":"r8.3.8"},{"name":"r8.0.4"},{"name":"r5.0.31"},{"name":"r8.4.0-rc0"}]\n' ;;
   *dev.mysql.com*)
     printf '<p>MySQL Community Server 9.2.0 (GA)</p>\n' ;;
   *valkey-io/valkey/releases*)
@@ -141,10 +143,16 @@ value_of() {
   [ "$(value_of config/languages.yaml proto.setup_options xcode-version)" = "26.1" ]
   [ "$(value_of config/languages.yaml python.setup_options python-version)" = "3.14.0" ]
   [ "$(value_of config/languages.yaml ruby.setup_options ruby-version)" = "3.5.0" ]
-  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "5.0.31" ]
+  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "8.3.8" ]
   [ "$(value_of config/options/mysql.yaml options mysql-version)" = "9.2" ]
   [ "$(value_of config/options/redis.yaml options redis-version)" = "8.1.1" ]
   [ "$(value_of config/options/opensearch.yaml options opensearch-version)" = "3.8" ]
+}
+
+@test "the MongoDB fallback resolves from tags, which is where mongodb/mongo publishes versions" {
+  run "${SCRIPT}"
+  [ "${status}" -eq 0 ]
+  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "8.3.8" ]
 }
 
 @test "the rewritten config files stay valid two-space YAML" {
@@ -168,7 +176,7 @@ value_of() {
   # before the `-z` fallback could run.
   run "${SCRIPT}"
   [ "${status}" -eq 0 ]
-  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "5.0.31" ]
+  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "8.3.8" ]
   [ "$(value_of config/options/opensearch.yaml options opensearch-version)" = "3.8" ]
 }
 

@@ -5,7 +5,7 @@ require 'fileutils'
 module GHB
   # Manages the auto-approve workflow for code owners. The workflow only
   # approves code-owner PRs; it never merges, so it is named "Auto-approve".
-  class AutoMergeManager
+  class AutoApproveManager
     OLD_WORKFLOW_FILE = '.github/workflows/auto-merge.yml'
     WORKFLOW_FILE = '.github/workflows/auto-approve.yml'
 
@@ -75,14 +75,14 @@ module GHB
 
     private_constant :OLD_WORKFLOW_FILE, :WORKFLOW_FILE, :CODEOWNERS_CHECK_SCRIPT, :APPROVE_SCRIPT
 
-    def initialize(auto_merge_workflow:)
-      @auto_merge_workflow = auto_merge_workflow
+    def initialize(auto_approve_workflow:)
+      @auto_approve_workflow = auto_approve_workflow
     end
 
     def save
       puts('    Adding auto-approve workflow...')
 
-      @auto_merge_workflow.on =
+      @auto_approve_workflow.on =
         {
           pull_request_target:
             {
@@ -93,19 +93,19 @@ module GHB
       # Least privilege: the only GITHUB_TOKEN consumer is actions/checkout (base SHA),
       # which needs contents: read. Both gh steps authenticate via GH_PAT / GH_BOT_PAT,
       # so the workflow token needs no write scopes.
-      @auto_merge_workflow.permissions =
+      @auto_approve_workflow.permissions =
         {
           contents: 'read'
         }
 
       # Cancel superseded runs on rapid pushes to the same PR.
-      @auto_merge_workflow.concurrency =
+      @auto_approve_workflow.concurrency =
         {
           group: 'auto-approve-${{github.event.pull_request.number}}',
           'cancel-in-progress': true
         }
 
-      @auto_merge_workflow.do_job(:auto_approve) do
+      @auto_approve_workflow.do_job(:auto_approve) do
         do_name('Auto-approve')
         # Skip drafts, and never run the privileged pull_request_target token
         # against code checked out from a fork.
@@ -151,9 +151,9 @@ module GHB
       # running both the old and the renamed workflow.
       FileUtils.rm_f(OLD_WORKFLOW_FILE)
 
-      @auto_merge_workflow.write(
+      @auto_approve_workflow.write(
         WORKFLOW_FILE,
-        header: GHB.generated_header('auto_merge_manager.rb')
+        header: GHB.generated_header('auto_approve_manager.rb')
       )
     end
   end

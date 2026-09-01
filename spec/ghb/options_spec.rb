@@ -185,7 +185,6 @@ RSpec.describe(GHB::Options) do
         options = described_class.new(["--options-#{service}", "custom/#{service}.yaml"])
         options.parse
 
-        expect(options.options_config_file(service)).to(eq("custom/#{service}.yaml"))
         expect(options.options_config_files[service]).to(eq("custom/#{service}.yaml"))
       end
     end
@@ -195,7 +194,7 @@ RSpec.describe(GHB::Options) do
       options.parse
 
       (GHB::SERVICES - [:mysql]).each do |service|
-        expect(options.options_config_file(service)).to(eq("config/options/#{service}.yaml"))
+        expect(options.options_config_files[service]).to(eq("config/options/#{service}.yaml"))
       end
     end
 
@@ -203,7 +202,7 @@ RSpec.describe(GHB::Options) do
       options = described_class.new([])
       options.parse
 
-      expect(options.options_config_file(:postgres)).to(be_nil)
+      expect(options.options_config_files[:postgres]).to(be_nil)
     end
 
     it 'parses multiple options together' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
