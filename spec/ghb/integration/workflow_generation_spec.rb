@@ -11,6 +11,10 @@
 #   UPDATE_SNAPSHOTS=1 bundle exec rspec spec/ghb/integration/workflow_generation_spec.rb
 RSpec.describe('workflow generation (golden file)') do # rubocop:disable RSpec/DescribeClass
   let(:golden_path) { "#{__dir__}/../../fixtures/workflow_generation/build.yml" }
+  let(:ruby_version) do
+    config = Psych.safe_load_file("#{__dir__}/../../../config/languages.yaml")
+    config.dig('ruby', 'setup_options').find { |option| option['name'] == 'ruby-version' }['value']
+  end
   let(:argv) do
     %w[--organization test-org --skip_repository_settings --skip_gitignore --skip_slack]
   end
@@ -22,12 +26,11 @@ RSpec.describe('workflow generation (golden file)') do # rubocop:disable RSpec/D
   end
 
   before do
-    # Minimal Ruby project so the Ruby language + linters are detected.
-    # .ruby-version matches config/languages.yaml ruby-version so the
-    # version-file reconciliation neither warns nor rewrites mid-test.
+    # .ruby-version is read from config/languages.yaml rather than hardcoded so
+    # the fixture cannot fall behind it and silently take the mismatch branch.
     File.write('app.rb', "puts 'hello'\n")
     File.write('Gemfile', "source 'https://rubygems.org'\n")
-    File.write('.ruby-version', "4.0.4\n")
+    File.write('.ruby-version', "#{ruby_version}\n")
     allow($stdout).to(receive(:puts))
   end
 

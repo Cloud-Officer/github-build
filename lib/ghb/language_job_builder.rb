@@ -283,16 +283,14 @@ module GHB
       old_workflow = @old_workflow
       code_deploy_pre_steps = @code_deploy_pre_steps
       dependencies_steps = @dependencies_steps
+      version_option_key = version_file && version_option_name(version_file).to_sym
 
       job.do_step('Setup') do
         copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
         do_uses("cloud-officer/ci-actions/setup@#{CI_ACTIONS_VERSION}")
 
         # Remove version parameter from with if version file exists (version file takes precedence)
-        if version_file
-          version_option_key = (version_file == '.nvmrc' ? 'node-version' : version_file.delete_prefix('.')).to_sym
-          with.delete(version_option_key)
-        end
+        with.delete(version_option_key) if version_option_key
 
         default_with(GHB.secrets(:ssh, :github_token).merge(setup_options))
 
@@ -405,19 +403,18 @@ module GHB
       end
     end
 
-    def add_setup_options(setup_options, options, version_file = nil)
-      # Derive the version option name from the version file (e.g., .ruby-version -> ruby-version)
-      # Special case for .nvmrc -> node-version
-      version_option_name = nil
+    # .ruby-version -> ruby-version; .nvmrc is the one file not named after its option.
+    def version_option_name(version_file)
+      version_file == '.nvmrc' ? 'node-version' : version_file.delete_prefix('.')
+    end
 
-      if version_file
-        version_option_name = version_file == '.nvmrc' ? 'node-version' : version_file.delete_prefix('.')
-      end
+    def add_setup_options(setup_options, options, version_file = nil)
+      skipped_option = version_file && version_option_name(version_file)
 
       options&.each do |option|
         # If a version file exists and this option matches the version file,
         # skip setting it so the ci-actions setup will use the version file instead
-        if version_option_name && option[:name] == version_option_name
+        if skipped_option && option[:name] == skipped_option
           option_value = option[:value]
 
           if option_value
