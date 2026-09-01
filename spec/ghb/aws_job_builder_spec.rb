@@ -7,7 +7,7 @@ RSpec.describe(GHB::AwsJobBuilder) do
       workflow.do_job(:aws) do
         do_name('AWS')
         do_step('AWS Commands') do
-          do_uses('cloud-officer/ci-actions/aws@v2')
+          do_uses('cloud-officer/ci-actions/aws@v3')
         end
       end
       workflow
@@ -54,7 +54,7 @@ RSpec.describe(GHB::AwsJobBuilder) do
       old_wf.do_job(:aws) do
         do_name('AWS')
         do_step('AWS Commands') do
-          do_uses('cloud-officer/ci-actions/aws@v2')
+          do_uses('cloud-officer/ci-actions/aws@v3')
           do_with(
             {
               'ssh-key': '${{secrets.SSH_KEY}}',

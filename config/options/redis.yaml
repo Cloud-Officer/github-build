@@ -5,7 +5,7 @@
 # contains the redis_dependency string (e.g., "redis" in go.mod or package.json).
 #
 # Each option's name is converted to an uppercase environment variable
-# and passed to the cloud-officer/ci-actions/setup@v2 action.
+# and passed to the cloud-officer/ci-actions/setup@v3 action.
 # Empty values mean the option is not set (service defaults apply).
 
 options:

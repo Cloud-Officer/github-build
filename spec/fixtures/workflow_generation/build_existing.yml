@@ -1,0 +1,39 @@
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack
+---
+name: Custom Build Name
+'on':
+  pull_request:
+    types:
+    - opened
+  push:
+    branches:
+    - master
+run-name: Build ${{github.actor}} / ${{github.ref_name}}
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+env:
+  RUBY-BUNDLER-CACHE: true
+  CUSTOM_TEAM_FLAG: enabled
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: custom-group-${{github.head_ref}}
+  cancel-in-progress: false
+jobs:
+  licenses:
+    name: Licenses Check
+    runs-on: ubuntu-24.04
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
+    timeout-minutes: 45
+    steps:
+    - name: Licenses
+      uses: cloud-officer/ci-actions/soup@v2
+      with:
+        ssh-key: "${{secrets.CUSTOM_SSH_KEY}}"
+        github-token: "${{secrets.GH_PAT}}"
+        parameters: "--no_prompt --custom-flag"

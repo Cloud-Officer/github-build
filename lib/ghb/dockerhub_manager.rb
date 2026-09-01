@@ -32,7 +32,7 @@ module GHB
       @dockerhub_workflow.do_job(:push_to_registry) do
         do_name('Push Docker Image to Docker Hub')
         do_runs_on(DEFAULT_UBUNTU_VERSION)
-        # Permission scopes are the minimum required by cloud-officer/ci-actions/docker@v2:
+        # Permission scopes are the minimum required by cloud-officer/ci-actions/docker@v3:
         # - contents:read     for actions/checkout
         # - id-token:write    for actions/attest-build-provenance OIDC signing via Sigstore
         # - attestations:write for publishing the build provenance attestation to GitHub
