@@ -259,6 +259,20 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       expect { workflow.read('list.yml') }
         .to(raise_error(GHB::ConfigError, /expected a mapping at the document root, got Array/))
     end
+
+    it 'raises a clear ConfigError naming the job when a job body is not a mapping' do
+      allow(File).to(receive(:read).and_return("---\njobs:\n  orphan:\n".dup))
+
+      expect { workflow.read('orphan.yml') }
+        .to(raise_error(GHB::ConfigError, /orphan\.yml: job 'orphan' must be a mapping, got NilClass/))
+    end
+
+    it 'raises a clear ConfigError naming the job and index when a step is not a mapping' do
+      allow(File).to(receive(:read).and_return("---\njobs:\n  build:\n    steps:\n    - name: ok\n    - echo hi\n".dup))
+
+      expect { workflow.read('steps.yml') }
+        .to(raise_error(GHB::ConfigError, /steps\.yml: job 'build' step 1 must be a mapping, got String/))
+    end
   end
 
   describe '#write' do

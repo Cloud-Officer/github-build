@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'optparse'
+require 'shellwords'
 
 require_relative '../ghb'
 require_relative 'status'
@@ -60,7 +61,8 @@ module GHB
     def args_comment
       return '' if @original_argv.empty?
 
-      "#{ARGS_COMMENT_PREFIX} #{@original_argv.join(' ')}\n"
+      "#{ARGS_COMMENT_PREFIX} #{@original_argv.map { |arg| Shellwords.escape(arg) }
+.join(' ')}\n"
     end
 
     private
@@ -72,7 +74,6 @@ module GHB
       return [] if first_line.nil? || !first_line.start_with?(ARGS_COMMENT_PREFIX)
 
       args_string = first_line.sub(ARGS_COMMENT_PREFIX, '').strip
-      require('shellwords')
       strip_removed_flags(Shellwords.split(args_string), file)
     rescue ArgumentError => e
       raise(ConfigError, "Malformed github-build args in #{file}: #{e.message}")

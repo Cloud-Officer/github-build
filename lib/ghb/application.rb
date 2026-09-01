@@ -186,6 +186,22 @@ module GHB
         validate_entries(data, relative_path, 'linter', %w[short_name long_name uses path pattern])
       when :languages_config
         validate_entries(data, relative_path, 'language', %w[short_name long_name])
+        validate_language_dependencies(data, relative_path)
+      end
+    end
+
+    # LanguageJobBuilder iterates dependencies unguarded once file_extension matches.
+    def validate_language_dependencies(data, relative_path)
+      return unless data.is_a?(Hash)
+
+      data.each do |entry_name, entry|
+        next unless entry.is_a?(Hash)
+        next unless entry.key?('file_extension') || entry.key?(:file_extension)
+
+        dependencies = entry['dependencies'] || entry[:dependencies]
+        next if dependencies.is_a?(Array)
+
+        raise(ConfigError, "Language '#{entry_name}' in #{relative_path} declares file_extension so it must also declare dependencies as a list")
       end
     end
 

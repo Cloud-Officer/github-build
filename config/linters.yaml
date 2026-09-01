@@ -42,7 +42,6 @@
 #                                         instead of letting the org PAT reach that third-party action
 #   permissions      (hash, optional)   - Job-level GitHub Actions permissions override
 #                                         (e.g., {actions: read, contents: read})
-#   directory        (string, optional) - Additional directory hint for the linter
 
 actionlint:
   short_name: Actionlint
@@ -172,7 +171,6 @@ rubocop:
   config: ".rubocop.yml"
   path: "."
   pattern: "(.*\\/Fastfile$)|(.*\\.(rb)$)"
-  directory: fastlane
 semgrep:
   short_name: Semgrep
   long_name: Semgrep Security Scanner

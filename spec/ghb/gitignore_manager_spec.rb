@@ -44,6 +44,20 @@ RSpec.describe(GHB::GitignoreManager) do
       expect(File).not_to(have_received(:exist?).with('.gitignore'))
     end
 
+    it 'tolerates a gitignore config that parses to nil instead of raising NoMethodError' do # rubocop:disable RSpec/ExampleLength
+      allow(manager).to(receive(:cached_file_read).and_return("# only a comment\n"))
+
+      allow(gitignore_rules).to(receive_messages(cached_file_read: "# only a comment\n", find_files_matching: []))
+      allow(File).to(receive(:exist?).and_return(false))
+
+      api_response = instance_double(HTTParty::Response, code: 200, body: "### Linux ###\n*~\n")
+      allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
+      allow(File).to(receive(:write))
+
+      expect { manager.update }
+        .not_to(raise_error)
+    end
+
     it 'creates a new .gitignore when none exists' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       config_yaml = Psych.dump(minimal_gitignore_config.deep_stringify_keys)
 

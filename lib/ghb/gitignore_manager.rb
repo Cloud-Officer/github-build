@@ -32,7 +32,7 @@ module GHB
 
       # Load gitignore templates config
       config_path = "#{__dir__}/../../#{@options.gitignore_config_file}"
-      gitignore_config = Psych.safe_load(cached_file_read(config_path))&.deep_symbolize_keys
+      gitignore_config = Psych.safe_load(cached_file_read(config_path))&.deep_symbolize_keys || {}
 
       # Detect templates based on project files
       detected_templates = @rules.detect_gitignore_templates(gitignore_config)
