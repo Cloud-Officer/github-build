@@ -28,18 +28,7 @@ module GHB
           copy_properties(find_step(old_workflow.jobs[:aws]&.steps, name))
           do_uses("cloud-officer/ci-actions/aws@#{CI_ACTIONS_VERSION}")
 
-          if with.empty?
-            do_with(
-              {
-                'ssh-key': '${{secrets.SSH_KEY}}',
-                'github-token': '${{secrets.GH_PAT}}',
-                'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
-                'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
-                'aws-region': '${{secrets.AWS_DEFAULT_REGION}}',
-                'shell-commands': 'echo "Add your commands here!"'
-              }
-            )
-          end
+          default_with(GHB.secrets(:ssh, :github_token, :aws).merge('shell-commands': 'echo "Add your commands here!"'))
         end
       end
     end

@@ -1,9 +1,13 @@
 # frozen_string_literal: true
 
+require_relative 'copyable_properties'
+
 module GHB
   # Data model for GitHub Actions step - instance variables map to YAML schema.
   # Any new copyable ivar must be added to COPYABLE_PROPERTIES.
   class Step
+    include CopyableProperties
+
     # Properties carried over from a previously-generated step by copy_properties.
     COPYABLE_PROPERTIES = %i[id if uses run shell with env continue_on_error timeout_minutes].freeze
     public_constant :COPYABLE_PROPERTIES
@@ -22,16 +26,6 @@ module GHB
     end
 
     attr_accessor :id, :if, :name, :uses, :run, :shell, :with, :env, :continue_on_error, :timeout_minutes
-
-    def copy_properties(object, properties = COPYABLE_PROPERTIES)
-      return if object.nil?
-
-      properties.each do |property|
-        raise("Error: #{object.class} does not have a #{property} property!") unless object.respond_to?(property)
-
-        public_send(:"#{property}=", object.public_send(property))
-      end
-    end
 
     def do_id(id)
       @id = id unless id.nil?
@@ -90,6 +84,11 @@ module GHB
       hash[:'continue-on-error'] = @continue_on_error unless @continue_on_error.nil?
       hash[:'timeout-minutes'] = @timeout_minutes unless @timeout_minutes.nil?
       hash
+    end
+
+    # Skipped when the step already has a `with:`, so hand edits survive.
+    def default_with(defaults)
+      do_with(defaults) if with.empty?
     end
   end
 end

@@ -37,7 +37,7 @@ module GHB
           do_step('Checkout') do
             copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name))
             do_uses("cloud-officer/ci-actions/codedeploy/checkout@#{CI_ACTIONS_VERSION}")
-            do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'github-token': '${{secrets.GH_PAT}}' }) if with.empty?
+            default_with(GHB.secrets(:ssh, :github_token))
           end
         else
           code_deploy_pre_steps.each do |step|
@@ -64,17 +64,7 @@ module GHB
           copy_properties(find_step(old_workflow.jobs[:codedeploy]&.steps, name))
           do_uses("cloud-officer/ci-actions/codedeploy/s3copy@#{CI_ACTIONS_VERSION}")
 
-          if with.empty?
-            do_with(
-              {
-                'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
-                'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
-                'aws-region': '${{secrets.AWS_DEFAULT_REGION}}',
-                source: 'deployment',
-                target: 's3://${{secrets.CODEDEPLOY_BUCKET}}/${{github.repository}}'
-              }
-            )
-          end
+          default_with(GHB.secrets(:aws).merge(source: 'deployment', target: 's3://${{secrets.CODEDEPLOY_BUCKET}}/${{github.repository}}'))
         end
       end
     end
@@ -95,19 +85,14 @@ module GHB
             copy_properties(find_step(old_workflow.jobs[:"#{environment}_deploy"]&.steps, name))
             do_uses("cloud-officer/ci-actions/codedeploy/deploy@#{CI_ACTIONS_VERSION}")
 
-            if with.empty?
-              do_with(
-                {
-                  'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
-                  'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
-                  'aws-region': '${{secrets.AWS_DEFAULT_REGION}}',
-                  'application-name': options.application_name,
-                  'deployment-group-name': environment,
-                  's3-bucket': '${{secrets.CODEDEPLOY_BUCKET}}',
-                  's3-key': '${{github.repository}}/${{needs.variables.outputs.BUILD_NAME}}.zip'
-                }
+            default_with(
+              GHB.secrets(:aws).merge(
+                'application-name': options.application_name,
+                'deployment-group-name': environment,
+                's3-bucket': '${{secrets.CODEDEPLOY_BUCKET}}',
+                's3-key': '${{github.repository}}/${{needs.variables.outputs.BUILD_NAME}}.zip'
               )
-            end
+            )
           end
         end
       end

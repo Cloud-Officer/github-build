@@ -58,7 +58,8 @@
 #                                                                       the cache
 #   unit_test_framework_name    (string, optional) - Display name for the test step
 #   unit_test_framework_default (string, optional) - Default test command
-#   runs-on                     (string, optional) - GitHub Actions runner OS override
+#   runs-on                     (string, optional) - runner family (ubuntu, macos) or an
+#                                                    explicit image; defaults to ubuntu
 #                                                    (defaults to Ubuntu if not set)
 #
 # Excluded Directories:
@@ -371,7 +372,7 @@ proto:
       package_manager_update: go mod tidy
   unit_test_framework_name: Protoc
   unit_test_framework_default: protoc
-  runs-on: macos-26
+  runs-on: macos
 python:
   short_name: python
   long_name: Python
@@ -416,7 +417,7 @@ swift:
   short_name: swift
   long_name: Swift
   file_extension: swift
-  runs-on: macos-26
+  runs-on: macos
   dependencies:
     - dependency_file: Gemfile
       install_dirs:

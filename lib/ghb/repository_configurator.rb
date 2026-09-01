@@ -60,6 +60,15 @@ module GHB
       }
     GRAPHQL
 
+    SECRET_SCANNING_SETTINGS = %i[
+      secret_scanning
+      secret_scanning_push_protection
+      secret_scanning_validity_checks
+      secret_scanning_non_provider_patterns
+      secret_scanning_ai_detection
+    ].freeze
+
+    private_constant :SECRET_SCANNING_SETTINGS
     private_constant :FORCE_PUSH_ALLOWANCES_QUERY
     private_constant :CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION
 
@@ -341,8 +350,12 @@ module GHB
     def discover_xcode_cloud_checks_from_protection(actual_checks, expected_checks)
       xcode_checks = actual_checks - expected_checks
 
+      report_xcode_cloud_checks(xcode_checks, 'in branch protection')
+    end
+
+    def report_xcode_cloud_checks(xcode_checks, source)
       if xcode_checks.empty?
-        puts('        WARNING: ci_scripts directory exists but no Xcode Cloud checks found in branch protection')
+        puts("        WARNING: ci_scripts directory exists but no Xcode Cloud checks found #{source}")
       else
         puts("        Xcode Cloud checks detected: #{xcode_checks.join(', ')}")
       end
@@ -365,13 +378,7 @@ module GHB
         end
       xcode_checks.uniq!
 
-      if xcode_checks.empty?
-        puts('        WARNING: ci_scripts directory exists but no Xcode Cloud checks found on default branch')
-      else
-        puts("        Xcode Cloud checks detected: #{xcode_checks.join(', ')}")
-      end
-
-      xcode_checks
+      report_xcode_cloud_checks(xcode_checks, 'on default branch')
     end
 
     def configure_repository_options(github_client, repo_url)
@@ -400,32 +407,20 @@ module GHB
 
     def disable_security_features(github_client, repo_url)
       puts('    Disabling Advanced Security features (private repository - GHAS incurs charges)...')
-      security_settings = {
-        security_and_analysis: {
-          secret_scanning: { status: 'disabled' },
-          secret_scanning_push_protection: { status: 'disabled' },
-          secret_scanning_validity_checks: { status: 'disabled' },
-          secret_scanning_non_provider_patterns: { status: 'disabled' },
-          secret_scanning_ai_detection: { status: 'disabled' }
-        }
-      }
-
-      github_client.patch(repo_url, body: security_settings, expected_codes: nil)
+      set_security_features(github_client, repo_url, 'disabled', expected_codes: nil)
     end
 
     def enable_security_features(github_client, repo_url)
       puts('    Enabling Advanced Security features...')
+      set_security_features(github_client, repo_url, 'enabled')
+    end
+
+    def set_security_features(github_client, repo_url, state, **)
       security_settings = {
-        security_and_analysis: {
-          secret_scanning: { status: 'enabled' },
-          secret_scanning_push_protection: { status: 'enabled' },
-          secret_scanning_validity_checks: { status: 'enabled' },
-          secret_scanning_non_provider_patterns: { status: 'enabled' },
-          secret_scanning_ai_detection: { status: 'enabled' }
-        }
+        security_and_analysis: SECRET_SCANNING_SETTINGS.to_h { |setting| [setting, { status: state }] }
       }
 
-      github_client.patch(repo_url, body: security_settings)
+      github_client.patch(repo_url, body: security_settings, **)
     end
 
     def disable_codeql_default_setup(github_client, repo_url)

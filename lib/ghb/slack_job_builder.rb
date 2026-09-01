@@ -27,14 +27,7 @@ module GHB
           copy_properties(find_step(old_workflow.jobs[:slack]&.steps, name))
           do_uses("cloud-officer/ci-actions/slack@#{CI_ACTIONS_VERSION}")
 
-          if with.empty?
-            do_with(
-              {
-                'webhook-url': '${{secrets.SLACK_WEBHOOK_URL}}',
-                jobs: '${{toJSON(needs)}}'
-              }
-            )
-          end
+          default_with('webhook-url': '${{secrets.SLACK_WEBHOOK_URL}}', jobs: '${{toJSON(needs)}}')
         end
       end
     end

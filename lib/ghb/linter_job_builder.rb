@@ -53,7 +53,7 @@ module GHB
         return
       end
 
-      if linter[:short_name].include?('Semgrep') and @options.skip_semgrep
+      if short_name == :semgrep and @options.skip_semgrep
         delete_linter_config(linter)
         return
       end
@@ -188,18 +188,9 @@ module GHB
           copy_properties(find_step(old_workflow.jobs[short_name]&.steps, name))
           do_uses("#{linter[:uses]}@#{CI_ACTIONS_VERSION}")
 
-          if with.empty?
-            default_with =
-              {
-                linters: '${{needs.variables.outputs.LINTERS}}',
-                'ssh-key': '${{secrets.SSH_KEY}}',
-                'github-token': '${{secrets.GH_PAT}}'
-              }
-
-            default_with.merge!(linter[:options]) if linter[:options]
-
-            do_with(default_with)
-          end
+          defaults = { linters: '${{needs.variables.outputs.LINTERS}}' }.merge(GHB.secrets(:ssh, :github_token))
+          defaults.merge!(linter[:options]) if linter[:options]
+          default_with(defaults)
 
           # github-token stays the PAT: the linter action's own actions/checkout needs it
           # for private cross-repo submodules. reviewdog only posts PR comments, so it gets

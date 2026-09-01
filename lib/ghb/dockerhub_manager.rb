@@ -57,7 +57,7 @@ module GHB
         end
       end
 
-      @dockerhub_workflow.write('.github/workflows/docker.yml')
+      @dockerhub_workflow.write('.github/workflows/docker.yml', header: GHB.generated_header('dockerhub_manager.rb'))
     end
   end
 end

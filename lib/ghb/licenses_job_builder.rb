@@ -34,15 +34,7 @@ module GHB
             copy_properties(find_step(old_workflow.jobs[:licenses]&.steps, name))
             do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
 
-            if with.empty?
-              do_with(
-                {
-                  'ssh-key': '${{secrets.SSH_KEY}}',
-                  'github-token': '${{secrets.GH_PAT}}',
-                  parameters: '--no_prompt'
-                }
-              )
-            end
+            default_with(GHB.secrets(:ssh, :github_token).merge(parameters: '--no_prompt'))
           end
         end
       end
