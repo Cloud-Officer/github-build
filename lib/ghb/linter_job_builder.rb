@@ -45,6 +45,11 @@ module GHB
     RENAMED_CONFIGS = { '.markdownlint.yml': '.markdownlint-cli2.yaml' }.freeze
     private_constant :RENAMED_CONFIGS
 
+    # A basename containing a dot. Files matched by extension (foo.sh) are taken
+    # at their word; only extensionless ones are asked for a shebang.
+    EXTENSION_RE = %r{[^/]\.[^/]*$}
+    private_constant :EXTENSION_RE
+
     private
 
     def detect_linter(short_name, linter, script_path)
@@ -73,6 +78,15 @@ module GHB
         else
           matches = matches.select { |file| file_contains?(file, linter[:content_match]) }
         end
+      end
+
+      # A `pattern` cannot identify a language whose files carry no extension --
+      # a CLI installed onto PATH is named `deploy`, not `deploy.sh`. Such a
+      # pattern has to be loose enough to admit every extensionless file, and
+      # `shebang_match` is what narrows it back down to the intended language.
+      if linter[:shebang_match] && !matches.empty?
+        shebang_pattern = Regexp.new(linter[:shebang_match])
+        matches = matches.select { |file| file.match?(EXTENSION_RE) || file_shebang_matches?(file, shebang_pattern) }
       end
 
       if matches.empty?

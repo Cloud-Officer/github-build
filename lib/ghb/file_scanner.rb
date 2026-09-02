@@ -138,6 +138,28 @@ module GHB
       false
     end
 
+    # Matches a file's shebang (first line only) against a regex.
+    #
+    # Distinct from file_contains?, which is a literal substring test applied to
+    # every line: a shebang is identified by shape rather than by one fixed
+    # string (#!/bin/sh, #!/usr/bin/env bash, #!/bin/bash -e), and only the first
+    # line may be consulted -- a script that merely mentions "bash" in a comment
+    # is not a bash script.
+    # @param file [String] file path to inspect
+    # @param pattern [Regexp] regex to match the first line against
+    # @return [Boolean] true if the first line matches
+    def file_shebang_matches?(file, pattern)
+      return false unless File.exist?(file) && File.file?(file)
+
+      first_line = File.open(file, 'r', &:gets)
+      return false if first_line.nil?
+
+      first_line.match?(pattern)
+    rescue Errno::ENOENT, Errno::EACCES, ArgumentError
+      # ArgumentError covers a binary first line that is not valid UTF-8.
+      false
+    end
+
     # Atomic file copy with optional transformation
     # Copies source to a temp file, applies optional transformation, then renames atomically
     # @param source [String] source file path

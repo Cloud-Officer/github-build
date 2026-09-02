@@ -37,6 +37,15 @@
 #   content_match_pattern (string, optional) - When set, `content_match` only applies to files
 #                                         matching this sub-pattern. Other files pass through
 #                                         unconditionally. If omitted, `content_match` applies to all files
+#   shebang_match    (string, optional) - Regex matched against the FIRST LINE of files whose
+#                                         basename has no extension; files matched by extension
+#                                         pass through untouched. Use when a language's files are
+#                                         routinely extensionless (shell tools installed onto
+#                                         PATH), which `pattern` alone cannot identify: widen
+#                                         `pattern` to admit extensionless files and let this
+#                                         narrow it back down. Unlike `content_match` this is a
+#                                         regex and reads only line 1, because a shebang varies in
+#                                         shape and a file mentioning a shell is not a shell script
 #   reviewdog        (bool, optional)   - Linter reports through reviewdog, so the generated
 #                                         step is given reviewdog-token (the job's GITHUB_TOKEN)
 #                                         instead of letting the org PAT reach that third-party action
@@ -192,7 +201,17 @@ shellcheck:
   uses: cloud-officer/ci-actions/linters/shellcheck
   config: ".shellcheckrc"
   path: "."
-  pattern: ".*\\.(sh)$"
+  # *.sh by name, plus any extensionless file. The second alternative is
+  # deliberately loose (it admits Dockerfile, LICENSE, ...) because shebang_match
+  # below is what decides which of those are shell scripts. Extensionless tools
+  # are the normal shape for shell deliverables: they install onto PATH without a
+  # suffix, so an extension-only pattern never saw them and shellcheck was left
+  # disabled for repositories made entirely of them.
+  pattern: "(.*\\.sh$)|((^|/)[^/.]+$)"
+  # sh/bash/dash/ksh only -- the dialects ShellCheck supports. Anything else
+  # (ruby, python, bats) must be excluded here rather than skipped later:
+  # ShellCheck fails with SC1071 on an unsupported shebang instead of ignoring it.
+  shebang_match: "^#!.*[/ ](ba|da|k)?sh([[:space:]]|$)"
 swiftlint:
   short_name: Swiftlint
   long_name: Swift Linter
