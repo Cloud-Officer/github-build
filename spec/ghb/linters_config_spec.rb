@@ -75,4 +75,37 @@ RSpec.describe('config/linters.yaml conditions') do # rubocop:disable RSpec/Desc
       expect(matches_shebang?('#!/usr/bin/env bats')).to(be(false))
     end
   end
+
+  describe 'managed excluded-dirs coverage' do
+    let(:templates) { Dir["#{__dir__}/../../config/linters/*"].map { |path| File.basename(path) } }
+
+    let(:helper) do
+      Class.new do
+        include GHB::FileScanner
+        include GHB::LinterIgnoreRenderer
+
+        def initialize
+          @file_cache = {}
+          @options = Struct.new(:languages_config_file).new('config/languages.yaml')
+        end
+
+        public :excluded_dirs_from_config, :render_excluded_dirs
+      end.new
+    end
+
+    it 'renders every managed config back to its own template unchanged' do
+      dirs = helper.excluded_dirs_from_config
+
+      GHB::LinterIgnoreRenderer::FORMATS.each_key do |name|
+        content = File.read("#{__dir__}/../../config/linters/#{name}")
+        expect(helper.render_excluded_dirs(name.to_s, content, dirs)).to(eq(content))
+      end
+    end
+
+    it 'gives every managed config a sentinel block in its template' do
+      GHB::LinterIgnoreRenderer::FORMATS.each_key do |name|
+        expect(File.read("#{__dir__}/../../config/linters/#{name}")).to(include('ghb:excluded-dirs:start'))
+      end
+    end
+  end
 end

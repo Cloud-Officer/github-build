@@ -21,6 +21,14 @@ RSpec.describe(GHB::LinterIgnoreRenderer) do
       expect(result).to(include('"ignorePatterns": ["**/.git/**", "**/Build/**", "**/coverage/**", "**/node_modules/**", "**/vendor/**", "**/*.workflow.js"],'))
     end
 
+    it 'renders the markdownlint globs as sorted negated patterns' do
+      content = "globs:\n  - \"**/*.md\"\n  # ghb:excluded-dirs:start\n  - \"!**/old/**\"\n  # ghb:excluded-dirs:end\n"
+
+      result = renderer.render_excluded_dirs('.markdownlint-cli2.yaml', content, dirs)
+
+      expect(result).to(include(%(  - "!**/.git/**"\n  - "!**/Build/**"\n  - "!**/coverage/**"\n  - "!**/node_modules/**"\n  - "!**/vendor/**")))
+    end
+
     it 'renders the flake8 extend-exclude as a sorted comma list' do
       content = "[flake8]\n# ghb:excluded-dirs:start\nextend-exclude = old\n# ghb:excluded-dirs:end\n"
 
