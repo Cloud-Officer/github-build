@@ -12,11 +12,66 @@ RSpec.describe(GHB::FileScanner) do
         @options = Struct.new(:languages_config_file).new('config/languages.yaml')
       end
 
-      public :find_files_matching, :file_contains?, :atomic_copy_config, :excluded_dirs_from_config
+      public :find_files_matching, :file_contains?, :file_shebang_matches?, :atomic_copy_config, :excluded_dirs_from_config
     end
   end
 
   let(:scanner) { test_class.new }
+
+  describe '#file_shebang_matches?' do
+    let(:temp_dir) { Dir.mktmpdir('ghb-shebang') }
+    let(:shell)    { %r{\A\#!.*[/ ](ba|da|k)?sh([[:space:]]|\z)} }
+
+    after { FileUtils.rm_rf(temp_dir) }
+
+    def write(name, contents)
+      path = "#{temp_dir}/#{name}"
+      File.write(path, contents)
+      path
+    end
+
+    it 'matches an env-resolved bash shebang' do
+      expect(scanner.file_shebang_matches?(write('tool', "#!/usr/bin/env bash\necho hi\n"), shell)).to(be(true))
+    end
+
+    it 'matches a plain sh shebang' do
+      expect(scanner.file_shebang_matches?(write('tool', "#!/bin/sh\necho hi\n"), shell)).to(be(true))
+    end
+
+    it 'matches a shebang carrying flags' do
+      expect(scanner.file_shebang_matches?(write('tool', "#!/bin/bash -e\necho hi\n"), shell)).to(be(true))
+    end
+
+    it 'rejects a ruby shebang' do
+      expect(scanner.file_shebang_matches?(write('tool', "#!/usr/bin/env ruby\nputs 1\n"), shell)).to(be(false))
+    end
+
+    it 'rejects a bats shebang' do
+      # "bats" must not be mistaken for a shell: ShellCheck cannot parse @test.
+      expect(scanner.file_shebang_matches?(write('tool', "#!/usr/bin/env bats\n"), shell)).to(be(false))
+    end
+
+    it 'reads only the first line' do
+      # A script that merely mentions bash is not a bash script.
+      expect(scanner.file_shebang_matches?(write('tool', "#!/usr/bin/env python3\n# install with bash\n"), shell)).to(be(false))
+    end
+
+    it 'returns false for a file with no shebang at all' do
+      expect(scanner.file_shebang_matches?(write('tool', "@ECHO OFF\n"), shell)).to(be(false))
+    end
+
+    it 'returns false for an empty file' do
+      expect(scanner.file_shebang_matches?(write('tool', ''), shell)).to(be(false))
+    end
+
+    it 'returns false for a missing file' do
+      expect(scanner.file_shebang_matches?("#{temp_dir}/absent", shell)).to(be(false))
+    end
+
+    it 'returns false for binary content rather than raising' do
+      expect(scanner.file_shebang_matches?(write('tool', "\xff\xfe\x00binary"), shell)).to(be(false))
+    end
+  end
 
   describe '#find_files_matching' do
     let(:temp_dir) { Dir.mktmpdir('ghb-test') }
