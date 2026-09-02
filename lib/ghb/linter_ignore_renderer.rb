@@ -43,6 +43,7 @@ module GHB
       '.semgrepignore': :body_semgrepignore,
       '.cfnlintrc': :body_cfnlint,
       '.swiftlint.yml': :body_swiftlint,
+      '.markdownlint-cli2.yaml': :body_markdownlint,
       'trivy.yaml': :body_trivy
     }.freeze
     public_constant :FORMATS
@@ -149,6 +150,13 @@ module GHB
       # through and trip `swiftlint --strict`. The leading `*` makes the scalar
       # a YAML alias, so each entry is quoted.
       lines = dirs.map { |dir| %(  - "**/#{dir}") }
+      lines.join("\n")
+    end
+
+    # markdownlint-cli2's globs: is a YAML list where a leading `!` negates. The
+    # entry is quoted because `!` opens a YAML tag otherwise.
+    def body_markdownlint(dirs)
+      lines = dirs.map { |dir| %(  - "!**/#{dir}/**") }
       lines.join("\n")
     end
 
