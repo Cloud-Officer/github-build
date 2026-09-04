@@ -77,7 +77,7 @@ go:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.27.0
+      value: 1.27.1
     - name: go-version-file
       value:
     - name: go-check-latest
@@ -298,7 +298,7 @@ php:
     - .php-version
   setup_options:
     - name: php-version
-      value: 8.5.9
+      value: 8.5.10
     - name: php-version-file
       value:
     - name: php-extensions
@@ -344,7 +344,7 @@ proto:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.27.0
+      value: 1.27.1
     - name: go-version-file
       value:
     - name: go-check-latest
