@@ -147,8 +147,10 @@ A map of linter id → definition. Each entry **must** define `short_name`, `lon
 `pattern`. Optional keys: `condition` (a GitHub Actions `if:` expression), `config` (a single config file name or
 a list of names when a linter ships several, e.g. Trivy's `["trivy.yaml", ".trivyignore"]`), `preserve_config`
 (keep the project's existing config instead of overwriting it), `content_match` / `content_match_pattern` (filter
-matched files by their contents), `permissions` (job-level permissions override), and `directory` (extra directory
-hint).
+matched files by their contents), `shebang_match` (regex matched against the first line of extensionless files, so
+a widened `pattern` can be narrowed back down — used by ShellCheck for shell tools installed onto `PATH`),
+`reviewdog` (the linter reports through reviewdog, so the step receives the job's `GITHUB_TOKEN` instead of the
+org PAT), and `permissions` (job-level permissions override).
 
 ```yaml
 actionlint:
@@ -163,11 +165,23 @@ actionlint:
 
 #### Languages (`--languages_config_file`, default `config/languages.yaml`)
 
-A map of language id → definition. Each entry **must** define `short_name` and `long_name`. Common optional keys:
-`file_extension`, `version_files[]`, `setup_options[]` (each `{ name, value }`), `dependencies[]` (each with at
-least `dependency_file`, plus `package_manager_name`/`package_manager_default`/`package_manager_update`,
-optional `install_dirs[]` and `*_dependency` service markers), `unit_test_framework_name`,
-`unit_test_framework_default`. A top-level `excluded_dirs[]` lists directories to skip during file scanning.
+A map of language id → definition. Each entry **must** define `short_name` and `long_name`, and an entry that
+declares `file_extension` **must** also declare `dependencies` as a list (an empty list is fine). Common optional
+keys: `file_extension`, `version_files[]`, `setup_options[]` (each `{ name, value }`), `runs-on` (runner family
+`ubuntu`/`macos` or an explicit image, defaults to `ubuntu`), `cache_option` and `cache_dependency_path_option`
+(names of the setup options that enable dependency caching and pass the lockfile paths to hash — both are needed
+together), `dependencies[]` (each with at least `dependency_file`, plus
+`package_manager_name`/`package_manager_default`/`package_manager_update`, optional `package_manager_once` for a
+command that installs a tool system-wide rather than a directory's dependencies, `cache_name` feeding
+`cache_option`, `install_dirs[]` and `*_dependency` service markers), `unit_test_framework_name`,
+`unit_test_framework_default`.
+
+A top-level `excluded_dirs[]` is the single source of truth for directories skipped everywhere: file scanning
+(combined with every dependency entry's `install_dirs`), `.gitignore` template detection, and the
+`ghb:excluded-dirs:start` / `ghb:excluded-dirs:end` block regenerated inside each managed linter config
+(`.eslintrc.json`, `.flake8`, `.bandit`, `.yamllint.yml`, `.pmd.xml`, `.semgrepignore`, `.cfnlintrc`,
+`.swiftlint.yml`, `.markdownlint-cli2.yaml`, `trivy.yaml`). `--get_ignored_folders` prints that resolved list as
+JSON.
 
 ```yaml
 ruby:

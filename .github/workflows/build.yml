@@ -17,7 +17,7 @@ name: Build
     - "**"
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 env:
   RUBY-BUNDLER-CACHE: true
 concurrency:
@@ -47,7 +47,7 @@ jobs:
     steps:
     - name: Prepare variables
       id: variables
-      uses: cloud-officer/ci-actions/variables@v2
+      uses: cloud-officer/ci-actions/variables@v3
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{secrets.GH_PAT}}"
@@ -60,11 +60,12 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Actionlint
-      uses: cloud-officer/ci-actions/linters/actionlint@v2
+      uses: cloud-officer/ci-actions/linters/actionlint@v3
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{secrets.GH_PAT}}"
+        reviewdog-token: "${{secrets.GITHUB_TOKEN}}"
   markdownlint:
     name: Markdown Linter
     runs-on: ubuntu-latest
@@ -74,11 +75,12 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Markdownlint
-      uses: cloud-officer/ci-actions/linters/markdownlint@v2
+      uses: cloud-officer/ci-actions/linters/markdownlint@v3
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{secrets.GH_PAT}}"
+        reviewdog-token: "${{secrets.GITHUB_TOKEN}}"
   rubocop:
     name: Ruby Linter
     runs-on: ubuntu-latest
@@ -88,11 +90,12 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Rubocop
-      uses: cloud-officer/ci-actions/linters/rubocop@v2
+      uses: cloud-officer/ci-actions/linters/rubocop@v3
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{secrets.GH_PAT}}"
+        reviewdog-token: "${{secrets.GITHUB_TOKEN}}"
   semgrep:
     name: Semgrep Security Scanner
     permissions:
@@ -106,7 +109,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Semgrep
-      uses: cloud-officer/ci-actions/linters/semgrep@v2
+      uses: cloud-officer/ci-actions/linters/semgrep@v3
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
@@ -120,11 +123,12 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: ShellCheck
-      uses: cloud-officer/ci-actions/linters/shellcheck@v2
+      uses: cloud-officer/ci-actions/linters/shellcheck@v3
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{secrets.GH_PAT}}"
+        reviewdog-token: "${{secrets.GITHUB_TOKEN}}"
   trivy:
     name: Container & IaC Vulnerability Scanner
     runs-on: ubuntu-latest
@@ -134,7 +138,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Trivy
-      uses: cloud-officer/ci-actions/linters/trivy@v2
+      uses: cloud-officer/ci-actions/linters/trivy@v3
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
@@ -148,11 +152,12 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Yamllint
-      uses: cloud-officer/ci-actions/linters/yamllint@v2
+      uses: cloud-officer/ci-actions/linters/yamllint@v3
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{secrets.GH_PAT}}"
+        reviewdog-token: "${{secrets.GITHUB_TOKEN}}"
   licenses:
     name: Licenses Check
     runs-on: ubuntu-latest
@@ -162,7 +167,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Licenses
-      uses: cloud-officer/ci-actions/soup@v2
+      uses: cloud-officer/ci-actions/soup@v3
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{secrets.GH_PAT}}"
@@ -176,7 +181,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Setup
-      uses: cloud-officer/ci-actions/setup@v2
+      uses: cloud-officer/ci-actions/setup@v3
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{secrets.GH_PAT}}"
@@ -203,11 +208,11 @@ jobs:
     strategy:
       matrix:
         os:
-        - macos-latest
+        - macos-26
         - ubuntu-latest
     steps:
     - name: Setup
-      uses: cloud-officer/ci-actions/setup@v2
+      uses: cloud-officer/ci-actions/setup@v3
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         ruby-bundler-cache: "${{env.RUBY-BUNDLER-CACHE}}"
