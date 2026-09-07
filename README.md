@@ -21,7 +21,7 @@ detect custom AWS and Vercel deployments and enable Slack notification.
 
 Alongside `.github/workflows/build.yml`, it generates the companion workflows `auto-approve.yml` (approves pull
 requests opened by code owners), `dependencies.yml` (weekly cron dependency updates, generated only when the
-license check job is enabled and at least one dependency update command was detected — otherwise it is removed)
+license check job is enabled and at least one language was detected — otherwise it is removed)
 and, when a `.dockerhub` file is present, `docker.yml`. Any legacy `.github/dependabot.yml` is removed, as CVE
 alerts are handled through the repository settings instead, and a legacy `.github/workflows/soup.yml` is removed when
 `dependencies.yml` is generated to supersede it.

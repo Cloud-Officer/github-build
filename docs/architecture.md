@@ -10,55 +10,27 @@
 
 ## Architecture diagram
 
-```text
-+----------------------+     +------------------+     +---------------------+
-|    CLI Interface     |     |   Configuration  |     |   External APIs     |
-|  bin/github-build.rb |---->|      Files       |     |  (GitHub, gitignore |
-+----------------------+     +------------------+     |   .io)              |
-         |                        |                    +---------------------+
-         v                        v                         ^
-+------------------------------------------------------------------------+
-|                      GHB::Application (Orchestrator)                    |
-|  - Config validation   - Workflow read/write   - Default detection     |
-+------------------------------------------------------------------------+
-         |  builds GHB::BuildContext, delegates to
-         v
-+------------------------------------------------------------------------+
-|                         Job Builders & Managers                         |
-|  VariablesJobBuilder  |  LinterJobBuilder    |  LicensesJobBuilder    |
-|  LanguageJobBuilder   |  CodeDeployJobBuilder|  VercelJobBuilder      |
-|  AwsJobBuilder        |  SlackJobBuilder     |  DependabotManager     |
-|  DockerhubManager     |  AutoApproveManager  |  GitignoreManager      |
-|  RepositoryConfigurator|                     |                        |
-+------------------------------------------------------------------------+
-         |  uses                       |  uses
-         v                             v
-+-------------------+     +----------------------+     +-----------------+
-|  GHB::Workflow    |     |  GHB::FileScanner    |     | GitHubAPIClient |
-|  - Read/Write     |     |  - find_files_match  |     | - get/put/post  |
-|  - YAML handling  |     |  - file_contains?    |     | - retry/backoff |
-+-------------------+     |  - atomic_copy_config|     +-----------------+
-   |            |         +----------------------+
-   |            |         +----------------------+
-   |            |         | GitignoreRules       |
-   |            |         | LinterIgnoreRenderer |
-   |            |         +----------------------+
-   v            v
-+----------+ +----------+
-| GHB::Job | |GHB::Step |
-+----------+ +----------+
-         |
-         v
-+-------------------+
-|   Output Files    |
-| .github/workflows |
-|   build.yml       |
-|   dependencies.yml|
-|   docker.yml      |
-|   auto-approve.yml|
-| .gitignore        |
-| Linter configs    |
-+-------------------+
+```mermaid
+flowchart TD
+    CLI["CLI entry point<br>bin/github-build.rb"] --> APP
+    CFG["Configuration files<br>config/linters.yaml, languages.yaml, gitignore.yaml,<br>actions.yaml, options/*.yaml, linters/*"] --> APP
+    APP["GHB::Application - orchestrator<br>config validation, workflow read/write,<br>default detection, required-check collection"]
+    APP --> CTX["GHB::BuildContext<br>options, old/new workflow, file cache, submodules"]
+    CTX --> BUILDERS
+    CTX --> MANAGERS
+    APP --> BUILDERS["Job builders<br>VariablesJobBuilder, LinterJobBuilder, LicensesJobBuilder,<br>LanguageJobBuilder, CodeDeployJobBuilder, VercelJobBuilder,<br>AwsJobBuilder, SlackJobBuilder"]
+    APP --> MANAGERS["Post-generation managers<br>DependabotManager, DockerhubManager, AutoApproveManager,<br>GitignoreManager, RepositoryConfigurator"]
+    BUILDERS --> MIXINS["Shared mixins<br>GHB::FileScanner, GHB::LinterIgnoreRenderer"]
+    MANAGERS --> MIXINS
+    MANAGERS --> RULES["GHB::GitignoreRules<br>pure gitignore rule logic"]
+    RULES --> MIXINS
+    MANAGERS --> API["GHB::GitHubAPIClient<br>REST + GraphQL, timeouts, rate-limit retries"]
+    API --> GITHUB(["GitHub REST / GraphQL API"])
+    MANAGERS --> GIO(["gitignore.io API"])
+    BUILDERS --> MODEL["Workflow model<br>GHB::Workflow, GHB::Job, GHB::Step<br>sharing GHB::CopyableProperties"]
+    MANAGERS --> MODEL
+    MODEL --> OUT["Generated output<br>.github/workflows/build.yml, dependencies.yml,<br>docker.yml, auto-approve.yml<br>.gitignore, linter config files"]
+    MANAGERS --> OUT
 ```
 
 ### System Overview
@@ -231,6 +203,11 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `EPHEMERAL_FLAGS`: One-shot flags (e.g. `--sync_required_status_checks`) that are stripped from `original_argv` so they are not persisted to the generated workflow header
 - `REMOVED_FLAGS`: Flags removed from the CLI (e.g. `--mono_repo`) that may still linger in a downstream repo's persisted `build.yml` header; stripped with a warning during replay so old headers self-heal
 
+**External Dependencies:**
+
+- `optparse`
+- `shellwords` (Ruby stdlib, for splitting the persisted argument comment)
+
 ### GHB::Status
 
 **Purpose:** Exit code constants for application status.
@@ -331,6 +308,8 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `httparty`
 - `json`
+- `openssl` (Ruby stdlib, for the `OpenSSL::SSL::SSLError` retry case)
+- `socket` (Ruby stdlib, for the `SocketError` retry case)
 
 ### GHB::VariablesJobBuilder
 
@@ -359,6 +338,12 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Internal Dependencies:**
 
 - `GHB::LinterIgnoreRenderer`
+
+**External Dependencies:**
+
+- `active_support/core_ext/hash/keys`
+- `fileutils` (Ruby stdlib)
+- `psych`
 
 ### GHB::LicensesJobBuilder
 
@@ -403,6 +388,12 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `code_deploy_pre_steps`: Pre-deployment steps collected during language detection (read-only)
 - `dependencies_steps`: Dependency management steps collected during detection (read-only)
 - `dependencies_commands`: Accumulated dependency update commands (read-only)
+
+**External Dependencies:**
+
+- `active_support/core_ext/hash/keys`
+- `psych`
+- `duplicate` (used to deep-clone dependency steps; currently satisfied by the require in `lib/ghb/application.rb`)
 
 ### GHB::CodeDeployJobBuilder
 
@@ -471,6 +462,10 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `CODEOWNERS_CHECK_SCRIPT`: Bash resolving the CODEOWNERS file (`.github/CODEOWNERS`, `CODEOWNERS`, `docs/CODEOWNERS`), collecting `@handles` from the catch-all (`*`) line only, and setting the step output `is_owner`; a team handle is resolved through the org team membership API
 - `APPROVE_SCRIPT`: Bash that skips instead of failing when the approver resolves to the PR author (GitHub rejects self-approval, e.g. the dependency bot on its own PRs)
+
+**External Dependencies:**
+
+- `fileutils` (Ruby stdlib, for removing the legacy `auto-merge.yml`)
 
 ### GHB::DependabotManager
 
@@ -611,6 +606,16 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Attributes:**
 
 - `name`, `run_name`, `on`, `permissions`, `env`, `defaults`, `concurrency`, `jobs`
+
+**Constants:**
+
+- `GITHUB_ENV_VAR_REGEX`: Matches the `${GITHUB_*}` shell-style references that `rewrite_github_refs` converts to `${{github.*}}` in YAML values
+
+**External Dependencies:**
+
+- `active_support/core_ext/hash/keys`
+- `fileutils` (Ruby stdlib)
+- `psych`
 
 ### GHB::CopyableProperties (Module)
 
@@ -773,6 +778,28 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 **Complexity:** O(n * m) where n = number of languages, m = files in repository
 
+### Required Status Check Collection and Matrix Expansion
+
+**Purpose:** Turns the generated workflow jobs into the exact check-run names GitHub will report, so branch protection requires checks that actually exist.
+
+**Location:** `lib/ghb/application.rb` in `GHB::Application#collect_required_status_checks` and `GHB::Application#matrix_combinations` (with `symbolize_matrix_keys`, `matrix_control_entries`, `matrix_control_entry`, `expandable_axis?`, `scalar_matrix_value?`, `expand_axes`, `reject_excluded`, `apply_includes`)
+
+**Implementation:**
+
+1. Walks the generated jobs; a job without a `strategy.matrix` contributes its name verbatim
+2. Normalizes the matrix: keys are symbolized, `include:` / `exclude:` rows are separated from the axes, and the whole matrix is rejected (returning `nil`) when any axis or control-row value is dynamic or non-scalar — a Hash, an Array, `nil`, an empty axis, or an expression GitHub resolves at run time
+3. Expands the axes as a Cartesian product with the first axis varying slowest, matching the order GitHub creates jobs in; an include-only matrix starts from no base combination
+4. Drops every combination matched by an `exclude:` row, then merges each `include:` row into the combinations it does not contradict on an axis key — rows that match nothing become their own combination. This exclude-then-include order is GitHub's documented expansion order and reversing it produces check names that never appear
+5. Emits one check name per combination in GitHub's format, `Job (ubuntu-latest, 3.3)`
+6. A matrix that cannot be expanded statically is warned about on stderr and skipped rather than guessed at, so an unexpandable job simply is not required
+
+**Complexity:** O(product of axis lengths) per job, times the `include:`/`exclude:` row counts for the filtering passes
+
+**Security Considerations:**
+
+- Called from `execute` immediately after `LanguageJobBuilder` and *before* `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder` and `SlackJobBuilder`, so only the variables, linter, licenses and unit-test jobs become required checks — deploy and notification jobs are gated by `deploy_if_statement` and must never block a merge
+- A wrong expansion is a merge-gate defect in both directions: a name GitHub never reports blocks every PR, and a missing name lets unverified code merge
+
 ### Repository Settings Configuration
 
 **Purpose:** Configures GitHub repository settings including branch protection.
@@ -859,7 +886,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 - All three are rescued by the top-level `StandardError` handler in `bin/github-build.rb`, which also prints the `cause` chain, with backtrace output DEBUG-only via `ENV['DEBUG']`
 - Exit codes via `GHB::Status` indicate success (0) or error (1)
 - Transient API failures (5xx, rate limiting, connection timeouts/resets) are retried by `GHB::GitHubAPIClient` before surfacing
-- File operations in `GHB::FileScanner` rescue `Errno::ENOENT` and `Errno::EACCES` for graceful degradation
+- File operations in `GHB::FileScanner` rescue `Errno::ENOENT` and `Errno::EACCES` for graceful degradation; `file_shebang_matches?` also rescues `ArgumentError` so a binary first line that is not valid UTF-8 is treated as "no shebang" instead of aborting the scan
 - `GHB::FileScanner#gitignored_paths` returns `[]` when git is unavailable or the cwd is not a repository, leaving scanning unfiltered rather than failing
 
 ### Logging and Monitoring
