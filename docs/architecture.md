@@ -215,7 +215,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `ignored_linters`: Hash of linters to skip
 - `languages_config_file`: Path to languages config file
 - `linters_config_file`: Path to linters config file
-- `options_config_files`: Hash of service symbol (`GHB::SERVICES`) to its options config path, one `--options-<service>` flag per entry (`options_config_file(service)` reads a single entry)
+- `options_config_files`: Hash of service symbol (`GHB::SERVICES`) to its options config path, one `--options-<service>` flag per entry
 - `organization`: GitHub organization name
 - `original_argv`: Original command-line arguments for reproducibility
 - `skip_gitignore`: Skip gitignore updates
@@ -513,7 +513,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(context:, rules:)`: Accepts a `GHB::BuildContext` and an optional `GHB::GitignoreRules` (defaults to one built from the context)
-- `update`: Detects templates, fetches from API, applies modifications, appends a single AI Assistants section — one `# BEGIN AI Assistants` / `# END AI Assistants` block whose body holds one blank-line-separated group per tool, built from `GHB::GitignoreRules#detect_custom_pattern_groups` — and writes `.gitignore`
+- `update`: Detects templates, fetches from API, applies modifications, appends a single AI Assistants section — one `# BEGIN AI Assistants` / `# END AI Assistants` block whose body holds one blank-line-separated group per tool, built from `GHB::GitignoreRules#detect_custom_pattern_groups` — and writes `.gitignore`. The groups are flattened here into the pattern list handed to `GHB::GitignoreRules#preserve_custom_entries` for its "skip already-managed lines" comparison
 
 **Internal Dependencies:**
 
@@ -542,7 +542,6 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `comment_conflicting_patterns(content)`: Comments out directory patterns (`bin/`, `lib/`, `var/`) that conflict with common project directories
 - `preserve_custom_entries(git_ignore, custom_patterns)`: Preserves custom entries from an existing `.gitignore`, dropping a hand-added copy of a now-managed pattern that sits outside the AI Assistants section (exact line match only, so `docs/migration/keep.md` survives even though `docs/migration/` is managed) — the regenerated block is the single source of truth, and keeping the stray line would emit it twice
 - `detect_custom_pattern_groups(config)`: Returns the always-appended custom patterns grouped per tool (comment line plus that tool's ignore rules), regardless of whether the corresponding tool is detected, so they cannot be accidentally committed. Grouping keeps a tool contributing several rules (e.g. the Claude Code skill review artifacts) rendered as one commented block instead of being split into arbitrary pairs
-- `detect_custom_patterns(config)`: Flattened view of `detect_custom_pattern_groups` used for the "skip already-managed lines" comparison in `preserve_custom_entries`
 
 ### GHB::RepositoryConfigurator
 

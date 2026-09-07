@@ -10,6 +10,7 @@
   * [Configuration Files](#configuration-files)
   * [Feature Triggers](#feature-triggers)
   * [Required Secrets](#required-secrets)
+  * [Maintenance Scripts](#maintenance-scripts)
 * [Contributing](#contributing)
 
 ## Introduction
@@ -21,8 +22,9 @@ detect custom AWS and Vercel deployments and enable Slack notification.
 Alongside `.github/workflows/build.yml`, it generates the companion workflows `auto-approve.yml` (approves pull
 requests opened by code owners), `dependencies.yml` (weekly cron dependency updates, generated only when the
 license check job is enabled and at least one dependency update command was detected — otherwise it is removed)
-and, when a `.dockerhub` file is present, `docker.yml`. Any legacy `.github/dependabot.yml` or
-`.github/workflows/soup.yml` is removed, as CVE alerts are handled through the repository settings instead.
+and, when a `.dockerhub` file is present, `docker.yml`. Any legacy `.github/dependabot.yml` is removed, as CVE
+alerts are handled through the repository settings instead, and a legacy `.github/workflows/soup.yml` is removed when
+`dependencies.yml` is generated to supersede it.
 
 It will also update the `.gitignore` file and check the repository settings.
 
@@ -133,8 +135,8 @@ To change the persisted arguments, either:
 * Edit the `# github-build ...` comment at the top of the build file directly
 
 One-shot flags are never persisted: `--sync_required_status_checks` is stripped from the saved comment so it only
-applies to the run where it is passed. Flags that no longer exist in the CLI but still linger in a saved header are
-dropped with a warning on the next run, so old headers self-heal instead of failing.
+applies to the run where it is passed. Flags on the tool's removed-options list — options that were dropped from the
+CLI — are stripped from a saved header with a warning on the next run, so old headers self-heal instead of failing.
 
 ### Configuration Files
 
@@ -307,6 +309,17 @@ Required when a `.dockerhub` file is present in the repository root.
 |-------------------|----------------------------------------------------------------------|
 | `DOCKER_USERNAME` | Docker Hub username for authenticating image pushes.                 |
 | `DOCKER_PASSWORD` | Docker Hub password or access token for authenticating image pushes. |
+
+### Maintenance Scripts
+
+Two helper scripts keep the bundled configuration current. Both are run from the repository root and are not needed
+to generate a build file.
+
+* `bin/update_versions.sh` refreshes the pinned language and service versions in `config/languages.yaml` and
+  `config/options/*.yaml` from their upstream sources.
+* `bump-actions/bump-actions.sh` resolves every entry of `config/actions.yaml` to its latest upstream version and
+  lists the available bumps; `--apply` rewrites the pinned versions in place. It requires an authenticated `gh` on
+  `PATH` and is what the weekly `.github/workflows/external-actions-bump.yml` cron runs.
 
 ## Contributing
 
