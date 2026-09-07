@@ -264,11 +264,11 @@ RSpec.describe(GHB::Application) do
           checks_for do |w|
             w.do_job(:tests) do
               do_name('Ruby Unit Tests')
-              do_strategy({ matrix: { os: %w[ubuntu-latest macos-26] } })
+              do_strategy({ matrix: { os: %w[ubuntu-latest macos-latest] } })
             end
           end
 
-        expect(result).to(eq(['Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (macos-26)']))
+        expect(result).to(eq(['Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (macos-latest)']))
       end
 
       it 'joins every dimension of a multi-key matrix into a single check name' do # rubocop:disable RSpec/ExampleLength
@@ -288,7 +288,7 @@ RSpec.describe(GHB::Application) do
           checks_for do |w|
             w.do_job(:tests) do
               do_name('Ruby Unit Tests')
-              do_strategy({ matrix: { os: %w[ubuntu-latest macos-26], ruby: %w[3.3 3.4] } })
+              do_strategy({ matrix: { os: %w[ubuntu-latest macos-latest], ruby: %w[3.3 3.4] } })
             end
           end
 
@@ -297,8 +297,8 @@ RSpec.describe(GHB::Application) do
             [
               'Ruby Unit Tests (ubuntu-latest, 3.3)',
               'Ruby Unit Tests (ubuntu-latest, 3.4)',
-              'Ruby Unit Tests (macos-26, 3.3)',
-              'Ruby Unit Tests (macos-26, 3.4)'
+              'Ruby Unit Tests (macos-latest, 3.3)',
+              'Ruby Unit Tests (macos-latest, 3.4)'
             ]
           )
         )
@@ -333,12 +333,12 @@ RSpec.describe(GHB::Application) do
           checks_for do |w|
             w.do_job(:tests) do
               do_name('Ruby Unit Tests')
-              do_strategy({ matrix: { os: %w[ubuntu-latest macos-26], ruby: %w[3.3 3.4], exclude: [{ os: 'macos-26', ruby: '3.3' }] } })
+              do_strategy({ matrix: { os: %w[ubuntu-latest macos-latest], ruby: %w[3.3 3.4], exclude: [{ os: 'macos-latest', ruby: '3.3' }] } })
             end
           end
 
         expect(result).to(
-          eq(['Ruby Unit Tests (ubuntu-latest, 3.3)', 'Ruby Unit Tests (ubuntu-latest, 3.4)', 'Ruby Unit Tests (macos-26, 3.4)'])
+          eq(['Ruby Unit Tests (ubuntu-latest, 3.3)', 'Ruby Unit Tests (ubuntu-latest, 3.4)', 'Ruby Unit Tests (macos-latest, 3.4)'])
         )
       end
 
@@ -347,11 +347,11 @@ RSpec.describe(GHB::Application) do
           checks_for do |w|
             w.do_job(:tests) do
               do_name('Ruby Unit Tests')
-              do_strategy({ matrix: { os: %w[ubuntu-latest macos-26], include: [{ os: 'macos-26', arch: 'arm64' }] } })
+              do_strategy({ matrix: { os: %w[ubuntu-latest macos-latest], include: [{ os: 'macos-latest', arch: 'arm64' }] } })
             end
           end
 
-        expect(result).to(eq(['Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (macos-26, arm64)']))
+        expect(result).to(eq(['Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (macos-latest, arm64)']))
       end
 
       it 'adds an include row that matches nothing as its own combination' do # rubocop:disable RSpec/ExampleLength
@@ -416,12 +416,12 @@ RSpec.describe(GHB::Application) do
             w.do_job(:variables) { do_name('Prepare Variables') }
             w.do_job(:tests) do
               do_name('Ruby Unit Tests')
-              do_strategy({ matrix: { os: %w[ubuntu-latest macos-26] } })
+              do_strategy({ matrix: { os: %w[ubuntu-latest macos-latest] } })
             end
             w.do_job(:licenses) { do_name('Licenses Check') }
           end
 
-        expect(result).to(eq(['Prepare Variables', 'Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (macos-26)', 'Licenses Check']))
+        expect(result).to(eq(['Prepare Variables', 'Ruby Unit Tests (ubuntu-latest)', 'Ruby Unit Tests (macos-latest)', 'Licenses Check']))
       end
 
       it 'returns an empty list when the workflow has no jobs' do
@@ -498,11 +498,11 @@ RSpec.describe(GHB::Application) do
         end
 
         it 'emits no check name when include is not a list' do
-          expect(checks_for_matrix({ os: %w[ubuntu-latest], include: { os: 'macos-26' } })).to(eq([]))
+          expect(checks_for_matrix({ os: %w[ubuntu-latest], include: { os: 'macos-latest' } })).to(eq([]))
         end
 
         it 'emits no check name when an include row is not a mapping' do
-          expect(checks_for_matrix({ os: %w[ubuntu-latest], include: ['macos-26'] })).to(eq([]))
+          expect(checks_for_matrix({ os: %w[ubuntu-latest], include: ['macos-latest'] })).to(eq([]))
         end
 
         it 'emits no check name when an include row is empty' do
@@ -514,11 +514,11 @@ RSpec.describe(GHB::Application) do
         end
 
         it 'emits no check name when an include row key is not a name' do
-          expect(checks_for_matrix({ os: %w[ubuntu-latest], include: [{ 1 => 'macos-26' }] })).to(eq([]))
+          expect(checks_for_matrix({ os: %w[ubuntu-latest], include: [{ 1 => 'macos-latest' }] })).to(eq([]))
         end
 
         it 'emits no check name when exclude is not a list' do
-          expect(checks_for_matrix({ os: %w[ubuntu-latest], exclude: 'macos-26' })).to(eq([]))
+          expect(checks_for_matrix({ os: %w[ubuntu-latest], exclude: 'macos-latest' })).to(eq([]))
         end
       end
     end
