@@ -18,7 +18,7 @@
 | Ruby | hashdiff | 1.2.1 | MIT | Hashdiff is a diff lib to compute the smallest difference between two hashes | <https://github.com/liufengyun/hashdiff> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | httparty | 0.24.2 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2026-05-22 | High | HTTP client for GitHub REST API communication | Industry-standard Ruby HTTP client with active maintenance and security updates |
 | Ruby | i18n | 1.15.2 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | json | 2.21.2 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2026-05-22 | Low | Dependency | Dependency |
+| Ruby | json | 3.0.0 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | language_server-protocol | 3.17.0.6 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | lint_roller | 1.1.0 | MIT | A plugin specification for linter and formatter rulesets | <https://github.com/standardrb/lint_roller> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | logger | 1.7.0 | Ruby | Provides a simple logging utility for outputting messages. | <https://github.com/ruby/logger> | 2026-05-22 | Low | Dependency | Dependency |
@@ -26,7 +26,7 @@
 | Ruby | minitest | 6.0.6 | MIT | minitest provides a complete suite of testing facilities supporting | <https://minite.st/> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | multi_xml | 0.9.1 | MIT | Provides swappable XML backends utilizing LibXML, Nokogiri, Ox, or REXML. | <https://github.com/sferik/multi_xml> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | optparse | 0.8.1 | Ruby | OptionParser is a class for command-line option analysis | <https://github.com/ruby/optparse> | 2026-05-22 | Low | Command line argument parser | Ruby standard library gem maintained by the Ruby core team |
-| Ruby | parallel | 2.1.0 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2026-05-22 | Low | Dependency | Dependency |
+| Ruby | parallel | 2.2.0 | MIT | Run any kind of code in parallel processes | <https://github.com/grosser/parallel> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | parser | 3.3.12.0 | MIT | A Ruby parser written in pure Ruby. | <https://github.com/whitequark/parser> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | prism | 1.9.0 | MIT | Prism Ruby parser | <https://github.com/ruby/prism> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | psych | 5.5.0 | MIT | Psych is a YAML parser and emitter | <https://github.com/ruby/psych> | 2026-05-22 | Low | Yaml parser | Ruby standard library gem maintained by the Ruby core team |
@@ -50,7 +50,7 @@
 | Ruby | rubocop-thread_safety | 0.7.3 | MIT | Thread-safety checks via static analysis. | <https://github.com/rubocop/rubocop-thread_safety> | 2026-05-22 | Low | Ruby linter | Most popular gem |
 | Ruby | ruby-progressbar | 1.13.0 | MIT | Ruby/ProgressBar is an extremely flexible text progress bar library for Ruby | <https://github.com/jfelchner/ruby-progressbar> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | securerandom | 0.4.1 | Ruby | Interface for secure random number generator. | <https://github.com/ruby/securerandom> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | simplecov | 1.1.1 | MIT | Code coverage for Ruby with a powerful configuration library and automatic merging of coverage across test suites | <https://github.com/simplecov-ruby/simplecov> | 2026-05-22 | Low | Code coverage reporting with branch coverage support and minimum threshold enforcement | Most popular Ruby code coverage gem, widely adopted across the Ruby ecosystem |
+| Ruby | simplecov | 1.2.0 | MIT | Code coverage for Ruby with a powerful configuration library and automatic merging of coverage across test suites | <https://github.com/simplecov-ruby/simplecov> | 2026-05-22 | Low | Code coverage reporting with branch coverage support and minimum threshold enforcement | Most popular Ruby code coverage gem, widely adopted across the Ruby ecosystem |
 | Ruby | stringio | 3.2.0 | Ruby | Pseudo `IO` class from/to `String`. | <https://github.com/ruby/stringio> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | tzinfo | 2.0.6 | MIT | TZInfo provides access to time zone data and allows times to be converted using time zone rules. | <https://tzinfo.github.io> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | unicode-display_width | 3.2.0 | MIT | [Unicode 17.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, Emoji specification, and other data. | <https://github.com/janlelis/unicode-display_width> | 2026-05-22 | Low | Dependency | Dependency |
