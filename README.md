@@ -123,7 +123,8 @@ generated build file:
 
 ```yaml
 # github-build --skip_slack
-name: CI
+---
+name: Build
 ```
 
 On subsequent runs, if you invoke `github-build` with **no arguments**, it automatically reads and re-applies the
