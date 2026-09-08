@@ -404,8 +404,8 @@
     "website": "https://rspec.info",
     "last_verified_at": "2026-05-22",
     "risk_level": "Low",
-    "requirements": "Testing framework",
-    "verification_reasoning": "Most popular gem"
+    "requirements": "Unit and integration test framework for the CLI and its workflow builders",
+    "verification_reasoning": "De facto standard Ruby test framework; the spec/ suite and .rspec configuration are written against its DSL"
   },
   "rspec-core": {
     "language": "Ruby",
@@ -464,8 +464,8 @@
     "website": "https://rubocop.org/",
     "last_verified_at": "2026-05-22",
     "risk_level": "Low",
-    "requirements": "Ruby linter",
-    "verification_reasoning": "Most popular gem on rubygems"
+    "requirements": "Ruby linter enforcing the shared .rubocop.yml style and lint rules",
+    "verification_reasoning": "Reference Ruby static analyzer; the bundled config/linters/.rubocop.yml this tool distributes targets its cop set"
   },
   "rubocop-ast": {
     "language": "Ruby",
@@ -488,8 +488,8 @@
     "website": "https://github.com/rubocop/rubocop-capybara",
     "last_verified_at": "2026-05-22",
     "risk_level": "Low",
-    "requirements": "Ruby linter",
-    "verification_reasoning": "Most popular gem"
+    "requirements": "RuboCop plugin adding Capybara cops, enabled in .rubocop.yml plugins",
+    "verification_reasoning": "Official RuboCop-maintained plugin, the only source of the Capybara cop set extracted out of rubocop-rspec"
   },
   "rubocop-graphql": {
     "language": "Ruby",
@@ -500,8 +500,8 @@
     "website": "https://github.com/DmitryTsepelev/rubocop-graphql",
     "last_verified_at": "2026-05-22",
     "risk_level": "Low",
-    "requirements": "Ruby linter",
-    "verification_reasoning": "Most popular gem"
+    "requirements": "RuboCop plugin adding GraphQL cops, enabled in .rubocop.yml plugins",
+    "verification_reasoning": "Only maintained RuboCop plugin covering graphql-ruby schema and type definitions"
   },
   "rubocop-minitest": {
     "language": "Ruby",
@@ -512,8 +512,8 @@
     "website": "https://docs.rubocop.org/rubocop-minitest/",
     "last_verified_at": "2026-05-22",
     "risk_level": "Low",
-    "requirements": "Ruby linter",
-    "verification_reasoning": "Most popular gem"
+    "requirements": "RuboCop plugin adding Minitest cops, enabled in .rubocop.yml plugins",
+    "verification_reasoning": "Official RuboCop-maintained plugin, the only source of the Minitest cop set"
   },
   "rubocop-performance": {
     "language": "Ruby",
@@ -524,8 +524,8 @@
     "website": "https://docs.rubocop.org/rubocop-performance/",
     "last_verified_at": "2026-05-22",
     "risk_level": "Low",
-    "requirements": "A collection of RuboCop cops to check for performance optimizations in Ruby code",
-    "verification_reasoning": "Most popular gem"
+    "requirements": "RuboCop plugin adding performance cops, enabled in .rubocop.yml plugins",
+    "verification_reasoning": "Official RuboCop-maintained plugin holding the performance cops removed from the rubocop core gem"
   },
   "rubocop-rspec": {
     "language": "Ruby",
@@ -536,8 +536,8 @@
     "website": "https://github.com/rubocop/rubocop-rspec",
     "last_verified_at": "2026-05-22",
     "risk_level": "Low",
-    "requirements": "Code style checking for RSpec files. A plugin for the RuboCop code style enforcing & linting tool",
-    "verification_reasoning": "Most popular gem"
+    "requirements": "RuboCop plugin adding RSpec cops for the spec/ suite, enabled in .rubocop.yml plugins",
+    "verification_reasoning": "Official RuboCop-maintained plugin, the only source of the RSpec cop set"
   },
   "rubocop-thread_safety": {
     "language": "Ruby",
@@ -548,8 +548,8 @@
     "website": "https://github.com/rubocop/rubocop-thread_safety",
     "last_verified_at": "2026-05-22",
     "risk_level": "Low",
-    "requirements": "Ruby linter",
-    "verification_reasoning": "Most popular gem"
+    "requirements": "RuboCop plugin adding thread-safety cops, enabled in .rubocop.yml plugins",
+    "verification_reasoning": "Only maintained RuboCop plugin flagging mutable class-level state and other thread-safety hazards"
   },
   "ruby-progressbar": {
     "language": "Ruby",
@@ -657,6 +657,6 @@
     "last_verified_at": "2026-05-22",
     "risk_level": "Low",
     "requirements": "HTTP request stubbing for tests",
-    "verification_reasoning": "Most popular gem"
+    "verification_reasoning": "Stubs at the Net::HTTP layer, so GitHub REST and GraphQL calls made through httparty are intercepted without changing production code"
   }
 }

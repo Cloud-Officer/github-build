@@ -739,7 +739,15 @@ This project uses Ruby gems for:
 - **Core functionality:** activesupport (hash manipulation), httparty (HTTP client), psych (YAML parsing), optparse (CLI arguments), duplicate (deep cloning)
 - **Development:** rubocop and extensions (code linting), rspec (testing), webmock (HTTP stubbing), simplecov (coverage reporting)
 
-All dependencies are managed via Bundler with versions locked in `Gemfile.lock`. The soup.md file documents risk levels, requirements justification, and verification reasoning for each package.
+All dependencies are managed via Bundler with versions locked in `Gemfile.lock`. `.soup.json` at the repository root is the source of truth for the hand-authored fields below; `docs/soup.md` is generated from it by the `cloud-officer/ci-actions/soup` step in the build and dependency-update workflows and is never edited by hand.
+
+Each entry carries three reviewed fields:
+
+- **Risk Level** (per IEC 62304): *Low* — a failure cannot lead to harm; *Medium* — a failure can lead to reversible harm; *High* — a failure can lead to irreversible harm. `httparty` is the only High entry, since it carries every GitHub REST and GraphQL call that rewrites branch protection and repository security settings.
+- **Requirements** — why this project needs the library, in terms of its actual usage sites. Transitive packages pulled in only by another gem are recorded as `Dependency`.
+- **Verification Reasoning** — why this library rather than an alternative (official/vendor-maintained, sole provider of a capability, or the reference implementation for a tool the project already targets). Transitive packages are recorded as `Dependency`.
+
+The list is validated on every architecture review for accuracy (Requirements match real usage), completeness (every `Gemfile.lock` package is present), staleness (removed packages are dropped), and Risk Level appropriateness.
 
 ## Critical algorithms
 
