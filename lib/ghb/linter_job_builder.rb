@@ -206,11 +206,12 @@ module GHB
           defaults.merge!(linter[:options]) if linter[:options]
           default_with(defaults)
 
-          # github-token stays the PAT: the linter action's own actions/checkout needs it
-          # for private cross-repo submodules. reviewdog only posts PR comments, so it gets
-          # the job's own GITHUB_TOKEN -- scoped to this repo and expiring with the job --
-          # rather than a long-lived org credential handed to a third-party action.
-          with[:'github-token'] = '${{secrets.GH_PAT}}'
+          # The run token, not the org PAT (SEC-001). Private cross-repo submodules
+          # resolve over SSH through secrets.SSH_KEY -- every .gitmodules we generate for
+          # uses a git@github.com: URL -- so actions/checkout never needs the PAT here.
+          # Assigned rather than defaulted so workflows generated before this change are
+          # upgraded in place on regeneration. reviewdog keeps the same run token.
+          with[:'github-token'] = '${{github.token}}'
           with[:'reviewdog-token'] = '${{secrets.GITHUB_TOKEN}}' if linter[:reviewdog]
         end
       end

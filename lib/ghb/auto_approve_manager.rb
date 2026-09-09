@@ -126,7 +126,7 @@ module GHB
           do_shell('bash')
           do_env(
             {
-              GH_TOKEN: '${{secrets.GH_PAT}}',
+              GH_TOKEN: '${{secrets.GH_BOT_PAT}}',
               AUTHOR: '${{github.event.pull_request.user.login}}'
             }
           )

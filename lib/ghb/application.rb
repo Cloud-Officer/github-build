@@ -47,10 +47,8 @@ module GHB
     def initialize(argv)
       @code_deploy_pre_steps = []
       @default_branch = detect_default_branch
-      @dependencies_steps = []
       @file_cache = {}
       @auto_approve_workflow = Workflow.new('Auto-approve for code owners')
-      @cron_workflow = Workflow.new('Cron Dependencies')
       @dockerhub_workflow = Workflow.new('Publish Docker image')
       @new_workflow = Workflow.new('Build')
       @old_workflow = Workflow.new('Build')
@@ -58,18 +56,6 @@ module GHB
       @required_status_checks = []
       @submodules = []
       @unit_tests_conditions = nil
-      # Scope the PAT insteadOf rewrites to the owning org only. A bare
-      # github.com/ rewrite would attach GH_PAT to ANY github.com URL fetched
-      # later in the run (transitive git-source gems on bundle update, etc.);
-      # narrowing to ${{github.repository_owner}}/ limits the token to this
-      # org's own repos and shrinks the exfiltration surface. See CI-004 (#410).
-      @dependencies_commands =
-        <<~BASH
-          git config --global --add url."https://${GH_PAT}:x-oauth-basic@github.com/${{github.repository_owner}}/".insteadOf ssh://git@github.com:${{github.repository_owner}}/
-          git config --global --add url."https://${GH_PAT}:x-oauth-basic@github.com/${{github.repository_owner}}/".insteadOf https://github.com/${{github.repository_owner}}/
-          git config --global --add url."https://${GH_PAT}:x-oauth-basic@github.com/${{github.repository_owner}}/".insteadOf git@github.com:${{github.repository_owner}}/
-
-        BASH
     end
 
     def execute
@@ -101,13 +87,10 @@ module GHB
 
       language_builder = LanguageJobBuilder.new(
         context: context,
-        unit_tests_conditions: @unit_tests_conditions,
-        dependencies_commands: @dependencies_commands
+        unit_tests_conditions: @unit_tests_conditions
       )
       language_builder.build
       @code_deploy_pre_steps = language_builder.code_deploy_pre_steps
-      @dependencies_steps = language_builder.dependencies_steps
-      @dependencies_commands = language_builder.dependencies_commands
 
       collect_required_status_checks
 
@@ -120,12 +103,7 @@ module GHB
 
       workflow_write
 
-      DependabotManager.new(
-        new_workflow: @new_workflow,
-        cron_workflow: @cron_workflow,
-        dependencies_steps: @dependencies_steps,
-        dependencies_commands: @dependencies_commands
-      ).save
+      DependabotManager.new.save
 
       AutoApproveManager.new(auto_approve_workflow: @auto_approve_workflow).save
       DockerhubManager.new(dockerhub_workflow: @dockerhub_workflow).save

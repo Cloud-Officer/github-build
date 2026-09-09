@@ -134,7 +134,7 @@ RSpec.describe(GHB::VercelJobBuilder) do
 
         setup = new_workflow.jobs[:prod_deploy].steps.first
         expect(setup.with).not_to(have_key(:'node-version'))
-        expect(setup.with[:'github-token']).to(eq('${{secrets.GH_PAT}}'))
+        expect(setup.with[:'github-token']).to(eq('${{github.token}}'))
       end
     end
 
