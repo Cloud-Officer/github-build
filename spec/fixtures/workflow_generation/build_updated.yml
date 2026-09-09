@@ -56,7 +56,7 @@ jobs:
       uses: cloud-officer/ci-actions/variables@v3
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
-        github-token: "${{secrets.GH_PAT}}"
+        github-token: "${{github.token}}"
   actionlint:
     name: Github Actions Linter
     runs-on: ubuntu-latest
@@ -70,7 +70,7 @@ jobs:
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
-        github-token: "${{secrets.GH_PAT}}"
+        github-token: "${{github.token}}"
         reviewdog-token: "${{secrets.GITHUB_TOKEN}}"
   rubocop:
     name: Ruby Linter
@@ -85,7 +85,7 @@ jobs:
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
-        github-token: "${{secrets.GH_PAT}}"
+        github-token: "${{github.token}}"
         reviewdog-token: "${{secrets.GITHUB_TOKEN}}"
   semgrep:
     name: Semgrep Security Scanner
@@ -100,7 +100,7 @@ jobs:
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
-        github-token: "${{secrets.GH_PAT}}"
+        github-token: "${{github.token}}"
   yamllint:
     name: YAML Linter
     runs-on: ubuntu-latest
@@ -114,7 +114,7 @@ jobs:
       with:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
-        github-token: "${{secrets.GH_PAT}}"
+        github-token: "${{github.token}}"
         reviewdog-token: "${{secrets.GITHUB_TOKEN}}"
   licenses:
     name: Licenses Check
@@ -128,7 +128,7 @@ jobs:
       uses: cloud-officer/ci-actions/soup@v3
       with:
         ssh-key: "${{secrets.CUSTOM_SSH_KEY}}"
-        github-token: "${{secrets.GH_PAT}}"
+        github-token: "${{github.token}}"
         parameters: "--no_prompt --custom-flag"
   ruby_unit_tests:
     name: Ruby Unit Tests
@@ -142,7 +142,7 @@ jobs:
       uses: cloud-officer/ci-actions/setup@v3
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
-        github-token: "${{secrets.GH_PAT}}"
+        github-token: "${{github.token}}"
         ruby-bundler-cache: "${{env.RUBY-BUNDLER-CACHE}}"
     - name: Bundler
       shell: bash

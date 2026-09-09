@@ -58,7 +58,7 @@ RSpec.describe(GHB::AwsJobBuilder) do
           do_with(
             {
               'ssh-key': '${{secrets.SSH_KEY}}',
-              'github-token': '${{secrets.GH_PAT}}',
+              'github-token': '${{github.token}}',
               'aws-access-key-id': '${{secrets.CUSTOM_AWS_KEY}}',
               'aws-secret-access-key': '${{secrets.CUSTOM_AWS_SECRET}}',
               'aws-region': 'eu-west-1',

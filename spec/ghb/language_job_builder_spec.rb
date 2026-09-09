@@ -3,7 +3,6 @@
 RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoizedHelpers
   let(:file_cache)            { {}                                                       }
   let(:submodules)            { []                                                       }
-  let(:dependencies_commands) { +''                                                      }
   let(:old_workflow)          { GHB::Workflow.new('CI')                                  }
   let(:new_workflow)          { GHB::Workflow.new('CI')                                  }
   let(:unit_tests_conditions) { "(needs.variables.outputs.UNIT_TESTS == '1')"            }
@@ -29,8 +28,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         new_workflow: new_workflow,
         file_cache: file_cache
       ),
-      unit_tests_conditions: unit_tests_conditions,
-      dependencies_commands: dependencies_commands
+      unit_tests_conditions: unit_tests_conditions
     )
   end
 
@@ -166,7 +164,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
           do_with(
             {
               'ssh-key': '${{secrets.SSH_KEY}}',
-              'github-token': '${{secrets.GH_PAT}}',
+              'github-token': '${{github.token}}',
               'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
               'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
               'aws-region': '${{secrets.AWS_DEFAULT_REGION}}',
@@ -262,15 +260,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(new_workflow.jobs).to(be_empty)
     end
 
-    it 'appends package_manager_update to dependencies_commands' do
-      stub_config_file_reads(go_language_yaml)
-      stub_go_language_detection
-
-      builder.build
-
-      expect(builder.dependencies_commands).to(include('go mod tidy'))
-    end
-
     it 'includes additional_checks in the if condition for swift language' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       swift_full_config = {
         swift: {
@@ -314,7 +303,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(job.if).to(include('DEPLOY_TVOS'))
     end
 
-    it 'skips swift unit test job but collects dependency info when ci_scripts exists' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+    it 'skips the swift unit test job when ci_scripts exists' do # rubocop:disable RSpec/ExampleLength
       swift_full_config = {
         swift: {
           short_name: 'swift',
@@ -349,8 +338,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       builder.build
 
       expect(new_workflow.jobs).not_to(have_key(:swift_unit_tests))
-      expect(builder.dependencies_steps).not_to(be_empty)
-      expect(builder.dependencies_commands).to(include('bundle config set frozen false ; bundle update'))
     end
 
     it 'prints warning but does not exit when version file mismatches and strict_version_check is false' do # rubocop:disable RSpec/ExampleLength
@@ -372,8 +359,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
           new_workflow: new_workflow,
           file_cache: {}
         ),
-        unit_tests_conditions: unit_tests_conditions,
-        dependencies_commands: +''
+        unit_tests_conditions: unit_tests_conditions
       )
 
       stub_non_strict_config_file_reads(non_strict_builder, go_language_yaml)
@@ -409,8 +395,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
           new_workflow: new_workflow,
           file_cache: {}
         ),
-        unit_tests_conditions: unit_tests_conditions,
-        dependencies_commands: +''
+        unit_tests_conditions: unit_tests_conditions
       )
 
       stub_non_strict_config_file_reads(codedeploy_builder, go_language_yaml)
@@ -449,8 +434,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
           new_workflow: env_mismatch_workflow,
           file_cache: {}
         ),
-        unit_tests_conditions: unit_tests_conditions,
-        dependencies_commands: +''
+        unit_tests_conditions: unit_tests_conditions
       )
 
       stub_non_strict_config_file_reads(env_mismatch_builder, go_language_yaml)
@@ -496,8 +480,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
           new_workflow: version_mismatch_workflow,
           file_cache: {}
         ),
-        unit_tests_conditions: unit_tests_conditions,
-        dependencies_commands: +''
+        unit_tests_conditions: unit_tests_conditions
       )
 
       stub_non_strict_config_file_reads(version_mismatch_builder, go_language_yaml)
@@ -533,8 +516,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
           new_workflow: new_workflow,
           file_cache: {}
         ),
-        unit_tests_conditions: unit_tests_conditions,
-        dependencies_commands: +''
+        unit_tests_conditions: unit_tests_conditions
       )
 
       stub_non_strict_config_file_reads(license_builder, go_language_yaml)
@@ -570,9 +552,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       step_names = job.steps.map(&:name)
       expect(step_names).to(include('Go Modules (svc-a)'))
       expect(step_names).to(include('Testing (svc-a)'))
-      # The dependency-update command must cd into the sub-project folder (in a
-      # subshell) rather than running at the repo root where there is no manifest.
-      expect(builder.dependencies_commands).to(include('(cd svc-a && go mod tidy)'))
     end
 
     it 'scans sub-project dependency files up to two directory levels deep' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
@@ -641,20 +620,20 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         install_step = go_steps.find { |step| step.name == 'Go Modules' }
 
         expect(install_step.env['GITHUB_TOKEN']).to(eq('${{secrets.GITHUB_TOKEN}}'))
-        expect(install_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
+        expect(install_step.env.values).not_to(include('${{github.token}}'))
       end
 
       it 'gives the unit-test step no token at all', :aggregate_failures do
         test_step = go_steps.find { |step| step.name == 'Testing' }
 
         expect(test_step.env).not_to(have_key('GITHUB_TOKEN'))
-        expect(test_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
+        expect(test_step.env.values).not_to(include('${{github.token}}'))
       end
 
       it 'keeps the PAT out of every run step in the generated job' do
         run_steps = go_steps.reject { |step| step.run.nil? }
 
-        expect(run_steps.flat_map { |step| step.env.values }).not_to(include('${{secrets.GH_PAT}}'))
+        expect(run_steps.flat_map { |step| step.env.values }).not_to(include('${{github.token}}'))
       end
 
       # The setup action fetches the private ci-actions repo, so its github-token input
@@ -662,7 +641,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       it 'still passes the PAT to the setup action that needs cross-repo rights' do
         setup_step = go_steps.find { |step| step.name == 'Setup' }
 
-        expect(setup_step.with[:'github-token']).to(eq('${{secrets.GH_PAT}}'))
+        expect(setup_step.with[:'github-token']).to(eq('${{github.token}}'))
       end
 
       # Migration path: steps inherit env from the previously generated workflow via
@@ -812,7 +791,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         do_name('JavaScript Unit Tests')
         do_step('Setup') do
           do_uses('cloud-officer/ci-actions/setup@v3')
-          do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'github-token': '${{secrets.GH_PAT}}', 'node-version': '${{env.NODE-VERSION}}' })
+          do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'github-token': '${{github.token}}', 'node-version': '${{env.NODE-VERSION}}' })
         end
       end
 

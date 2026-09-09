@@ -133,7 +133,7 @@ module GHB
 
         default_with(GHB.secrets(:ssh, :github_token, :aws))
 
-        with[:'github-token'] = '${{secrets.GH_PAT}}'
+        with[:'github-token'] = '${{github.token}}'
       end
     end
 

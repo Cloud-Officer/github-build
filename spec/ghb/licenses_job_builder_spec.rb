@@ -78,7 +78,7 @@ RSpec.describe(GHB::LicensesJobBuilder) do
           do_with(
             {
               'ssh-key': '${{secrets.SSH_KEY}}',
-              'github-token': '${{secrets.GH_PAT}}',
+              'github-token': '${{github.token}}',
               parameters: '--custom-flag'
             }
           )

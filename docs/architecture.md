@@ -29,7 +29,7 @@ flowchart TD
     MANAGERS --> GIO(["gitignore.io API"])
     BUILDERS --> MODEL["Workflow model<br>GHB::Workflow, GHB::Job, GHB::Step<br>sharing GHB::CopyableProperties"]
     MANAGERS --> MODEL
-    MODEL --> OUT["Generated output<br>.github/workflows/build.yml, dependencies.yml,<br>docker.yml, auto-approve.yml<br>.gitignore, linter config files"]
+    MODEL --> OUT["Generated output<br>.github/workflows/build.yml,<br>docker.yml, auto-approve.yml<br>.gitignore, linter config files"]
     MANAGERS --> OUT
 ```
 

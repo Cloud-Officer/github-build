@@ -39,7 +39,7 @@ module GHB
     INJECTED_PAT = '${{secrets.GH_PAT}}'
     private_constant :SWIFT_DEPLOY_CHECK_FLAGS, :CODEDEPLOY_SETUP_LANGUAGES, :SUBDIR_DEPENDENCY_SCAN_DEPTH, :DEPENDENCY_STEP_TOKEN, :INJECTED_PAT
 
-    attr_reader :code_deploy_pre_steps, :dependencies_steps, :dependencies_commands
+    attr_reader :code_deploy_pre_steps
 
     # Steps inherit their env from the previously generated workflow via copy_properties, so
     # simply no longer injecting the PAT would leave it in place forever in every repo that
@@ -51,7 +51,7 @@ module GHB
       env.delete(:GITHUB_TOKEN) if env[:GITHUB_TOKEN] == INJECTED_PAT
     end
 
-    def initialize(context:, unit_tests_conditions:, dependencies_commands:)
+    def initialize(context:, unit_tests_conditions:)
       @options = context.options
       @submodules = context.submodules
       @old_workflow = context.old_workflow
@@ -59,9 +59,6 @@ module GHB
       @unit_tests_conditions = unit_tests_conditions
       @file_cache = context.file_cache
       @code_deploy_pre_steps = []
-      @dependencies_steps = []
-      @dependencies_commands = dependencies_commands
-      @dependencies_commands_additions = []
       # Package managers marked `package_manager_once` that have already emitted an
       # install step in this job, so a system-wide tool install is not repeated per
       # detected sub-project. Scoped to the builder, which is per language job.
@@ -78,10 +75,6 @@ module GHB
 
         detect_language(language, service_options)
       end
-
-      @dependencies_commands += @dependencies_commands_additions
-                                .map { |cmd| "#{cmd}\n" }
-                                .join
     end
 
     private
@@ -271,8 +264,7 @@ module GHB
         builder.__send__(:build_licenses_step, self, language) if File.exist?('Podfile.lock') && skip_license_check == false
       end
 
-      # Remove the unit test job from the workflow when Xcode Cloud handles tests,
-      # but dependency info (dependencies_steps, dependencies_commands) was still collected above
+      # Remove the unit test job from the workflow when Xcode Cloud handles tests.
       return unless skip_unit_test_job
 
       @new_workflow.jobs.delete(:"#{language[:short_name]}_unit_tests")
@@ -282,7 +274,6 @@ module GHB
     def build_setup_step(job, language, version_file, setup_options, needs_codedeploy_setup, cache_options = {})
       old_workflow = @old_workflow
       code_deploy_pre_steps = @code_deploy_pre_steps
-      dependencies_steps = @dependencies_steps
       version_option_key = version_file && version_option_name(version_file).to_sym
 
       job.do_step('Setup') do
@@ -294,7 +285,7 @@ module GHB
 
         default_with(GHB.secrets(:ssh, :github_token).merge(setup_options))
 
-        with[:'github-token'] = '${{secrets.GH_PAT}}'
+        with[:'github-token'] = '${{github.token}}'
 
         # Applied outside the `with.empty?` branch above on purpose. A workflow generated
         # before the cache was wired already carries a populated `with`, so merging only on
@@ -304,14 +295,12 @@ module GHB
         cache_options.each { |key, value| with[key.to_sym] = value unless with.key?(key.to_sym) }
 
         code_deploy_pre_steps << duplicate(self) if needs_codedeploy_setup
-        dependencies_steps << duplicate(self)
       end
     end
 
     def build_dependency_steps(job, language, needs_codedeploy_setup)
       old_workflow = @old_workflow
       code_deploy_pre_steps = @code_deploy_pre_steps
-      dependencies_commands_additions = @dependencies_commands_additions
       dependency_detected = false
 
       language[:dependencies].each do |dependency|
@@ -326,7 +315,6 @@ module GHB
           do_run(dependency[:package_manager_default]) if run.nil?
           env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
           code_deploy_pre_steps << duplicate(self) if needs_codedeploy_setup
-          dependencies_commands_additions << dependency[:package_manager_update] if dependency[:package_manager_update]
         end
       end
 
@@ -344,7 +332,6 @@ module GHB
 
     def build_mono_dependency_steps(job, language, mono_dependency_locations)
       old_workflow = @old_workflow
-      dependencies_commands_additions = @dependencies_commands_additions
 
       mono_dependency_locations.each do |loc|
         dep = loc[:dependency]
@@ -367,7 +354,6 @@ module GHB
               do_shell('bash')
               do_run(dep[:package_manager_default]) if run.nil?
               env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
-              dependencies_commands_additions << dep[:package_manager_update] if dep[:package_manager_update]
             end
           end
         else
@@ -376,10 +362,6 @@ module GHB
             do_shell('bash')
             do_run("cd #{subdir} && #{dep[:package_manager_default]}") if run.nil?
             env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
-            # Sub-project update commands run from the repo root in a single combined
-            # block, so each must cd into its own folder; a subshell keeps the cwd
-            # local so the next command still starts from the root.
-            dependencies_commands_additions << "(cd #{subdir} && #{dep[:package_manager_update]})" if dep[:package_manager_update]
           end
         end
 

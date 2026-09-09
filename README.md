@@ -19,12 +19,10 @@ This is a GitHub Action build file generator. It will detect and enable linters,
 languages including dependencies like mongodb, mysql, redis and opensearch, enable the unit tests framework, enable CodeDeploy,
 detect custom AWS and Vercel deployments and enable Slack notification.
 
-Alongside `.github/workflows/build.yml`, it generates the companion workflows `auto-approve.yml` (approves pull
-requests opened by code owners), `dependencies.yml` (weekly cron dependency updates, generated only when the
-license check job is enabled and at least one language was detected — otherwise it is removed)
-and, when a `.dockerhub` file is present, `docker.yml`. Any legacy `.github/dependabot.yml` is removed, as CVE
-alerts are handled through the repository settings instead, and a legacy `.github/workflows/soup.yml` is removed when
-`dependencies.yml` is generated to supersede it.
+Alongside `.github/workflows/build.yml`, it generates the companion workflow `auto-approve.yml` (approves pull
+requests opened by code owners) and, when a `.dockerhub` file is present, `docker.yml`. Any legacy
+`.github/dependabot.yml` is removed, as CVE alerts are handled through the repository settings instead, and the
+retired `.github/workflows/dependencies.yml` and `.github/workflows/soup.yml` are removed on every run.
 
 It will also update the `.gitignore` file and check the repository settings.
 
@@ -261,14 +259,15 @@ repository. No CLI flags are needed for these; they are detected on every run.
 ### Required Secrets
 
 Generated workflows reference the following GitHub Actions secrets that must be configured in target repositories.
+Every job authenticates with the run's own `${{github.token}}`; `GH_BOT_PAT` is the only long-lived GitHub credential
+still required, and only `auto-approve.yml` uses it.
 
 #### Core Secrets (All Workflows)
 
 | Secret        | Purpose                                                                                                                                                                                  |
 |---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `GH_PAT`      | GitHub Personal Access Token used for API authentication, git operations, and accessing private dependencies across all generated workflow jobs (linters, tests, licenses, deployments). |
-| `SSH_KEY`     | SSH private key used for repository checkout and SSH-based git operations across all generated workflow jobs.                                                                            |
-| `GH_BOT_PAT`  | Token of the bot account used by `auto-approve.yml` to approve pull requests opened by code owners. Self-approval is skipped when it resolves to the pull request author.                |
+| `SSH_KEY`     | SSH private key used for repository checkout, private submodules and SSH-based git operations across all generated workflow jobs.                                                        |
+| `GH_BOT_PAT`  | Token used by `auto-approve.yml` to read org team membership and approve pull requests opened by code owners. Needs `pull-requests: write` and organization `members: read`, and no `contents` write. Self-approval is skipped when it resolves to the pull request author. |
 
 #### AWS Secrets (CodeDeploy and Custom AWS Deployments)
 

@@ -118,7 +118,7 @@ RSpec.describe(GHB::AutoApproveManager) do
       expect(check_step.id).to(eq('check'))
       expect(check_step.run).to(include('CODEOWNERS'))
       expect(check_step.run).to(include('is_owner'))
-      expect(check_step.env[:GH_TOKEN]).to(eq('${{secrets.GH_PAT}}'))
+      expect(check_step.env[:GH_TOKEN]).to(eq('${{secrets.GH_BOT_PAT}}'))
     end
 
     it 'exposes only GH_TOKEN and AUTHOR to the code owner check step (no dead ORG var)' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
@@ -129,7 +129,7 @@ RSpec.describe(GHB::AutoApproveManager) do
       expect(check_step.env).to(
         eq(
           {
-            GH_TOKEN: '${{secrets.GH_PAT}}',
+            GH_TOKEN: '${{secrets.GH_BOT_PAT}}',
             AUTHOR: '${{github.event.pull_request.user.login}}'
           }
         )

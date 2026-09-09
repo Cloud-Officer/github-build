@@ -3,15 +3,8 @@
 require 'fileutils'
 
 module GHB
-  # Manages dependabot configuration and cron dependency update workflow.
+  # Removes the dependabot config and the retired cron dependency workflows.
   class DependabotManager
-    def initialize(new_workflow:, cron_workflow:, dependencies_steps:, dependencies_commands:)
-      @new_workflow = new_workflow
-      @cron_workflow = cron_workflow
-      @dependencies_steps = dependencies_steps
-      @dependencies_commands = dependencies_commands
-    end
-
     def save
       dependabot_file = '.github/dependabot.yml'
 
@@ -20,111 +13,13 @@ module GHB
         FileUtils.rm_f(dependabot_file)
       end
 
-      if @new_workflow.jobs[:licenses] and !@dependencies_steps.empty?
-        save_dependencies_workflow
-      else
-        FileUtils.rm_f('.github/workflows/dependencies.yml')
-      end
-    end
-
-    private
-
-    def save_dependencies_workflow
-      new_workflow = @new_workflow
-      dependencies_steps = @dependencies_steps
-      dependencies_commands = @dependencies_commands
+      # The cron dependency workflow is retired. It wrote secrets.GH_PAT into
+      # ~/.gitconfig in cleartext and then ran package-manager updates whose
+      # install scripts execute third-party code in the same job. Dependency
+      # updates now run outside CI. Removing both files unconditionally means
+      # regeneration cleans up existing repositories instead of orphaning them.
+      FileUtils.rm_f('.github/workflows/dependencies.yml')
       FileUtils.rm_f('.github/workflows/soup.yml')
-
-      @cron_workflow.on =
-        {
-          schedule:
-            [
-              {
-                cron: '0 9 * * 1'
-              }
-            ]
-        }
-
-      @cron_workflow.env = @new_workflow.env
-      # Every step authenticates with secrets.GH_PAT (gh CLI, git push,
-      # ci-actions, peter-evans/create-pull-request), so the ambient
-      # GITHUB_TOKEN only needs read access. Creating the PR with the PAT
-      # is also what lets CI run on the resulting PR (GITHUB_TOKEN-opened
-      # PRs are blocked from triggering workflows by anti-recursion).
-      @cron_workflow.permissions = { contents: 'read', 'pull-requests': 'read' }
-
-      @cron_workflow.do_job(:update_dependencies) do
-        do_name('Update Dependencies')
-        do_runs_on(DEFAULT_UBUNTU_VERSION)
-        do_permissions(
-          {
-            contents: 'read',
-            'pull-requests': 'read'
-          }
-        )
-
-        merged_with = {}
-
-        dependencies_steps.each do |step|
-          merged_with.merge!(step.with) if step.with
-        end
-
-        dependencies_steps&.first&.if = nil
-        dependencies_steps&.first&.with = merged_with
-
-        self.steps = [dependencies_steps&.first]
-
-        do_step('Close Stale Dependency PRs') do
-          do_shell('bash')
-          do_env({ GH_TOKEN: '${{secrets.GH_PAT}}' })
-          do_run(
-            <<~BASH
-              prs=$(gh pr list --repo "${{github.repository}}" --search "Update Dependencies in:title" --state open --json number,headRefName --jq '.[] | "\\(.number) \\(.headRefName)"')
-
-              if [ -n "$prs" ]; then
-                while IFS=' ' read -r pr_number branch_name; do
-                  echo "Closing PR #${pr_number} and deleting branch ${branch_name}"
-                  gh pr close "${pr_number}" --repo "${{github.repository}}" --delete-branch --comment "Superseded by a newer dependency update."
-                done <<< "$prs"
-              else
-                echo "No stale dependency update PRs found."
-              fi
-            BASH
-          )
-        end
-
-        do_step('Update Dependencies') do
-          do_shell('bash')
-          do_env({ GH_PAT: '${{secrets.GH_PAT}}' })
-          do_run(dependencies_commands)
-        end
-
-        do_step('Licenses') do
-          copy_properties(new_workflow.jobs[:licenses]&.steps&.first)
-          do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
-
-          default_with(GHB.secrets(:ssh, :github_token).merge(parameters: '--no_prompt', 'skip-checkout': 'true'))
-
-          with[:'github-token'] = '${{secrets.GH_PAT}}'
-          with['skip-checkout'] = 'true'
-        end
-
-        do_step('Create Pull Request') do
-          do_uses(GHB.external_action('peter-evans/create-pull-request'))
-          do_with(
-            {
-              'commit-message': 'Update dependencies and soup files',
-              branch: 'update-dependencies-${{github.run_id}}',
-              title: 'Update Dependencies',
-              body: 'This PR updates the dependencies.'
-            }
-          )
-
-          with['token'] = '${{secrets.GH_PAT}}'
-        end
-      end
-
-      @cron_workflow.write('.github/workflows/dependencies.yml', header: GHB.generated_header('dependabot_manager.rb'))
     end
   end
 end

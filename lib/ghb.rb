@@ -51,7 +51,7 @@ module GHB
 
   SECRET_BUNDLES = {
     ssh: { 'ssh-key': '${{secrets.SSH_KEY}}' },
-    github_token: { 'github-token': '${{secrets.GH_PAT}}' },
+    github_token: { 'github-token': '${{github.token}}' },
     aws: {
       'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
       'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
