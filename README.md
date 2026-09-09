@@ -262,6 +262,13 @@ Generated workflows reference the following GitHub Actions secrets that must be 
 Every job authenticates with the run's own `${{github.token}}`; `GH_BOT_PAT` is the only long-lived GitHub credential
 still required, and only `auto-approve.yml` uses it.
 
+A retired secret is rewritten on regeneration rather than preserved. Job builders copy the previous workflow's `with:`
+and `env:` forward and only apply their defaults to a step that has none, so a reference written before a secret was
+retired would otherwise be regenerated verbatim forever - and once the secret is deleted it expands to empty and fails
+the step that needs it. `GHB::RETIRED_SECRETS` lists those references and their replacements, and `Workflow#write`
+applies them to every generated file: `${{secrets.GH_PAT}}` becomes `${{github.token}}`. `GH_BOT_PAT` is live, not
+retired, and is left alone.
+
 #### Core Secrets (All Workflows)
 
 | Secret       | Purpose                                                                                                                                                                                                                                                                     |
