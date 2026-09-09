@@ -145,14 +145,15 @@ module GHB
 
     def write(file, header: '')
       FileUtils.mkdir_p(File.dirname(file))
-      data = rewrite_github_refs(to_h.deep_stringify_keys)
+      data = rewrite_retired_secrets(rewrite_github_refs(to_h.deep_stringify_keys))
       content = header + data.to_yaml({ line_width: -1 })
 
       # NOTE: secrets.GITHUB_TOKEN is deliberately NOT rewritten to secrets.GH_PAT here (SEC-001).
       # The blanket rewrite put a long-lived, org-scoped PAT into the environment of every step
       # that runs third-party code, and it silently overrode a GITHUB_TOKEN a user wrote on
-      # purpose in a preserved job. Steps that genuinely need cross-repo or PR-creation rights
-      # request secrets.GH_PAT explicitly instead.
+      # purpose in a preserved job. The rewrite that does run goes the other way: GH_PAT is
+      # retired and rewrite_retired_secrets replaces what is left of it with the run's own
+      # ${{github.token}}. A step needing more than that takes an explicit, still-live secret.
       File.write(file, content)
     end
 
@@ -170,6 +171,26 @@ module GHB
     end
 
     private
+
+    # Replace every reference to a retired secret, `run:` bodies included.
+    #
+    # Unlike rewrite_github_refs, which leaves `run:` alone because ${GITHUB_*}
+    # is the runner's shell form there, a retired secret is dead in every
+    # position it can appear: the secret does not exist, so ${{secrets.NAME}}
+    # expands to empty wherever it sits. Rewriting at write time is what makes
+    # the retirement reach workflows generated before it - see GHB::RETIRED_SECRETS.
+    def rewrite_retired_secrets(node)
+      case node
+      when Hash
+        node.transform_values { |value| rewrite_retired_secrets(value) }
+      when Array
+        node.map { |item| rewrite_retired_secrets(item) }
+      when String
+        GHB::RETIRED_SECRETS.reduce(node) { |acc, (retired, replacement)| acc.gsub(retired) { replacement } }
+      else
+        node
+      end
+    end
 
     # Rewrite ${GITHUB_*} -> ${{github.*}} in YAML values, but skip shell `run:`
     # bodies - there ${GITHUB_*} is the runner-exported env-var form and

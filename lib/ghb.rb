@@ -60,6 +60,25 @@ module GHB
   }.freeze
   private_constant :SECRET_BUNDLES
 
+  # Secret references that no longer resolve, and what replaces them.
+  #
+  # Retiring a secret in SECRET_BUNDLES is not enough on its own. A job builder
+  # copies the previous workflow's `with:`/`env:` forward and only fills in its
+  # defaults when the step carries none (Step#default_with is a no-op once
+  # `with:` is non-empty, so hand edits survive), which means a reference
+  # generated before the retirement is copied forward on every regeneration -
+  # nothing downstream can tell it apart from a hand edit worth keeping.
+  # Workflow#write rewrites these on the way out instead, that being the one
+  # pass every generated file goes through.
+  #
+  # GH_PAT was retired when CI moved to the run's own ${{github.token}}. The
+  # secret no longer exists, so a surviving reference expands to empty and fails
+  # whatever needs it - most visibly a required `token:` input, which reports
+  # `Input required and not supplied: token`. GH_BOT_PAT is NOT retired:
+  # auto-approve.yml still uses it, and it must keep resolving.
+  RETIRED_SECRETS = { '${{secrets.GH_PAT}}' => '${{github.token}}' }.freeze # rubocop:disable Style/StringHashKeys -- the key is the literal expression matched in generated YAML, not a name
+  public_constant :RETIRED_SECRETS
+
   def self.secrets(*groups)
     groups.reduce({}) { |acc, elem| acc.merge(SECRET_BUNDLES.fetch(elem)) } # rubocop:disable Style/HashLookupMethod -- fetch raises on an unknown bundle name
   end

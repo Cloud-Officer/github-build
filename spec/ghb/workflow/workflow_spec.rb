@@ -352,13 +352,60 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       end
     end
 
-    it 'leaves an explicitly requested secrets.GH_PAT untouched' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+    # GH_PAT is retired: the org secret is gone, so a surviving reference expands
+    # to empty and fails the step. It cannot be left alone the way a live secret
+    # is -- a job builder copies the old `with:`/`env:` forward and Step#default_with
+    # declines to overwrite it, so without this rewrite the dead reference is
+    # regenerated verbatim forever.
+    it 'rewrites a retired secrets.GH_PAT to the run token' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       workflow.do_env({ TOKEN: '${{secrets.GH_PAT}}' })
       workflow.write(temp_file)
 
       expect(File).to(have_received(:write)) do |_, content|
-        expect(content).to(include('${{secrets.GH_PAT}}'))
-        expect(content).not_to(include('${{secrets.GITHUB_TOKEN}}'))
+        expect(content).to(include('${{github.token}}'))
+        expect(content).not_to(include('${{secrets.GH_PAT}}'))
+      end
+    end
+
+    it 'rewrites a retired secret copied forward into a step with:' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      workflow.do_job(:licenses) do
+        do_runs_on('ubuntu-latest')
+        do_step('Licenses') do
+          do_uses('cloud-officer/ci-actions/soup@v3')
+          do_with({ 'github-token': '${{secrets.GH_PAT}}' })
+        end
+      end
+      workflow.write(temp_file)
+
+      expect(File).to(have_received(:write)) do |_, content|
+        expect(content).to(include('github-token: "${{github.token}}"'))
+        expect(content).not_to(include('${{secrets.GH_PAT}}'))
+      end
+    end
+
+    it 'rewrites a retired secret inside a run body' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      workflow.do_job(:build) do
+        do_runs_on('ubuntu-latest')
+        do_step('Clone') { do_run('gh auth login --with-token <<< "${{secrets.GH_PAT}}"') }
+      end
+      workflow.write(temp_file)
+
+      expect(File).to(have_received(:write)) do |_, content|
+        expect(content).to(include('${{github.token}}'))
+        expect(content).not_to(include('${{secrets.GH_PAT}}'))
+      end
+    end
+
+    # GH_BOT_PAT is still live -- auto-approve.yml authenticates with it. Only the
+    # exact retired reference is rewritten, never a secret whose name merely shares
+    # a substring with it.
+    it 'leaves the live secrets.GH_BOT_PAT untouched' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      workflow.do_env({ GH_TOKEN: '${{secrets.GH_BOT_PAT}}' })
+      workflow.write(temp_file)
+
+      expect(File).to(have_received(:write)) do |_, content|
+        expect(content).to(include('${{secrets.GH_BOT_PAT}}'))
+        expect(content).not_to(include('${{github.token}}'))
       end
     end
 
