@@ -112,7 +112,7 @@ js:
     - .nvmrc
   setup_options:
     - name: node-version
-      value: 26.8.1
+      value: 26.8.2
     - name: node-always-auth
       value:
     - name: node-version-file
