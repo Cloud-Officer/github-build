@@ -264,10 +264,10 @@ still required, and only `auto-approve.yml` uses it.
 
 #### Core Secrets (All Workflows)
 
-| Secret        | Purpose                                                                                                                                                                                  |
-|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `SSH_KEY`     | SSH private key used for repository checkout, private submodules and SSH-based git operations across all generated workflow jobs.                                                        |
-| `GH_BOT_PAT`  | Token used by `auto-approve.yml` to read org team membership and approve pull requests opened by code owners. Needs `pull-requests: write` and organization `members: read`, and no `contents` write. Self-approval is skipped when it resolves to the pull request author. |
+| Secret       | Purpose                                                                                                                                                                                                                                                                     |
+|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `SSH_KEY`    | SSH private key used for repository checkout, private submodules and SSH-based git operations across all generated workflow jobs.                                                                                                                                           |
+| `GH_BOT_PAT` | Token used by `auto-approve.yml` to read org team membership and approve pull requests opened by code owners. Needs `pull-requests: write` and organization `members: read`, and no `contents` write. Self-approval is skipped when it resolves to the pull request author. |
 
 #### AWS Secrets (CodeDeploy and Custom AWS Deployments)
 
