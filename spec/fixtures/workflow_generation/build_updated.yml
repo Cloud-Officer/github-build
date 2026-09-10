@@ -71,7 +71,7 @@ jobs:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
-        reviewdog-token: "${{secrets.GITHUB_TOKEN}}"
+        reviewdog-token: "${{github.token}}"
   rubocop:
     name: Ruby Linter
     runs-on: ubuntu-latest
@@ -86,7 +86,7 @@ jobs:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
-        reviewdog-token: "${{secrets.GITHUB_TOKEN}}"
+        reviewdog-token: "${{github.token}}"
   semgrep:
     name: Semgrep Security Scanner
     runs-on: ubuntu-latest
@@ -115,7 +115,7 @@ jobs:
         linters: "${{needs.variables.outputs.LINTERS}}"
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
-        reviewdog-token: "${{secrets.GITHUB_TOKEN}}"
+        reviewdog-token: "${{github.token}}"
   licenses:
     name: Licenses Check
     runs-on: ubuntu-24.04
@@ -148,7 +148,7 @@ jobs:
       shell: bash
       run: bundle install
       env:
-        GITHUB_TOKEN: "${{secrets.GITHUB_TOKEN}}"
+        GITHUB_TOKEN: "${{github.token}}"
     - name: RSpec
       shell: bash
       run: bundle exec rspec --format documentation

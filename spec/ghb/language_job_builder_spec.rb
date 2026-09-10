@@ -619,26 +619,26 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       it 'gives the dependency-install step the ephemeral token, never the PAT', :aggregate_failures do
         install_step = go_steps.find { |step| step.name == 'Go Modules' }
 
-        expect(install_step.env['GITHUB_TOKEN']).to(eq('${{secrets.GITHUB_TOKEN}}'))
-        expect(install_step.env.values).not_to(include('${{github.token}}'))
+        expect(install_step.env['GITHUB_TOKEN']).to(eq('${{github.token}}'))
+        expect(install_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
       end
 
       it 'gives the unit-test step no token at all', :aggregate_failures do
         test_step = go_steps.find { |step| step.name == 'Testing' }
 
         expect(test_step.env).not_to(have_key('GITHUB_TOKEN'))
-        expect(test_step.env.values).not_to(include('${{github.token}}'))
+        expect(test_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
       end
 
       it 'keeps the PAT out of every run step in the generated job' do
         run_steps = go_steps.reject { |step| step.run.nil? }
 
-        expect(run_steps.flat_map { |step| step.env.values }).not_to(include('${{github.token}}'))
+        expect(run_steps.flat_map { |step| step.env.values }).not_to(include('${{secrets.GH_PAT}}'))
       end
 
-      # The setup action fetches the private ci-actions repo, so its github-token input
-      # legitimately keeps the PAT -- this is the boundary of the SEC-001 change.
-      it 'still passes the PAT to the setup action that needs cross-repo rights' do
+      # The setup action fetches the private ci-actions repo through secrets.SSH_KEY; its
+      # github-token input carries the run token, which is the boundary of the SEC-001 change.
+      it 'passes the run token to the setup action that needs cross-repo rights' do
         setup_step = go_steps.find { |step| step.name == 'Setup' }
 
         expect(setup_step.with[:'github-token']).to(eq('${{github.token}}'))
@@ -666,7 +666,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         it 'downgrades the inherited PAT on the dependency-install step' do
           install_step = go_steps.find { |step| step.name == 'Go Modules' }
 
-          expect(install_step.env['GITHUB_TOKEN']).to(eq('${{secrets.GITHUB_TOKEN}}'))
+          expect(install_step.env['GITHUB_TOKEN']).to(eq('${{github.token}}'))
         end
       end
 

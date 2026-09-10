@@ -212,7 +212,7 @@ module GHB
           # Assigned rather than defaulted so workflows generated before this change are
           # upgraded in place on regeneration. reviewdog keeps the same run token.
           with[:'github-token'] = '${{github.token}}'
-          with[:'reviewdog-token'] = '${{secrets.GITHUB_TOKEN}}' if linter[:reviewdog]
+          with[:'reviewdog-token'] = '${{github.token}}' if linter[:reviewdog]
         end
       end
     end

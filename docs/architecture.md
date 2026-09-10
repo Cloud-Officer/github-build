@@ -381,7 +381,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Constants:**
 
-- `DEPENDENCY_STEP_TOKEN`: Token exposed to dependency-install steps — the ephemeral, repo-scoped `${{secrets.GITHUB_TOKEN}}` rather than the org-scoped `secrets.GH_PAT`, because install steps execute arbitrary third-party code (postinstall hooks, plugins). It is kept rather than dropped because Tuist's SwiftPM resolution reads it, and it raises the API rate limit to a per-repository budget instead of a shared org-wide one. The other package managers authenticate by other means (Composer github-oauth, Bundler `BUNDLE_GITHUB__COM`, npm/yarn/pnpm `NODE_AUTH_TOKEN`, Carthage `GITHUB_ACCESS_TOKEN`, private sibling repos over SSH)
+- `DEPENDENCY_STEP_TOKEN`: Token exposed to dependency-install steps — the ephemeral, repo-scoped run token `${{github.token}}` rather than the org-scoped `secrets.GH_PAT`, because install steps execute arbitrary third-party code (postinstall hooks, plugins). It is kept rather than dropped because Tuist's SwiftPM resolution reads it, and it raises the API rate limit to a per-repository budget instead of a shared org-wide one. The other package managers authenticate by other means (Composer github-oauth, Bundler `BUNDLE_GITHUB__COM`, npm/yarn/pnpm `NODE_AUTH_TOKEN`, Carthage `GITHUB_ACCESS_TOKEN`, private sibling repos over SSH)
 - `INJECTED_PAT`: The `${{secrets.GH_PAT}}` reference formerly injected, retained so `drop_injected_pat` can recognise and strip it
 - `SUBDIR_DEPENDENCY_SCAN_DEPTH`: How many directory levels below the repo root a sub-project dependency file may sit and still be detected (2)
 - `SWIFT_DEPLOY_CHECK_FLAGS`: Deploy flags (`DEPLOY_ON_BETA`, `DEPLOY_ON_RC`, `DEPLOY_ON_PROD`, `DEPLOY_MACOS`, `DEPLOY_TVOS`) that extend the Swift unit-test `if:` so the job also runs on deploy triggers
@@ -865,7 +865,7 @@ The list is validated on every architecture review for accuracy (Requirements ma
 **Authentication:**
 
 - GitHub API calls use personal access tokens where cross-repository or PR-creation rights are genuinely required (`GH_PAT`; `GH_BOT_PAT` for auto-approve approvals so the bot identity satisfies the code-owner review rule). Each such step requests the secret explicitly — there is no blanket token rewrite at workflow-write time
-- Dependency-install steps receive the ephemeral, repo-scoped `secrets.GITHUB_TOKEN` (`GHB::LanguageJobBuilder::DEPENDENCY_STEP_TOKEN`) rather than the org-scoped PAT, since those steps run arbitrary third-party code; unit-test steps receive no token at all
+- Dependency-install steps receive the ephemeral, repo-scoped run token `${{github.token}}` (`GHB::LanguageJobBuilder::DEPENDENCY_STEP_TOKEN`) rather than the org-scoped PAT, since those steps run arbitrary third-party code; unit-test steps receive no token at all. The generator spells the run token through the `github` context everywhere: it is the same value as `secrets.GITHUB_TOKEN`, but the `github` context is available in places the `secrets` context is not — inside a composite action above all, which is what every `cloud-officer/ci-actions` step is
 - Repository configuration uses `GITHUB_TOKEN` from the runtime environment
 - SSH keys used for repository checkout (`SSH_KEY` secret)
 - AWS credentials for CodeDeploy operations
