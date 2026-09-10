@@ -19,7 +19,7 @@ module GHB
     # may sit and still be detected (e.g. js/<module>/package-lock.json is 2 deep).
     SUBDIR_DEPENDENCY_SCAN_DEPTH = 2
     # Token exposed to dependency-install steps. Deliberately the ephemeral, repo-scoped
-    # secrets.GITHUB_TOKEN and NOT secrets.GH_PAT (SEC-001): install steps execute arbitrary
+    # run token and NOT secrets.GH_PAT (SEC-001): install steps execute arbitrary
     # third-party code (postinstall hooks, plugins), so an org-scoped long-lived PAT in their
     # environment is one malicious transitive dependency away from exfiltration.
     #
@@ -33,7 +33,12 @@ module GHB
     # that budget is isolated per repo, so concurrent builds no longer contend.
     #
     # Unit-test steps get no token at all: none of the supported test frameworks read one.
-    DEPENDENCY_STEP_TOKEN = '${{secrets.GITHUB_TOKEN}}'
+    # Spelled ${{github.token}} rather than ${{secrets.GITHUB_TOKEN}}: same value, but the
+    # github context exists everywhere the secrets context does and in several places it does
+    # not - inside a composite action most of all, which is what every cloud-officer/ci-actions
+    # step is. One spelling across the generator also keeps `secrets.` a grep for the secrets a
+    # repo genuinely has to configure; the run token is minted per job and is not one of them.
+    DEPENDENCY_STEP_TOKEN = '${{github.token}}'
     # The PAT reference this tool used to inject, kept so regeneration can recognise and strip
     # it from workflows generated before SEC-001 was fixed.
     INJECTED_PAT = '${{secrets.GH_PAT}}'
@@ -45,7 +50,7 @@ module GHB
     # simply no longer injecting the PAT would leave it in place forever in every repo that
     # already has one written. Strip it on regeneration -- but only when the value is exactly
     # the PAT reference this tool used to inject, so a GITHUB_TOKEN the user set deliberately
-    # (or already migrated to secrets.GITHUB_TOKEN) is left alone.
+    # (or already migrated to the run token) is left alone.
     def self.drop_injected_pat(env)
       env.delete('GITHUB_TOKEN') if env['GITHUB_TOKEN'] == INJECTED_PAT
       env.delete(:GITHUB_TOKEN) if env[:GITHUB_TOKEN] == INJECTED_PAT
