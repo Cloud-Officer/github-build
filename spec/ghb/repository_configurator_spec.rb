@@ -147,7 +147,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
                 strict: false,
                 checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }]
               ),
-              enforce_admins: false,
+              enforce_admins: true,
               required_pull_request_reviews: hash_including(
                 dismiss_stale_reviews: true,
                 require_code_owner_reviews: true,
