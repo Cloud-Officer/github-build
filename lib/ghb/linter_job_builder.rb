@@ -30,8 +30,10 @@ module GHB
         File.read('.gitmodules').each_line do |line|
           next unless line.include?('path = ')
 
-          submodule_path = line.split('=').last&.strip
-          @submodules << submodule_path if submodule_path
+          submodule_path = line.split('=').last.to_s.strip
+          next if submodule_path.empty?
+
+          @submodules << submodule_path
           script_path = submodule_path if line.include?('scripts')
         end
       end

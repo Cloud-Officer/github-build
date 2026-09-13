@@ -141,6 +141,22 @@ RSpec.describe(GHB::LinterJobBuilder) do
         expect(local_submodules).to(include('scripts-repo'))
         expect(local_submodules).to(include('shared-lib'))
       end
+
+      def build_with_gitmodules(content)
+        allow(File).to(receive(:exist?).and_call_original)
+        allow(File).to(receive(:exist?).with('.gitmodules').and_return(true))
+        allow(File).to(receive(:read).and_call_original)
+        allow(File).to(receive(:read).with('.gitmodules').and_return(content))
+        builder = build_linter_job_builder
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        builder.build
+      end
+
+      it 'skips blank submodule paths' do
+        build_with_gitmodules("[submodule \"blank\"]\n\tpath =  \n[submodule \"shared\"]\n\tpath = shared-lib\n")
+
+        expect(submodules).to(eq(['shared-lib']))
+      end
     end
 
     context 'when a linter has a condition' do

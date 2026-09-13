@@ -106,6 +106,13 @@ RSpec.describe(GHB::FileScanner) do
       expect(matches).not_to(include("#{temp_dir}/vendor/gem.rb"))
     end
 
+    it 'ignores blank exclusion fragments' do
+      FileUtils.mkdir_p("#{temp_dir}/generated")
+      FileUtils.touch(["#{temp_dir}/app.rb", "#{temp_dir}/generated/gem.rb"])
+
+      expect(scanner.find_files_matching(temp_dir, /\.rb$/, ['', 'generated'])).to(eq(["#{temp_dir}/app.rb"]))
+    end
+
     it 'excludes node_modules by default' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       FileUtils.mkdir_p("#{temp_dir}/node_modules")
       FileUtils.touch("#{temp_dir}/app.js")
