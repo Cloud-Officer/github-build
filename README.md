@@ -20,7 +20,8 @@ languages including dependencies like mongodb, mysql, redis and opensearch, enab
 detect custom AWS and Vercel deployments and enable Slack notification.
 
 Alongside `.github/workflows/build.yml`, it generates the companion workflow `auto-approve.yml` (approves pull
-requests opened by code owners) and, when a `.dockerhub` file is present, `docker.yml`. Any legacy
+requests opened by code owners) and, when a `.dockerhub` file is present, `docker.yml` plus two required `Docker Build`
+jobs in `build.yml`. Any legacy
 `.github/dependabot.yml` is removed, as CVE alerts are handled through the repository settings instead, and the
 retired `.github/workflows/dependencies.yml` and `.github/workflows/soup.yml` are removed on every run.
 
@@ -255,7 +256,7 @@ repository. No CLI flags are needed for these; they are detected on every run.
 | `.aws` | Adds an AWS commands job to the workflow | Remove the `.aws` file |
 | `appspec.yml` | Adds CodeDeploy and environment deployment jobs (`beta_deploy`, `rc_deploy`, `prod_deploy`) | Remove `appspec.yml` |
 | `vercel.json` (or a `"vercel"`/`"next"` dependency in `package.json`) | Adds Vercel deployment jobs (`beta_deploy`, `rc_deploy`, `prod_deploy`) driving the Vercel CLI. Ignored when `appspec.yml` is present (CodeDeploy wins). Custom steps such as `vercel alias` are preserved across regenerations | Remove `vercel.json` and the `vercel`/`next` dependency |
-| `.dockerhub` | Generates a separate Docker Hub workflow (`.github/workflows/docker.yml`) that pushes images on tag events | Remove the `.dockerhub` file |
+| `.dockerhub` | Generates a separate Docker Hub workflow (`.github/workflows/docker.yml`) that pushes images on tag events, and adds `Docker Build (amd64)` and `Docker Build (arm64)` jobs to `build.yml` that build the image without pushing on native `ubuntu-latest` and `ubuntu-24.04-arm` runners. Both become required status checks; they rely on the build-only mode (`push: 'false'`, `platforms`) of `cloud-officer/ci-actions/docker@v3` and need no secrets | Remove the `.dockerhub` file |
 | `ci_scripts/` | Adds `Xcode` to the expected branch protection status checks and, for Swift projects, drops the `Swift Unit Tests` job since Xcode Cloud runs the tests (dependency information is still collected) | Remove the `ci_scripts/` directory |
 | `.github/workflows/smoke.yml` | Adds that hand-maintained workflow's job names to the expected branch protection status checks so they stay required across regenerations. The workflow itself is never generated or modified | Remove `.github/workflows/smoke.yml` |
 
@@ -313,7 +314,8 @@ Required unless `--skip_slack` is specified.
 
 #### Docker Hub Secrets (Docker Image Publishing)
 
-Required when a `.dockerhub` file is present in the repository root.
+Required when a `.dockerhub` file is present in the repository root. Only the tag-triggered `docker.yml` publish uses them; the
+`Docker Build` jobs in `build.yml` do not.
 
 | Secret            | Purpose                                                              |
 |-------------------|----------------------------------------------------------------------|
