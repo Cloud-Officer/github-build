@@ -14,10 +14,12 @@ module GHB
     # Flags removed from the CLI that may still linger in a downstream repo's persisted build.yml header.
     # They are stripped (with a warning) during persisted-args replay so old headers self-heal on the next
     # regeneration instead of aborting on OptionParser::InvalidOption.
-    REMOVED_FLAGS = %w[--mono_repo].freeze
+    REMOVED_FLAGS = %w[--mono_repo --options-elasticsearch].freeze
+    REMOVED_VALUE_FLAGS = %w[--options-elasticsearch].freeze
     private_constant :ARGS_COMMENT_PREFIX
     private_constant :EPHEMERAL_FLAGS
     private_constant :REMOVED_FLAGS
+    private_constant :REMOVED_VALUE_FLAGS
 
     def initialize(argv = [])
       @application_name = Dir.pwd.split('/').last.split('-').last
@@ -78,15 +80,26 @@ module GHB
     # Each dropped flag is reported on stderr; because it never reaches @argv/@original_argv,
     # the regenerated build.yml header self-heals (the flag disappears on the next run).
     def strip_removed_flags(args, file)
-      removed, kept = args.partition { |arg| removed_flag?(arg) }
-      removed.each do |arg|
-        warn("Warning: ignoring removed option '#{arg.split('=').first}' from #{file} header; it will be dropped on the next regeneration")
+      kept = []
+      remaining = args.dup
+
+      until remaining.empty?
+        arg = remaining.shift
+        flag = removed_flag(arg)
+
+        if flag
+          warn("Warning: ignoring removed option '#{flag}' from #{file} header; it will be dropped on the next regeneration")
+          remaining.shift if arg == flag && REMOVED_VALUE_FLAGS.include?(flag)
+        else
+          kept << arg
+        end
       end
+
       kept
     end
 
-    def removed_flag?(arg)
-      REMOVED_FLAGS.any? { |flag| arg == flag || arg.start_with?("#{flag}=") }
+    def removed_flag(arg)
+      REMOVED_FLAGS.find { |flag| arg == flag || arg.start_with?("#{flag}=") }
     end
 
     def setup_parser
