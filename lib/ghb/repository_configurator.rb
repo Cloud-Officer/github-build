@@ -92,6 +92,7 @@ module GHB
       raise(ConfigError, 'GITHUB_TOKEN environment variable is required for repository settings') if github_token.nil? || github_token.empty?
 
       puts('Configuring repository settings...')
+      @warning_count = 0
       repository = Dir.pwd.split('/').last
       repo_url = "https://api.github.com/repos/#{@options.organization}/#{repository}"
       github_client = GitHubAPIClient.new(github_token)
@@ -116,7 +117,11 @@ module GHB
         enable_codeql_default_setup(github_client, repo_url)
       end
 
-      puts('    Repository settings configured successfully!')
+      if @warning_count.zero?
+        puts('    Repository settings configured successfully!')
+      else
+        warn("    Repository settings configured with #{@warning_count} warning(s)")
+      end
     end
 
     private
@@ -240,6 +245,7 @@ module GHB
 
     def log_codeql_languages(github_client, repo_url)
       codeql_response = github_client.get("#{repo_url}/code-scanning/default-setup", expected_codes: nil)
+      warn_unless_successful(codeql_response, 'read CodeQL default setup')
       return unless codeql_response.code == 200
 
       codeql_setup = JSON.parse(codeql_response.body)
@@ -416,7 +422,8 @@ module GHB
 
     def disable_security_features(github_client, repo_url)
       puts('    Disabling Advanced Security features (private repository - GHAS incurs charges)...')
-      set_security_features(github_client, repo_url, 'disabled', expected_codes: nil)
+      response = set_security_features(github_client, repo_url, 'disabled', expected_codes: nil)
+      warn_unless_successful(response, 'disable Advanced Security features')
     end
 
     def enable_security_features(github_client, repo_url)
@@ -438,11 +445,20 @@ module GHB
         state: 'not-configured'
       }
 
-      github_client.patch(
+      response = github_client.patch(
         "#{repo_url}/code-scanning/default-setup",
         body: code_scanning_config,
         expected_codes: nil
       )
+      warn_unless_successful(response, 'disable CodeQL default setup')
+    end
+
+    def warn_unless_successful(response, action)
+      return if response.code.between?(200, 299)
+
+      @warning_count += 1
+      body = response.body.to_s.strip[0, 500]
+      warn("    WARNING: could not #{action}: HTTP #{response.code}#{" #{body}" unless body.empty?}")
     end
 
     def enable_codeql_default_setup(github_client, repo_url)
