@@ -45,7 +45,8 @@ module GHB
     # @param excluded_paths [Array<String>] paths to exclude (partial matches)
     # @return [Regexp] union of every exclusion fragment (never matches when empty)
     def excluded_paths_pattern(excluded_paths)
-      Regexp.union(excluded_paths + excluded_dirs_from_config.map { |dir| "/#{dir}/" })
+      fragments = excluded_paths + excluded_dirs_from_config.map { |dir| "/#{dir}/" }
+      Regexp.union(fragments.reject { |fragment| fragment.to_s.strip.empty? })
     end
 
     # Pure Ruby file finder - avoids shell command injection (SEC-001, SEC-002)
