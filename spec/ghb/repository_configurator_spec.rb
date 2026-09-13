@@ -26,6 +26,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
       allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
       allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+      allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
       allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
       allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
     end
@@ -123,6 +124,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
         # PUT automated security fixes
         allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
         # PATCH repo settings
         allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
         # GET CodeQL default setup (for configure_codeql)
@@ -168,6 +170,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         # Verify vulnerability alerts and automated security fixes
         expect(github_client).to(have_received(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]))
         expect(github_client).to(have_received(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]))
+        expect(github_client).to(have_received(:put).with("#{repo_url}/actions/permissions/workflow", body: { default_workflow_permissions: 'read', can_approve_pull_request_reviews: false }, expected_codes: [204]))
         # Verify repo options were configured
         expect(github_client).to(
           have_received(:patch).with(
@@ -252,6 +255,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
         # For repo options PATCH
         allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(has_wiki: false)).and_return(ok_response))
         # For security settings PATCH (private: disable)
@@ -284,6 +288,12 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         configurator.configure
 
         expect(github_client).to(have_received(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil))
+      end
+
+      it 'restricts the default workflow token to read-only for private repository' do
+        configurator.configure
+
+        expect(github_client).to(have_received(:put).with("#{repo_url}/actions/permissions/workflow", body: { default_workflow_permissions: 'read', can_approve_pull_request_reviews: false }, expected_codes: [204]))
       end
     end
 
@@ -607,6 +617,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
         allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
@@ -664,6 +675,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
         allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
@@ -735,6 +747,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
         allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
@@ -810,6 +823,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
         allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
@@ -880,6 +894,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
         allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
@@ -971,6 +986,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(has_wiki: false)).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil).and_return(security_error_response))
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(codeql_disable_response))
@@ -1017,6 +1033,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(has_wiki: false)).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil).and_return(security_patch_response))
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(codeql_disable_response))
@@ -1062,6 +1079,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(has_wiki: false)).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil).and_return(security_patch_response))
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(codeql_disable_response))
@@ -1142,6 +1160,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{custom_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
         allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
@@ -1411,6 +1430,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
         allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
+        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
         allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
         allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
         allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
