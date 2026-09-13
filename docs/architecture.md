@@ -544,7 +544,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 ### GHB::RepositoryConfigurator
 
-**Purpose:** Configures GitHub repository settings including branch protection rules, security features (vulnerability alerts, secret scanning, CodeQL), and repository options via the GitHub REST API, falling back to GraphQL for the one setting REST cannot express (the force-push actor allowlist).
+**Purpose:** Configures GitHub repository settings including branch protection rules, security features (vulnerability alerts, secret scanning, CodeQL), repository options, and the default GitHub Actions workflow token permissions via the GitHub REST API, falling back to GraphQL for the one setting REST cannot express (the force-push actor allowlist).
 
 **Location:** `lib/ghb/repository_configurator.rb`
 
@@ -569,7 +569,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `report_xcode_cloud_checks(xcode_checks, source)`: Prints the discovered Xcode Cloud checks and where they were found
 - `discover_xcode_cloud_checks_from_protection(actual_checks, expected_checks)`: Extracts Xcode Cloud checks from existing branch protection by finding checks not in the expected set
 - `discover_xcode_cloud_checks_from_statuses(github_client, repo_url)`: Discovers Xcode Cloud checks from commit statuses on the default branch for new repos without existing protection
-- `configure_repository_options(github_client, repo_url)`: Applies merge strategy, wiki/projects, and delete-branch-on-merge settings
+- `configure_repository_options(github_client, repo_url)`: Applies merge strategy, wiki/projects, and delete-branch-on-merge settings, then sets the repository's default workflow `GITHUB_TOKEN` permissions to `WORKFLOW_TOKEN_PERMISSIONS`
 - `enable_security_features` / `disable_security_features` / `set_security_features(github_client, repo_url, state, **)`: Toggle the `SECRET_SCANNING_SETTINGS` by repository visibility through a single shared PATCH
 - `enable_codeql_default_setup` / `disable_codeql_default_setup`: Toggles CodeQL default setup by repository visibility
 
@@ -577,6 +577,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `FORCE_PUSH_ALLOWANCES_QUERY` / `CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION`: The GraphQL documents reading and clearing the default branch's force-push actor allowlist
 - `SECRET_SCANNING_SETTINGS`: The secret-scanning toggles flipped together by repository visibility
+- `WORKFLOW_TOKEN_PERMISSIONS`: The repository Actions workflow defaults applied on every run — `default_workflow_permissions: read` so a workflow without its own `permissions:` block gets a read-only `GITHUB_TOKEN`, and `can_approve_pull_request_reviews: false` since the generated auto-approve workflow approves with `GH_BOT_PAT`, not the run token
 
 **Errors:** Raises `GHB::RepositorySettingsError` on a required-status-check mismatch without `--sync_required_status_checks`, and when the force-push allowlist cannot be cleared.
 

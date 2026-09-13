@@ -68,7 +68,13 @@ module GHB
       secret_scanning_ai_detection
     ].freeze
 
+    WORKFLOW_TOKEN_PERMISSIONS = {
+      default_workflow_permissions: 'read',
+      can_approve_pull_request_reviews: false
+    }.freeze
+
     private_constant :SECRET_SCANNING_SETTINGS
+    private_constant :WORKFLOW_TOKEN_PERMISSIONS
     private_constant :FORCE_PUSH_ALLOWANCES_QUERY
     private_constant :CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION
 
@@ -403,6 +409,9 @@ module GHB
       }
 
       github_client.patch(repo_url, body: repo_settings)
+
+      puts('    Restricting default workflow token permissions...')
+      github_client.put("#{repo_url}/actions/permissions/workflow", body: WORKFLOW_TOKEN_PERMISSIONS, expected_codes: [204])
     end
 
     def disable_security_features(github_client, repo_url)
