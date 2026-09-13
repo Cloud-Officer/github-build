@@ -108,7 +108,7 @@ Reading current build file .github/workflows/build.yml...
     Adding auto-approve workflow...
 Updating .gitignore...
     Detected templates: eclipse, emacs, jetbrains, linux, macos, netbeans, nova, ruby, rubymine, sublimetext, vim, visualstudiocode, windows
-    Custom patterns: Claude Code, Claude Code skill review artifacts, Cursor, GitHub Copilot, OpenAI Codex
+    Custom patterns: Claude Code, Claude Code skill review artifacts, Cursor, GitHub Copilot, OpenAI Codex, Credentials
 ```
 
 Dropping `--skip_repository_settings` adds a `Configuring repository settings...` section at the end, which requires
@@ -216,8 +216,11 @@ options:
 * `always_enabled:` — list of [gitignore.io](https://gitignore.io) template names always included.
 * `extension_detection:` — map of template → detection rule (`extensions[]`, `files[]`, and/or
   `packages: { <file>: [<regex>...] }`); the template is added when the project matches.
-* `custom_patterns:` — map of tool → `{ patterns: [...] }`, always appended under a section delimited by
-  `# BEGIN AI Assistants` / `# END AI Assistants` markers.
+* `custom_patterns:` — map of group → `{ patterns: [...] }`, always appended under a section delimited by
+  `# BEGIN Managed patterns` / `# END Managed patterns` markers. The groups cover AI tool directories and
+  credential files (`.env*`, `.envrc`, `.npmrc`, private keys, signing certificates and keystores), with `!`
+  exceptions for committable files such as `.env.example`, `.env.test` and AWS RDS CA bundles. An existing
+  `# BEGIN AI Assistants` section is replaced on regeneration.
 
 ```yaml
 always_enabled:

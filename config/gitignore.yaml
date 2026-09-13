@@ -7,7 +7,7 @@
 # combined with custom patterns into the project's .gitignore.
 #
 # Sections:
-#   custom_patterns      - Patterns always added (not available on gitignore.io)
+#   custom_patterns      - Patterns always added (tools not on gitignore.io, and credential files)
 #   always_enabled       - Templates included unconditionally (OS and generic IDE patterns)
 #   extension_detection  - Templates detected by file presence or package dependencies
 #
@@ -18,8 +18,9 @@
 #                                    and each regex is tested against its contents.
 #                                    Example: {package.json: ['"gatsby"']}
 
-# Custom patterns for tools not available on gitignore.io
-# These are always appended to .gitignore to prevent accidental commits
+# Custom patterns for tools not available on gitignore.io, and credential files
+# These are always appended to .gitignore, between the "# BEGIN Managed patterns" and
+# "# END Managed patterns" markers, to prevent accidental commits
 # Each entry contains a list of patterns (comment line + one or more ignore rules)
 custom_patterns:
   claudecode:
@@ -46,6 +47,41 @@ custom_patterns:
     patterns:
       - "# OpenAI Codex"
       - ".codex/"
+  # A "!" line re-includes a file and must come after the pattern it overrides
+  credentials:
+    patterns:
+      - "# Credentials"
+      - ".env"
+      - ".env.*"
+      - "!.env.example"
+      - "!.env.sample"
+      - "!.env.template"
+      - "!.env.dist"
+      - "!.env.test"
+      - "!**/fastlane/.env.*"
+      - ".envrc"
+      - ".npmrc"
+      - ".netrc"
+      - ".pypirc"
+      - ".vault_pass*"
+      - "credentials"
+      - "*service-account*.json"
+      - "id_dsa"
+      - "id_ecdsa"
+      - "id_ed25519"
+      - "id_rsa"
+      - "*.jks"
+      - "*.kdbx"
+      - "*.key"
+      - "*.keystore"
+      - "*.mobileprovision"
+      - "*.p12"
+      - "*.p8"
+      - "*.pem"
+      - "!*ca-bundle.pem"
+      - "!*global-bundle.pem"
+      - "*.pfx"
+      - "*.ppk"
 
 # Templates that are always enabled (no detection needed)
 always_enabled:

@@ -32,7 +32,32 @@ RSpec.describe(GHB::GitignoreManager) do
     }
   end
 
+  def generate_gitignore(config, existing: nil)
+    config_yaml = Psych.dump(config.deep_stringify_keys)
+    allow(manager).to(receive(:cached_file_read).and_return(config_yaml))
+    allow(gitignore_rules).to(receive_messages(cached_file_read: config_yaml, find_files_matching: []))
+    allow(File).to(receive(:exist?).and_return(false))
+    allow(File).to(receive(:exist?).with('.gitignore').and_return(!existing.nil?))
+    allow(File).to(receive(:read).with('.gitignore').and_return(existing)) if existing
+    api_response = instance_double(HTTParty::Response, code: 200, body: "# Created by gitignore.io\n### Linux ###\n*~\n# End of gitignore.io\n")
+    allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
+    written = nil
+    allow(File).to(receive(:write).with('.gitignore', anything)) { |_path, content| written = content }
+    manager.update
+    written
+  end
+
   describe '#update' do
+    it 'wraps the custom patterns in Managed patterns markers' do
+      expect(generate_gitignore(minimal_gitignore_config).lines.grep(/^# (BEGIN|END) /)).to(eq(["# BEGIN Managed patterns\n", "# END Managed patterns\n"]))
+    end
+
+    it 'replaces an old AI Assistants section with a single Managed patterns section' do
+      existing = "# End of gitignore.io\n\n# BEGIN AI Assistants\n\n# Claude Code\n.claude/\n\n# END AI Assistants\n\nmy-dir/\n"
+
+      expect(generate_gitignore(minimal_gitignore_config, existing: existing).lines.grep(/^# (BEGIN|END) |^my-dir/)).to(eq(["# BEGIN Managed patterns\n", "# END Managed patterns\n", "my-dir/\n"]))
+    end
+
     it 'returns early when skip_gitignore is true' do
       skip_options = instance_double(GHB::Options, skip_gitignore: true)
       skip_manager = described_class.new(context: GHB::BuildContext.new(options: skip_options, submodules: [], file_cache: {}))
@@ -133,7 +158,7 @@ RSpec.describe(GHB::GitignoreManager) do
       expect(written_content).to(include('my-custom-dir/'))
     end
 
-    it 'does not add AI section when custom_patterns returns empty array' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+    it 'does not add the managed section when custom_patterns returns empty array' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       config_without_custom = {
         always_enabled: %w[linux macos windows],
         extension_detection: {},
@@ -158,7 +183,7 @@ RSpec.describe(GHB::GitignoreManager) do
       manager.update
 
       expect(written_content).not_to(be_nil)
-      expect(written_content).not_to(include('AI Assistants'))
+      expect(written_content).not_to(include('Managed patterns'))
     end
 
     it 'raises an error when the API returns a non-200 response' do # rubocop:disable RSpec/ExampleLength

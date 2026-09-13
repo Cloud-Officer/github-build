@@ -10,6 +10,13 @@ module GHB
   class GitignoreRules
     include FileScanner
 
+    MANAGED_SECTION_BEGIN = '# BEGIN Managed patterns'
+    MANAGED_SECTION_END = '# END Managed patterns'
+    LEGACY_SECTION_BEGIN_MARKERS = ['# BEGIN AI Assistants', '# AI Assistants'].freeze
+    LEGACY_SECTION_END = '# END AI Assistants'
+    public_constant :MANAGED_SECTION_BEGIN, :MANAGED_SECTION_END
+    private_constant :LEGACY_SECTION_BEGIN_MARKERS, :LEGACY_SECTION_END
+
     def initialize(context:)
       @options = context.options
       @submodules = context.submodules
@@ -54,7 +61,7 @@ module GHB
 
     def preserve_custom_entries(git_ignore, custom_patterns)
       found = false
-      in_ai_section = false
+      in_managed_section = false
       custom_lines = []
 
       git_ignore.each_line do |line|
@@ -63,26 +70,26 @@ module GHB
           next
         end
 
-        if line.include?('# BEGIN AI Assistants') || line.include?('# AI Assistants')
-          in_ai_section = true
+        if line.include?(MANAGED_SECTION_BEGIN) || LEGACY_SECTION_BEGIN_MARKERS.any? { |marker| line.include?(marker) }
+          in_managed_section = true
           next
         end
 
-        if line.include?('# END AI Assistants')
-          in_ai_section = false
+        if line.include?(MANAGED_SECTION_END) || line.include?(LEGACY_SECTION_END)
+          in_managed_section = false
           next
         end
 
-        # Skip individual AI tool patterns when in old-style AI section (no END marker)
-        next if in_ai_section && custom_patterns.any? { |pattern| line.start_with?(pattern) }
+        # Skip managed patterns inside an old-style section that has no END marker
+        next if in_managed_section && custom_patterns.any? { |pattern| line.start_with?(pattern) }
 
         # Drop a hand-added copy of a now-managed pattern sitting outside the section:
         # the regenerated block is the single source of truth, so preserving the stray
         # line would emit it twice. Exact match only, so docs/migration/keep.md survives
         # even though docs/migration/ is managed.
-        next if found && !in_ai_section && custom_patterns.include?(line.strip)
+        next if found && !in_managed_section && custom_patterns.include?(line.strip)
 
-        custom_lines << line if found && !in_ai_section
+        custom_lines << line if found && !in_managed_section
       end
 
       custom_lines

@@ -58,21 +58,21 @@ module GHB
       @rules.uncomment_jetbrains_patterns(new_git_ignore)
       @rules.comment_conflicting_patterns(new_git_ignore)
 
-      # Add AI Assistants section right after gitignore.io content
+      # Add the managed patterns section right after gitignore.io content
       pattern_groups = @rules.detect_custom_pattern_groups(gitignore_config)
       custom_patterns = pattern_groups.flatten
 
       unless custom_patterns.empty?
         # One section per tool (comment + its ignore rules), joined with blank lines between sections
         grouped_patterns = pattern_groups.map { |group| group.join("\n") }
-        ai_section = "\n# BEGIN AI Assistants\n\n#{grouped_patterns.join("\n\n")}\n\n# END AI Assistants\n"
-        new_git_ignore = "#{new_git_ignore}#{ai_section}"
+        managed_section = "\n#{GitignoreRules::MANAGED_SECTION_BEGIN}\n\n#{grouped_patterns.join("\n\n")}\n\n#{GitignoreRules::MANAGED_SECTION_END}\n"
+        new_git_ignore = "#{new_git_ignore}#{managed_section}"
         tool_names = custom_patterns.filter_map { |p| p.sub('# ', '') if p.start_with?('#') }
         puts("    Custom patterns: #{tool_names.join(', ')}")
       end
 
       # Preserve custom entries after "# End of" section from original gitignore
-      # but skip the AI Assistants section (it was regenerated above)
+      # but skip the managed patterns section (it was regenerated above)
       custom_lines = @rules.preserve_custom_entries(git_ignore, custom_patterns)
 
       content = (new_git_ignore + custom_lines.join).gsub(/\n{3,16}/, "\n\n").gsub('/bin/*', '#/bin/*').gsub('# Pods/', 'Pods/')
