@@ -18,7 +18,7 @@ flowchart TD
     APP --> CTX["GHB::BuildContext<br>options, old/new workflow, file cache, submodules"]
     CTX --> BUILDERS
     CTX --> MANAGERS
-    APP --> BUILDERS["Job builders<br>VariablesJobBuilder, LinterJobBuilder, LicensesJobBuilder,<br>LanguageJobBuilder, CodeDeployJobBuilder, VercelJobBuilder,<br>AwsJobBuilder, SlackJobBuilder"]
+    APP --> BUILDERS["Job builders<br>VariablesJobBuilder, LinterJobBuilder, LicensesJobBuilder,<br>LanguageJobBuilder, DockerBuildJobBuilder, CodeDeployJobBuilder,<br>VercelJobBuilder, AwsJobBuilder, SlackJobBuilder"]
     APP --> MANAGERS["Post-generation managers<br>DependabotManager, DockerhubManager, AutoApproveManager,<br>GitignoreManager, RepositoryConfigurator"]
     BUILDERS --> MIXINS["Shared mixins<br>GHB::FileScanner, GHB::LinterIgnoreRenderer"]
     MANAGERS --> MIXINS
@@ -42,7 +42,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 1. The CLI entry point (`bin/github-build.rb`) instantiates `GHB::Application`
 2. `Application` parses command-line options via `GHB::Options` and validates configuration
 3. `Application` bundles the shared inputs (options, old/new workflow, file cache, submodules) into an immutable `GHB::BuildContext` that is passed to every builder
-4. `Application` delegates workflow generation to specialized builders: `VariablesJobBuilder`, `LinterJobBuilder`, `LicensesJobBuilder`, `LanguageJobBuilder`, `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder`, and `SlackJobBuilder`
+4. `Application` delegates workflow generation to specialized builders: `VariablesJobBuilder`, `LinterJobBuilder`, `LicensesJobBuilder`, `LanguageJobBuilder`, `DockerBuildJobBuilder`, `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder`, and `SlackJobBuilder`
 5. Post-generation managers handle output: `DependabotManager`, `AutoApproveManager`, `DockerhubManager`, `GitignoreManager`, and `RepositoryConfigurator`
 6. `GitignoreManager` delegates pure rule logic (template detection, content transforms) to `GHB::GitignoreRules`
 7. `FileScanner` mixin provides shared pure-Ruby file operations to builders that need file pattern matching
@@ -121,7 +121,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `validate_option_entries(data, relative_path)`: Validates option config entries
 - `workflow_read`: Reads existing workflow YAML file
 - `workflow_set_defaults`: Sets workflow defaults from existing or new values
-- `collect_required_status_checks`: Collects status checks from generated jobs for branch protection, expanding matrix jobs into the per-combination check names GitHub actually creates (`Job (ubuntu-latest, 3.3)`); a job whose matrix cannot be expanded statically is warned about and skipped. Called from `execute` immediately after `LanguageJobBuilder` and *before* `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder` and `SlackJobBuilder` run, so only the variables, linter, licenses and unit-test jobs become required checks — deploy and notification jobs are gated by `deploy_if_statement` and must not block a merge
+- `collect_required_status_checks`: Collects status checks from generated jobs for branch protection, expanding matrix jobs into the per-combination check names GitHub actually creates (`Job (ubuntu-latest, 3.3)`); a job whose matrix cannot be expanded statically is warned about and skipped. Called from `execute` immediately after `LanguageJobBuilder` and `DockerBuildJobBuilder` and *before* `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder` and `SlackJobBuilder` run, so only the variables, linter, licenses, unit-test and Docker build jobs become required checks — deploy and notification jobs are gated by `deploy_if_statement` and must not block a merge
 - `matrix_combinations(matrix)` and its helpers (`symbolize_matrix_keys`, `matrix_control_entries`, `matrix_control_entry`, `expandable_axis?`, `scalar_matrix_value?`, `expand_axes`, `reject_excluded`, `apply_includes`): Expand a job matrix in GitHub's documented order — `exclude:` rows dropped first, then `include:` rows merged — returning `nil` when the matrix carries dynamic or non-scalar values
 - `workflow_write`: Writes the generated workflow to YAML file
 
@@ -139,6 +139,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `GHB::LinterJobBuilder`
 - `GHB::LicensesJobBuilder`
 - `GHB::LanguageJobBuilder`
+- `GHB::DockerBuildJobBuilder`
 - `GHB::CodeDeployJobBuilder`
 - `GHB::VercelJobBuilder`
 - `GHB::AwsJobBuilder`
@@ -398,6 +399,23 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `active_support/core_ext/hash/keys`
 - `psych`
 - `duplicate` (used to deep-clone dependency steps; currently satisfied by the require in `lib/ghb/application.rb`)
+
+### GHB::DockerBuildJobBuilder
+
+**Purpose:** Builds the `Docker Build (amd64)` and `Docker Build (arm64)` jobs that verify a `.dockerhub` repository's image still builds on each architecture, on every pull request and push, without publishing it.
+
+**Location:** `lib/ghb/docker_build_job_builder.rb`
+
+**Key Components:**
+
+- `initialize(context:)`: Accepts a `GHB::BuildContext`
+- `build`: Returns unless `.dockerhub` exists; otherwise adds `docker_build_amd64` and `docker_build_arm64`. Each job needs `variables`, is skipped by the `#skip-tests` trigger (`SKIP_TESTS`), declares `contents: read`, and runs one `Docker Build` step calling `cloud-officer/ci-actions/docker@v3` with `push: 'false'` and its single `linux/<architecture>` platform, so no registry secrets are involved and fork pull requests work. An existing job's runner, timeout and extra step inputs are preserved; name, permissions, needs, `if:`, `push` and `platforms` are always regenerated
+
+**Constants:**
+
+- `RUNNERS`: Architecture to runner image — `ubuntu-latest` for `amd64` and the native `ubuntu-24.04-arm` runner for `arm64`, so neither build runs under QEMU emulation
+
+**Integration:** Runs before `collect_required_status_checks`, so both job names become required branch-protection checks. Deploy jobs built afterwards include them in their `needs:`, so a broken image also blocks a deploy.
 
 ### GHB::CodeDeployJobBuilder
 
@@ -811,7 +829,7 @@ The list is validated on every architecture review for accuracy (Requirements ma
 
 **Security Considerations:**
 
-- Called from `execute` immediately after `LanguageJobBuilder` and *before* `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder` and `SlackJobBuilder`, so only the variables, linter, licenses and unit-test jobs become required checks — deploy and notification jobs are gated by `deploy_if_statement` and must never block a merge
+- Called from `execute` immediately after `LanguageJobBuilder` and `DockerBuildJobBuilder` and *before* `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder` and `SlackJobBuilder`, so only the variables, linter, licenses, unit-test and Docker build jobs become required checks — deploy and notification jobs are gated by `deploy_if_statement` and must never block a merge
 - A wrong expansion is a merge-gate defect in both directions: a name GitHub never reports blocks every PR, and a missing name lets unverified code merge
 
 ### Repository Settings Configuration

@@ -13,6 +13,7 @@ require_relative 'aws_job_builder'
 require_relative 'build_context'
 require_relative 'code_deploy_job_builder'
 require_relative 'dependabot_manager'
+require_relative 'docker_build_job_builder'
 require_relative 'dockerhub_manager'
 require_relative 'file_scanner'
 require_relative 'github_api_client'
@@ -91,6 +92,8 @@ module GHB
       )
       language_builder.build
       @code_deploy_pre_steps = language_builder.code_deploy_pre_steps
+
+      DockerBuildJobBuilder.new(context: context).build
 
       collect_required_status_checks
 
