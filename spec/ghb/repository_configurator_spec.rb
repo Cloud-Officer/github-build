@@ -295,6 +295,72 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
 
         expect(github_client).to(have_received(:put).with("#{repo_url}/actions/permissions/workflow", body: { default_workflow_permissions: 'read', can_approve_pull_request_reviews: false }, expected_codes: [204]))
       end
+
+      def stub_security_patch(code, body)
+        allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil).and_return(instance_double(HTTParty::Response, code: code, body: body)))
+      end
+
+      def stub_codeql_disable(code, body)
+        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(instance_double(HTTParty::Response, code: code, body: body)))
+      end
+
+      def stub_codeql_read(code, body)
+        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(instance_double(HTTParty::Response, code: code, body: body)))
+      end
+
+      it 'emits no warnings when every disable call succeeds' do
+        expect { configurator.configure }
+          .not_to(output(/WARNING/).to_stderr)
+      end
+
+      it 'reports success when every disable call succeeds' do
+        expect { configurator.configure }
+          .to(output(/Repository settings configured successfully!/).to_stdout)
+      end
+
+      it 'warns with the status code and body when disabling the security features is rejected' do
+        stub_security_patch(403, '{"message":"Resource not accessible by integration"}')
+        expect { configurator.configure }
+          .to(output(/WARNING: could not disable Advanced Security features: HTTP 403 \{"message":"Resource not accessible by integration"\}/).to_stderr)
+      end
+
+      it 'summarizes the warning count when disabling the security features is rejected' do
+        stub_security_patch(403, '{"message":"Resource not accessible by integration"}')
+        expect { configurator.configure }
+          .to(output(/Repository settings configured with 1 warning\(s\)/).to_stderr)
+      end
+
+      it 'does not report success when disabling the security features is rejected' do
+        stub_security_patch(403, '{"message":"Resource not accessible by integration"}')
+        expect { configurator.configure }
+          .not_to(output(/configured successfully/).to_stdout)
+      end
+
+      it 'warns with the status code and body when disabling CodeQL default setup is rejected' do
+        stub_codeql_disable(422, '{"message":"Validation Failed"}')
+        expect { configurator.configure }
+          .to(output(/WARNING: could not disable CodeQL default setup: HTTP 422 \{"message":"Validation Failed"\}/).to_stderr)
+      end
+
+      it 'warns with the status code and body when reading CodeQL default setup fails' do
+        stub_codeql_read(404, '{"message":"Not Found"}')
+        expect { configurator.configure }
+          .to(output(/WARNING: could not read CodeQL default setup: HTTP 404 \{"message":"Not Found"\}/).to_stderr)
+      end
+
+      it 'omits an empty body from the warning' do
+        stub_security_patch(403, '')
+        stub_codeql_disable(403, '')
+        expect { configurator.configure }
+          .to(output(/WARNING: could not disable CodeQL default setup: HTTP 403$/).to_stderr)
+      end
+
+      it 'counts every warning in the final summary' do
+        stub_security_patch(403, '')
+        stub_codeql_disable(403, '')
+        expect { configurator.configure }
+          .to(output(/Repository settings configured with 2 warning\(s\)/).to_stderr)
+      end
     end
 
     context 'when branch protection exists with matching checks' do # rubocop:disable RSpec/MultipleMemoizedHelpers
