@@ -159,6 +159,25 @@ RSpec.describe(GHB::AutoApproveManager) do
       expect(approve_step.run).to(include('skipping self-approval'))
     end
 
+    context 'with the approve step' do
+      subject(:approve_step) do
+        described_class.new(auto_approve_workflow: auto_approve_workflow).save
+        auto_approve_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Approve PR' }
+      end
+
+      it 'passes the repository through env' do
+        expect(approve_step.env[:REPO]).to(eq('${{github.repository}}'))
+      end
+
+      it 'passes the PR head sha through env' do
+        expect(approve_step.env[:HEAD_SHA]).to(eq('${{github.event.pull_request.head.sha}}'))
+      end
+
+      it 'does not interpolate workflow expressions into the script' do
+        expect(approve_step.run).not_to(include('${{'))
+      end
+    end
+
     it 'does not include a merge step' do
       manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save
@@ -239,6 +258,62 @@ RSpec.describe(GHB::AutoApproveManager) do
 
       expect(exit_status).to(eq(0))
       expect(output).to(include('is_owner=false'))
+    end
+  end
+
+  describe 'generated approve script' do
+    def run_approve_script(commit_message:, commit_lookup_fails: false)
+      manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
+      manager.save
+      approve_step = auto_approve_workflow.jobs[:auto_approve].steps.find { |s| s.name == 'Approve PR' }
+      script = approve_step.run
+
+      Dir.mktmpdir do |dir|
+        gh_stub = <<~SH
+          mkdir -p '#{dir}/bin'
+          cat > '#{dir}/bin/gh' <<'GH_EOF'
+          #!/usr/bin/env bash
+          case "$1 $2" in
+            "api user") echo approver-bot ;;
+            "api repos/"*) [ -n "${COMMIT_LOOKUP_FAILS}" ] && exit 1; printf '%s' "$COMMIT_MESSAGE_FIXTURE" ;;
+            "pr review") echo "APPROVED PR $4" ;;
+            *) exit 2 ;;
+          esac
+          GH_EOF
+          chmod +x '#{dir}/bin/gh'
+          export PATH='#{dir}/bin':"$PATH"
+        SH
+        env = {
+          AUTHOR: 'alice',
+          PR: '42',
+          REPO: 'org/repo',
+          HEAD_SHA: 'abc123',
+          COMMIT_MESSAGE_FIXTURE: commit_message,
+          COMMIT_LOOKUP_FAILS: commit_lookup_fails ? '1' : ''
+        }.transform_keys(&:to_s)
+        stdout_str, status = Open3.capture2e(env, 'bash', '-c', "#{gh_stub}\n#{script}")
+        [status.exitstatus, stdout_str]
+      end
+    end
+
+    it 'approves when the head commit subject has no skip trigger' do
+      expect(run_approve_script(commit_message: 'Add feature')).to(eq([0, "APPROVED PR 42\n"]))
+    end
+
+    %w[#skip-all #skip-tests #skip-linters #skip-licenses #SKIP-ALL].each do |trigger|
+      it "withholds approval when the head commit subject contains #{trigger}" do
+        expect(run_approve_script(commit_message: "Quick fix #{trigger}")).to(
+          eq([0, "Head commit uses #{trigger.downcase}, so required checks may be skipped; human review is required.\n"])
+        )
+      end
+    end
+
+    it 'ignores skip triggers outside the first line of the commit message' do
+      expect(run_approve_script(commit_message: "Add feature\n\nMentions #skip-all in the body")).to(eq([0, "APPROVED PR 42\n"]))
+    end
+
+    it 'fails without approving when the head commit cannot be read' do
+      expect(run_approve_script(commit_message: 'Add feature', commit_lookup_fails: true)).to(eq([1, '']))
     end
   end
 end
