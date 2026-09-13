@@ -459,7 +459,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(auto_approve_workflow:)`: Accepts the auto-approve workflow object
-- `save`: Configures the auto-approve workflow with CODEOWNERS detection and auto-approval, and writes `.github/workflows/auto-approve.yml` (removing the legacy `auto-merge.yml` if present). The CODEOWNERS membership check uses `GH_PAT`, while the approval step uses `GH_BOT_PAT` so the bot identity satisfies the `require_code_owner_reviews` branch-protection rule
+- `save`: Configures the auto-approve workflow with CODEOWNERS detection and auto-approval, and writes `.github/workflows/auto-approve.yml` (removing the legacy `auto-merge.yml` if present). Both the CODEOWNERS membership check and the approval step use `GH_BOT_PAT`, so the bot identity satisfies the `require_code_owner_reviews` branch-protection rule
 - `save` also declares a `contents: read` least-privilege token (both `gh` steps authenticate via their own PAT), a per-PR `concurrency` group cancelling superseded runs, and an `if:` guard that skips drafts and never runs the privileged `pull_request_target` token against a fork's head
 
 **Constants:**
@@ -864,7 +864,7 @@ The list is validated on every architecture review for accuracy (Requirements ma
 
 **Authentication:**
 
-- GitHub API calls use personal access tokens where cross-repository or PR-creation rights are genuinely required (`GH_PAT`; `GH_BOT_PAT` for auto-approve approvals so the bot identity satisfies the code-owner review rule). Each such step requests the secret explicitly — there is no blanket token rewrite at workflow-write time
+- GitHub API calls use personal access tokens where cross-repository or PR-creation rights are genuinely required (`GH_BOT_PAT` for auto-approve approvals, so the bot identity satisfies the code-owner review rule, and for the hand-maintained `external-actions-bump.yml`, which pushes its bump branch and opens a PR). Each such step requests the secret explicitly — there is no blanket token rewrite at workflow-write time
 - Dependency-install steps receive the ephemeral, repo-scoped run token `${{github.token}}` (`GHB::LanguageJobBuilder::DEPENDENCY_STEP_TOKEN`) rather than the org-scoped PAT, since those steps run arbitrary third-party code; unit-test steps receive no token at all. The generator spells the run token through the `github` context everywhere: it is the same value as `secrets.GITHUB_TOKEN`, but the `github` context is available in places the `secrets` context is not — inside a composite action above all, which is what every `cloud-officer/ci-actions` step is
 - Repository configuration uses `GITHUB_TOKEN` from the runtime environment
 - SSH keys used for repository checkout (`SSH_KEY` secret)
