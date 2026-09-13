@@ -23,14 +23,14 @@ jobs:
     - name: Checkout
       # Use our own composite checkout (not actions/checkout) so this
       # hand-maintained workflow carries no external action ref of its own.
-      uses: cloud-officer/ci-actions/codedeploy/checkout@v2
+      uses: cloud-officer/ci-actions/codedeploy/checkout@v3
       with:
-        github-token: ${{ secrets.GH_PAT }}
+        github-token: ${{ secrets.GH_BOT_PAT }}
         ssh-key: ''
     - name: Resolve, apply and open PR
       shell: bash
       env:
-        GH_TOKEN: ${{ secrets.GH_PAT }}
+        GH_TOKEN: ${{ secrets.GH_BOT_PAT }}
       run: |
         set -euo pipefail
 

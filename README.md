@@ -260,7 +260,7 @@ repository. No CLI flags are needed for these; they are detected on every run.
 
 Generated workflows reference the following GitHub Actions secrets that must be configured in target repositories.
 Every job authenticates with the run's own `${{github.token}}`; `GH_BOT_PAT` is the only long-lived GitHub credential
-still required, and only `auto-approve.yml` uses it.
+still required. `auto-approve.yml` uses it, and so does this repository's hand-maintained `external-actions-bump.yml`.
 
 A retired secret is rewritten on regeneration rather than preserved. Job builders copy the previous workflow's `with:`
 and `env:` forward and only apply their defaults to a step that has none, so a reference written before a secret was
@@ -271,10 +271,10 @@ retired, and is left alone.
 
 #### Core Secrets (All Workflows)
 
-| Secret       | Purpose                                                                                                                                                                                                                                                                     |
-|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `SSH_KEY`    | SSH private key used for repository checkout, private submodules and SSH-based git operations across all generated workflow jobs.                                                                                                                                           |
-| `GH_BOT_PAT` | Token used by `auto-approve.yml` to read org team membership and approve pull requests opened by code owners. Needs `pull-requests: write` and organization `members: read`, and no `contents` write. Self-approval is skipped when it resolves to the pull request author. |
+| Secret       | Purpose                                                                                                                                                                                                                                                                                                                                                                                             |
+|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `SSH_KEY`    | SSH private key used for repository checkout, private submodules and SSH-based git operations across all generated workflow jobs.                                                                                                                                                                                                                                                                   |
+| `GH_BOT_PAT` | Token used by `auto-approve.yml` to read org team membership and approve pull requests opened by code owners, and by the hand-maintained `external-actions-bump.yml` to push its bump branch and open the pull request. Needs `pull-requests: write`, organization `members: read`, and `contents: write` on this repository. Self-approval is skipped when it resolves to the pull request author. |
 
 #### AWS Secrets (CodeDeploy and Custom AWS Deployments)
 
