@@ -377,6 +377,49 @@ RSpec.describe(GHB::Options) do
       expect(options.original_argv).to(eq(['--skip_slack']))
     end
 
+    it 'strips a removed value-taking flag together with its value' do
+      allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --organization TestOrg --options-elasticsearch config/es.yaml --skip_slack\n"].each))
+      allow($stderr).to(receive(:write))
+
+      options = described_class.new([])
+
+      expect(options.original_argv).to(eq(['--organization', 'TestOrg', '--skip_slack']))
+    end
+
+    it 'parses cleanly after a removed value-taking flag is stripped' do
+      allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --options-elasticsearch config/es.yaml --skip_slack\n"].each))
+      allow($stderr).to(receive(:write))
+
+      options = described_class.new([]).parse
+
+      expect(options.skip_slack).to(be(true))
+    end
+
+    it 'strips a removed value-taking flag written in --flag=value form without consuming the next argument' do
+      allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --options-elasticsearch=config/es.yaml --skip_slack\n"].each))
+      allow($stderr).to(receive(:write))
+
+      options = described_class.new([])
+
+      expect(options.original_argv).to(eq(['--skip_slack']))
+    end
+
+    it 'strips a trailing removed value-taking flag whose value is missing' do
+      allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --skip_slack --options-elasticsearch\n"].each))
+      allow($stderr).to(receive(:write))
+
+      options = described_class.new([])
+
+      expect(options.original_argv).to(eq(['--skip_slack']))
+    end
+
+    it 'warns on stderr when a removed value-taking flag is stripped' do
+      allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --options-elasticsearch config/es.yaml\n"].each))
+
+      expect { described_class.new([]) }
+        .to(output(/ignoring removed option '--options-elasticsearch'/).to_stderr)
+    end
+
     it 'still aborts when a removed flag is passed explicitly on the command line' do
       allow(File).to(receive(:exist?).and_return(false))
 
