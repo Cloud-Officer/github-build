@@ -172,6 +172,12 @@ RSpec.describe(GHB::GitignoreRules) do
       expect(result).not_to(include(".claude/\n"))
     end
 
+    it 'skips the Managed patterns section with BEGIN/END markers' do
+      git_ignore = "# End of gitignore.io\n\n# BEGIN Managed patterns\n\n# Claude Code\n.claude/\n\n# END Managed patterns\n\n# My custom\nmy-dir/\n"
+
+      expect(rules.preserve_custom_entries(git_ignore, custom_patterns)).to(eq(["\n", "\n", "# My custom\n", "my-dir/\n"]))
+    end
+
     it 'skips old-style AI Assistants section without END marker' do # rubocop:disable RSpec/MultipleExpectations
       git_ignore = "# End of gitignore.io\n\n# AI Assistants\n# Claude Code\n.claude/\n# Cursor\n.cursor/\n\n# My custom\nmy-dir/\n"
 
@@ -219,6 +225,71 @@ RSpec.describe(GHB::GitignoreRules) do
 
     it 'returns empty array when no custom_patterns configured' do
       expect(rules.detect_custom_pattern_groups({ custom_patterns: nil })).to(eq([]))
+    end
+  end
+
+  describe 'credentials patterns shipped in config/gitignore.yaml' do
+    let(:credentials_patterns) do
+      config = Psych.safe_load_file(File.expand_path('../../config/gitignore.yaml', __dir__), symbolize_names: true)
+      rules.detect_custom_pattern_groups(config).find { |group| group.first == '# Credentials' }
+    end
+
+    def ignored?(patterns, path)
+      Dir.mktmpdir do |dir|
+        system('git', 'init', '-q', dir, exception: true)
+        File.write(File.join(dir, '.gitignore'), "#{patterns.join("\n")}\n")
+        system('git', '-C', dir, 'check-ignore', '-q', '--no-index', path)
+      end
+    end
+
+    %w[
+      .env
+      .env.local
+      .env.production
+      backend/.env
+      fastlane/.env
+      .envrc
+      .npmrc
+      .netrc
+      .pypirc
+      .vault_pass
+      credentials
+      play-service-account.json
+      id_rsa
+      id_ed25519
+      config/master.key
+      server.pem
+      AuthKey_ABC123.p8
+      cert.p12
+      cert.pfx
+      release.jks
+      debug.keystore
+      vault.kdbx
+      putty.ppk
+      App.mobileprovision
+    ].each do |path|
+      it "ignores #{path}" do
+        expect(ignored?(credentials_patterns, path)).to(be(true))
+      end
+    end
+
+    %w[
+      .env.example
+      .env.sample
+      .env.template
+      .env.dist
+      .env.test
+      fastlane/.env.beta
+      ios/fastlane/.env.prod
+      id_rsa.pub
+      data/rds-combined-ca-bundle.pem
+      data/aws-global-bundle.pem
+      app/services/credentials.rb
+      google-services.json
+    ].each do |path|
+      it "keeps #{path} committable" do
+        expect(ignored?(credentials_patterns, path)).to(be(false))
+      end
     end
   end
 
