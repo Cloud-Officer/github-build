@@ -201,9 +201,28 @@ RSpec.describe(GHB::Application) do
       end
 
       it "falls back to 'master' when origin/HEAD is not resolvable" do
+        allow(app).to(receive(:warn))
         allow(app).to(receive(:`).with('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null').and_return(''))
 
         expect(app.detect_default_branch).to(eq('master'))
+      end
+
+      it 'warns when origin/HEAD is not resolvable' do
+        allow(app).to(receive(:warn))
+        allow(app).to(receive(:`).with('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null').and_return(''))
+
+        app.detect_default_branch
+
+        expect(app).to(have_received(:warn).with(%r{could not detect the default branch from origin/HEAD, falling back to 'master'}))
+      end
+
+      it 'does not warn when origin/HEAD resolves' do
+        allow(app).to(receive(:warn))
+        allow(app).to(receive(:`).with('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null').and_return("refs/remotes/origin/main\n"))
+
+        app.detect_default_branch
+
+        expect(app).not_to(have_received(:warn))
       end
 
       it "detects 'master' when that is the default branch" do
