@@ -117,7 +117,10 @@ module GHB
 
     def detect_default_branch
       branch = `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null`.strip.sub(%r{^refs/remotes/origin/}, '')
-      branch.empty? ? 'master' : branch
+      return branch unless branch.empty?
+
+      warn("WARNING: could not detect the default branch from origin/HEAD, falling back to 'master'")
+      'master'
     end
 
     def configure_options(argv)

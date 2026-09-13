@@ -50,6 +50,13 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
     }
   end
 
+  def stub_repository_default_branch(branch)
+    allow(github_client).to(receive(:get).with(repo_url).and_return(instance_double(HTTParty::Response, code: 200, body: JSON.parse(repo_info_response.body, symbolize_names: true).merge(default_branch: branch).to_json)))
+    allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
+    allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{branch}/protection", body: anything).and_return(ok_response))
+    allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
+  end
+
   before do
     allow($stdout).to(receive(:puts))
     allow(ENV).to(receive(:fetch).with('GITHUB_TOKEN', nil).and_return(github_token))
@@ -448,6 +455,46 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         # Verify that 'javascript-typescript' and 'typescript' are filtered out.
         # The detection happens via puts, so just verify it completes without error.
         expect(github_client).to(have_received(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil))
+      end
+
+      it "reads protection from the repository API default branch when git detected 'master' but the API reports 'main'" do
+        stub_repository_default_branch('main')
+        allow(configurator).to(receive(:warn))
+        configurator.configure
+        expect(github_client).to(have_received(:get).with("#{repo_url}/branches/main/protection", expected_codes: [200, 404]))
+      end
+
+      it "writes protection to the repository API default branch when git detected 'master' but the API reports 'main'" do
+        stub_repository_default_branch('main')
+        allow(configurator).to(receive(:warn))
+        configurator.configure
+        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/main/protection", body: anything))
+      end
+
+      it "requires signatures on the repository API default branch when git detected 'master' but the API reports 'main'" do
+        stub_repository_default_branch('main')
+        allow(configurator).to(receive(:warn))
+        configurator.configure
+        expect(github_client).to(have_received(:post).with("#{repo_url}/branches/main/protection/required_signatures", expected_codes: [200, 204]))
+      end
+
+      it "reads the force-push allowlist for the repository API default branch when git detected 'master' but the API reports 'main'" do
+        stub_repository_default_branch('main')
+        allow(configurator).to(receive(:warn))
+        configurator.configure
+        expect(github_client).to(have_received(:graphql).with(/bypassForcePushAllowances/, variables: hash_including(qualifiedName: 'refs/heads/main')))
+      end
+
+      it 'warns naming both branches when the repository API default branch differs from the detected one' do
+        stub_repository_default_branch('main')
+        expect { configurator.configure }
+          .to(output(/detected default branch 'master' differs from the repository default branch 'main'/).to_stderr)
+      end
+
+      it 'emits no default-branch warning when the repository API reports the detected branch' do
+        stub_repository_default_branch('master')
+        expect { configurator.configure }
+          .not_to(output(/differs from the repository default branch/).to_stderr)
       end
     end
 

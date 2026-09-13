@@ -101,6 +101,7 @@ module GHB
       response = github_client.get(repo_url)
       repo_info = JSON.parse(response.body)
       is_private = repo_info['private'] == true
+      adopt_repository_default_branch(repo_info['default_branch'])
 
       # Get current branch protection to preserve settings (404 means no protection configured yet)
       response = github_client.get("#{repo_url}/branches/#{@default_branch}/protection", expected_codes: [200, 404])
@@ -125,6 +126,13 @@ module GHB
     end
 
     private
+
+    def adopt_repository_default_branch(repository_default_branch)
+      return if repository_default_branch.nil? || repository_default_branch.empty? || repository_default_branch == @default_branch
+
+      warn("    WARNING: detected default branch '#{@default_branch}' differs from the repository default branch '#{repository_default_branch}', using '#{repository_default_branch}'")
+      @default_branch = repository_default_branch
+    end
 
     def configure_branch_protection(github_client, repo_url, current_protection, protection_exists, repository)
       augment_required_status_checks
