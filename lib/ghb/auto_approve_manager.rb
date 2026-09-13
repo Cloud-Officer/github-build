@@ -64,6 +64,15 @@ module GHB
     APPROVE_SCRIPT = <<~BASH
       set -euo pipefail
 
+      SUBJECT=$(gh api "repos/${REPO}/commits/${HEAD_SHA}" --jq .commit.message)
+      SUBJECT="${SUBJECT%%$'\\n'*}"
+      for trigger in '#skip-all' '#skip-licenses' '#skip-linters' '#skip-tests'; do
+        if grep -iqF -- "$trigger" <<< "$SUBJECT"; then
+          echo "Head commit uses ${trigger}, so required checks may be skipped; human review is required."
+          exit 0
+        fi
+      done
+
       APPROVER=$(gh api user --jq .login)
       if [ "$APPROVER" = "$AUTHOR" ]; then
         echo "Approver $APPROVER is the PR author; skipping self-approval."
@@ -140,7 +149,9 @@ module GHB
             {
               GH_TOKEN: '${{secrets.GH_BOT_PAT}}',
               AUTHOR: '${{github.event.pull_request.user.login}}',
-              PR: '${{github.event.pull_request.number}}'
+              PR: '${{github.event.pull_request.number}}',
+              REPO: '${{github.repository}}',
+              HEAD_SHA: '${{github.event.pull_request.head.sha}}'
             }
           )
           do_run(APPROVE_SCRIPT)
