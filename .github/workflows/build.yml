@@ -17,7 +17,6 @@ name: Build
     - "**"
 permissions:
   contents: read
-  pull-requests: write
 env:
   RUBY-BUNDLER-CACHE: true
 concurrency:
@@ -53,6 +52,9 @@ jobs:
         github-token: "${{github.token}}"
   actionlint:
     name: Github Actions Linter
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     needs:
     - variables
@@ -68,6 +70,9 @@ jobs:
         reviewdog-token: "${{github.token}}"
   markdownlint:
     name: Markdown Linter
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     needs:
     - variables
@@ -83,6 +88,9 @@ jobs:
         reviewdog-token: "${{github.token}}"
   rubocop:
     name: Ruby Linter
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     needs:
     - variables
@@ -116,6 +124,9 @@ jobs:
         github-token: "${{github.token}}"
   shellcheck:
     name: Shell Scripts Linter
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     needs:
     - variables
@@ -131,6 +142,8 @@ jobs:
         reviewdog-token: "${{github.token}}"
   trivy:
     name: Container & IaC Vulnerability Scanner
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     needs:
     - variables
@@ -145,6 +158,9 @@ jobs:
         github-token: "${{github.token}}"
   yamllint:
     name: YAML Linter
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     needs:
     - variables
