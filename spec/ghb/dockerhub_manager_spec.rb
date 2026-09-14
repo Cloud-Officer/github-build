@@ -36,8 +36,25 @@ RSpec.describe(GHB::DockerhubManager) do
       # actions/attest-build-provenance, so they stay.
       expect(workflow.jobs[:push_to_registry].permissions).to(eq(contents: 'read', attestations: 'write', 'id-token': 'write'))
       expect(workflow.jobs[:push_to_registry].permissions).not_to(include(packages: 'write'))
-      expect(workflow.jobs[:push_to_registry].steps.length).to(eq(1))
-      expect(workflow.jobs[:push_to_registry].steps.first.name).to(eq('Publish Docker image'))
+      expect(workflow.jobs[:push_to_registry].steps.map(&:name)).to(eq(['Verify Tag Is On Default Branch', 'Publish Docker image']))
+    end
+
+    it 'refuses to publish a tag whose commit is not on the default branch' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      workflow = GHB::Workflow.new('DockerHub')
+      manager = described_class.new(dockerhub_workflow: workflow)
+
+      allow(File).to(receive(:exist?).with('.dockerhub').and_return(true))
+      allow(FileUtils).to(receive(:mkdir_p))
+      allow(File).to(receive(:write))
+
+      manager.save
+
+      verify = workflow.jobs[:push_to_registry].steps.first
+      expect(verify.uses).to(be_nil)
+      expect(verify.env).to(eq(GH_TOKEN: '${{github.token}}', DEFAULT_BRANCH: '${{github.event.repository.default_branch}}'))
+      expect(verify.run).to(include('compare/${DEFAULT_BRANCH}...${GITHUB_SHA}'))
+      expect(verify.run).to(include('identical|behind) ;;'))
+      expect(verify.run).to(include('exit 1'))
     end
   end
 end
