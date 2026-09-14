@@ -1,5 +1,5 @@
 {
-  "Ruby:activesupport": {
+  "activesupport": {
     "language": "Ruby",
     "package": "activesupport",
     "version": "8.1.3.1",
@@ -11,7 +11,7 @@
     "requirements": "Provide the deep symbolize and stringify methods on hash",
     "verification_reasoning": "Official Rails ecosystem library maintained by the Rails core team"
   },
-  "Ruby:addressable": {
+  "addressable": {
     "language": "Ruby",
     "package": "addressable",
     "version": "2.9.0",
@@ -23,7 +23,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:ast": {
+  "ast": {
     "language": "Ruby",
     "package": "ast",
     "version": "2.4.3",
@@ -35,7 +35,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:base64": {
+  "base64": {
     "language": "Ruby",
     "package": "base64",
     "version": "0.3.0",
@@ -47,7 +47,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:bigdecimal": {
+  "bigdecimal": {
     "language": "Ruby",
     "package": "bigdecimal",
     "version": "4.1.3",
@@ -59,7 +59,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:concurrent-ruby": {
+  "concurrent-ruby": {
     "language": "Ruby",
     "package": "concurrent-ruby",
     "version": "1.3.8",
@@ -71,7 +71,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:connection_pool": {
+  "connection_pool": {
     "language": "Ruby",
     "package": "connection_pool",
     "version": "3.0.2",
@@ -83,7 +83,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:crack": {
+  "crack": {
     "language": "Ruby",
     "package": "crack",
     "version": "1.0.1",
@@ -95,7 +95,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:csv": {
+  "csv": {
     "language": "Ruby",
     "package": "csv",
     "version": "3.3.6",
@@ -107,7 +107,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:date": {
+  "date": {
     "language": "Ruby",
     "package": "date",
     "version": "3.5.1",
@@ -119,7 +119,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:diff-lcs": {
+  "diff-lcs": {
     "language": "Ruby",
     "package": "diff-lcs",
     "version": "1.6.2",
@@ -131,7 +131,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:drb": {
+  "drb": {
     "language": "Ruby",
     "package": "drb",
     "version": "2.2.3",
@@ -143,7 +143,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:duplicate": {
+  "duplicate": {
     "language": "Ruby",
     "package": "duplicate",
     "version": "1.1.1",
@@ -155,7 +155,7 @@
     "requirements": "Handle deep clone",
     "verification_reasoning": "Lightweight deep cloning library with no additional dependencies"
   },
-  "Ruby:hashdiff": {
+  "hashdiff": {
     "language": "Ruby",
     "package": "hashdiff",
     "version": "1.2.1",
@@ -167,7 +167,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:httparty": {
+  "httparty": {
     "language": "Ruby",
     "package": "httparty",
     "version": "0.24.2",
@@ -179,7 +179,7 @@
     "requirements": "HTTP client for GitHub REST API communication",
     "verification_reasoning": "Industry-standard Ruby HTTP client with active maintenance and security updates"
   },
-  "Ruby:i18n": {
+  "i18n": {
     "language": "Ruby",
     "package": "i18n",
     "version": "1.15.2",
@@ -191,7 +191,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:json": {
+  "json": {
     "language": "Ruby",
     "package": "json",
     "version": "3.0.2",
@@ -203,7 +203,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:language_server-protocol": {
+  "language_server-protocol": {
     "language": "Ruby",
     "package": "language_server-protocol",
     "version": "3.17.0.6",
@@ -215,7 +215,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:lint_roller": {
+  "lint_roller": {
     "language": "Ruby",
     "package": "lint_roller",
     "version": "1.1.0",
@@ -227,7 +227,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:logger": {
+  "logger": {
     "language": "Ruby",
     "package": "logger",
     "version": "1.7.0",
@@ -239,7 +239,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:mini_mime": {
+  "mini_mime": {
     "language": "Ruby",
     "package": "mini_mime",
     "version": "1.1.5",
@@ -251,7 +251,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:minitest": {
+  "minitest": {
     "language": "Ruby",
     "package": "minitest",
     "version": "6.0.6",
@@ -263,7 +263,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:multi_xml": {
+  "multi_xml": {
     "language": "Ruby",
     "package": "multi_xml",
     "version": "0.9.1",
@@ -275,7 +275,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:optparse": {
+  "optparse": {
     "language": "Ruby",
     "package": "optparse",
     "version": "0.8.1",
@@ -287,7 +287,7 @@
     "requirements": "Command line argument parser",
     "verification_reasoning": "Ruby standard library gem maintained by the Ruby core team"
   },
-  "Ruby:parallel": {
+  "parallel": {
     "language": "Ruby",
     "package": "parallel",
     "version": "2.2.0",
@@ -299,7 +299,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:parser": {
+  "parser": {
     "language": "Ruby",
     "package": "parser",
     "version": "3.3.12.0",
@@ -311,7 +311,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:prism": {
+  "prism": {
     "language": "Ruby",
     "package": "prism",
     "version": "1.9.0",
@@ -323,7 +323,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:psych": {
+  "psych": {
     "language": "Ruby",
     "package": "psych",
     "version": "5.5.0",
@@ -335,7 +335,7 @@
     "requirements": "Yaml parser",
     "verification_reasoning": "Ruby standard library gem maintained by the Ruby core team"
   },
-  "Ruby:public_suffix": {
+  "public_suffix": {
     "language": "Ruby",
     "package": "public_suffix",
     "version": "7.0.5",
@@ -347,7 +347,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:racc": {
+  "racc": {
     "language": "Ruby",
     "package": "racc",
     "version": "1.8.1",
@@ -359,7 +359,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:rainbow": {
+  "rainbow": {
     "language": "Ruby",
     "package": "rainbow",
     "version": "3.1.1",
@@ -371,7 +371,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:regexp_parser": {
+  "regexp_parser": {
     "language": "Ruby",
     "package": "regexp_parser",
     "version": "2.12.0",
@@ -383,7 +383,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:rexml": {
+  "rexml": {
     "language": "Ruby",
     "package": "rexml",
     "version": "3.4.4",
@@ -395,7 +395,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:rspec": {
+  "rspec": {
     "language": "Ruby",
     "package": "rspec",
     "version": "3.13.2",
@@ -407,7 +407,7 @@
     "requirements": "Unit and integration test framework for the CLI and its workflow builders",
     "verification_reasoning": "De facto standard Ruby test framework; the spec/ suite and .rspec configuration are written against its DSL"
   },
-  "Ruby:rspec-core": {
+  "rspec-core": {
     "language": "Ruby",
     "package": "rspec-core",
     "version": "3.13.6",
@@ -419,7 +419,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:rspec-expectations": {
+  "rspec-expectations": {
     "language": "Ruby",
     "package": "rspec-expectations",
     "version": "3.13.5",
@@ -431,7 +431,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:rspec-mocks": {
+  "rspec-mocks": {
     "language": "Ruby",
     "package": "rspec-mocks",
     "version": "3.13.8",
@@ -443,7 +443,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:rspec-support": {
+  "rspec-support": {
     "language": "Ruby",
     "package": "rspec-support",
     "version": "3.13.7",
@@ -455,7 +455,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:rubocop": {
+  "rubocop": {
     "language": "Ruby",
     "package": "rubocop",
     "version": "1.91.0",
@@ -467,7 +467,7 @@
     "requirements": "Ruby linter enforcing the shared .rubocop.yml style and lint rules",
     "verification_reasoning": "Reference Ruby static analyzer; the bundled config/linters/.rubocop.yml this tool distributes targets its cop set"
   },
-  "Ruby:rubocop-ast": {
+  "rubocop-ast": {
     "language": "Ruby",
     "package": "rubocop-ast",
     "version": "1.50.0",
@@ -479,7 +479,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:rubocop-capybara": {
+  "rubocop-capybara": {
     "language": "Ruby",
     "package": "rubocop-capybara",
     "version": "3.0.0",
@@ -491,7 +491,7 @@
     "requirements": "RuboCop plugin adding Capybara cops, enabled in .rubocop.yml plugins",
     "verification_reasoning": "Official RuboCop-maintained plugin, the only source of the Capybara cop set extracted out of rubocop-rspec"
   },
-  "Ruby:rubocop-graphql": {
+  "rubocop-graphql": {
     "language": "Ruby",
     "package": "rubocop-graphql",
     "version": "1.8.0",
@@ -503,7 +503,7 @@
     "requirements": "RuboCop plugin adding GraphQL cops, enabled in .rubocop.yml plugins",
     "verification_reasoning": "Only maintained RuboCop plugin covering graphql-ruby schema and type definitions"
   },
-  "Ruby:rubocop-minitest": {
+  "rubocop-minitest": {
     "language": "Ruby",
     "package": "rubocop-minitest",
     "version": "0.40.0",
@@ -515,7 +515,7 @@
     "requirements": "RuboCop plugin adding Minitest cops, enabled in .rubocop.yml plugins",
     "verification_reasoning": "Official RuboCop-maintained plugin, the only source of the Minitest cop set"
   },
-  "Ruby:rubocop-performance": {
+  "rubocop-performance": {
     "language": "Ruby",
     "package": "rubocop-performance",
     "version": "1.27.0",
@@ -527,7 +527,7 @@
     "requirements": "RuboCop plugin adding performance cops, enabled in .rubocop.yml plugins",
     "verification_reasoning": "Official RuboCop-maintained plugin holding the performance cops removed from the rubocop core gem"
   },
-  "Ruby:rubocop-rspec": {
+  "rubocop-rspec": {
     "language": "Ruby",
     "package": "rubocop-rspec",
     "version": "3.10.2",
@@ -539,7 +539,7 @@
     "requirements": "RuboCop plugin adding RSpec cops for the spec/ suite, enabled in .rubocop.yml plugins",
     "verification_reasoning": "Official RuboCop-maintained plugin, the only source of the RSpec cop set"
   },
-  "Ruby:rubocop-thread_safety": {
+  "rubocop-thread_safety": {
     "language": "Ruby",
     "package": "rubocop-thread_safety",
     "version": "0.8.0",
@@ -551,7 +551,7 @@
     "requirements": "RuboCop plugin adding thread-safety cops, enabled in .rubocop.yml plugins",
     "verification_reasoning": "Only maintained RuboCop plugin flagging mutable class-level state and other thread-safety hazards"
   },
-  "Ruby:ruby-progressbar": {
+  "ruby-progressbar": {
     "language": "Ruby",
     "package": "ruby-progressbar",
     "version": "1.13.0",
@@ -563,7 +563,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:securerandom": {
+  "securerandom": {
     "language": "Ruby",
     "package": "securerandom",
     "version": "0.4.1",
@@ -575,7 +575,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:simplecov": {
+  "simplecov": {
     "language": "Ruby",
     "package": "simplecov",
     "version": "1.3.0",
@@ -587,7 +587,7 @@
     "requirements": "Code coverage reporting with branch coverage support and minimum threshold enforcement",
     "verification_reasoning": "Most popular Ruby code coverage gem, widely adopted across the Ruby ecosystem"
   },
-  "Ruby:stringio": {
+  "stringio": {
     "language": "Ruby",
     "package": "stringio",
     "version": "3.2.0",
@@ -599,7 +599,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:tzinfo": {
+  "tzinfo": {
     "language": "Ruby",
     "package": "tzinfo",
     "version": "2.0.6",
@@ -611,7 +611,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:unicode-display_width": {
+  "unicode-display_width": {
     "language": "Ruby",
     "package": "unicode-display_width",
     "version": "3.2.0",
@@ -623,7 +623,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:unicode-emoji": {
+  "unicode-emoji": {
     "language": "Ruby",
     "package": "unicode-emoji",
     "version": "4.2.0",
@@ -635,7 +635,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:uri": {
+  "uri": {
     "language": "Ruby",
     "package": "uri",
     "version": "1.1.1",
@@ -647,7 +647,7 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:webmock": {
+  "webmock": {
     "language": "Ruby",
     "package": "webmock",
     "version": "3.26.4",
