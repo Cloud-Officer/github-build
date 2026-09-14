@@ -242,17 +242,16 @@ module GHB
         }
 
       @new_workflow.run_name = @old_workflow.run_name unless @old_workflow.run_name.nil?
-      # reviewdog posts review comments with the job's GITHUB_TOKEN, which needs
-      # pull-requests: write. Workflows generated before that change carry exactly
-      # the old default; upgrade those in place so they self-heal on regeneration,
-      # while any block the user tailored themselves is left alone -- the same rule
-      # drop_injected_pat applies to the token it used to inject.
-      previous_default = { contents: 'read', 'pull-requests': 'read' }
+      # pull-requests: write is granted per job to the reviewdog linters only (LinterJobBuilder).
+      previous_defaults = [
+        { contents: 'read', 'pull-requests': 'read' },
+        { contents: 'read', 'pull-requests': 'write' }
+      ]
       @new_workflow.permissions =
-        if @old_workflow.permissions.any? and @old_workflow.permissions != previous_default
+        if @old_workflow.permissions.any? and !previous_defaults.include?(@old_workflow.permissions)
           @old_workflow.permissions
         else
-          { contents: 'read', 'pull-requests': 'write' }
+          { contents: 'read' }
         end
       @new_workflow.env = @old_workflow.env
       @new_workflow.defaults = @old_workflow.defaults || {}

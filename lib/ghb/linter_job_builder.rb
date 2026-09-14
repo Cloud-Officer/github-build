@@ -13,6 +13,16 @@ module GHB
     include FileScanner
     include LinterIgnoreRenderer
 
+    REVIEWDOG_PERMISSIONS = { contents: 'read', 'pull-requests': 'write' }.freeze
+    READ_ONLY_PERMISSIONS = { contents: 'read' }.freeze
+    private_constant :REVIEWDOG_PERMISSIONS, :READ_ONLY_PERMISSIONS
+
+    # Job-level permissions for a linter without its own `permissions` entry:
+    # reviewdog needs pull-requests: write to post review comments, every other linter only reads.
+    def self.default_permissions(linter)
+      (linter[:reviewdog] ? REVIEWDOG_PERMISSIONS : READ_ONLY_PERMISSIONS).dup
+    end
+
     def initialize(context:)
       @options = context.options
       @submodules = context.submodules
@@ -192,7 +202,7 @@ module GHB
         do_name(linter[:long_name])
         do_runs_on(old_workflow.jobs[short_name]&.runs_on || DEFAULT_UBUNTU_VERSION)
         do_needs(%w[variables])
-        do_permissions(linter[:permissions]) if permissions.empty? and linter[:permissions]
+        do_permissions(linter[:permissions] || LinterJobBuilder.default_permissions(linter)) if permissions.empty?
 
         if linter[:condition]
           do_if("${{needs.variables.outputs.SKIP_LINTERS != '1' && #{linter[:condition]}}}")
