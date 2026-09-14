@@ -79,20 +79,22 @@ RSpec.describe('workflow update (golden file)') do # rubocop:disable RSpec/Descr
     expect(licenses.dig('steps', 0, 'with', 'parameters')).to(eq('--no_prompt --custom-flag'))
   end
 
-  it 'upgrades the superseded default permissions block instead of preserving it' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
-    superseded = File.read(existing_path).sub(
-      "permissions:\n  contents: write\n  pull-requests: write\n  id-token: write\n",
-      "permissions:\n  contents: read\n  pull-requests: read\n"
-    )
-    # without this the sub silently no-ops and the example proves nothing
-    expect(superseded).to(include("  pull-requests: read\n"))
+  %w[read write].each do |pull_requests|
+    it "upgrades the superseded pull-requests: #{pull_requests} default to a read-only workflow block" do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      superseded = File.read(existing_path).sub(
+        "permissions:\n  contents: write\n  pull-requests: write\n  id-token: write\n",
+        "permissions:\n  contents: read\n  pull-requests: #{pull_requests}\n"
+      )
+      expect(superseded).to(include("  pull-requests: #{pull_requests}\n"))
 
-    _exit_code, generated = generate_over(superseded)
-    permissions = Psych.safe_load(generated)['permissions']
+      _exit_code, generated = generate_over(superseded)
+      workflow = Psych.safe_load(generated)
 
-    expect(permissions['contents']).to(eq('read'))
-    expect(permissions['pull-requests']).to(eq('write'))
-    expect(permissions).not_to(have_key('id-token'))
+      expect(workflow['permissions'].keys).to(eq(%w[contents]))
+      expect(workflow.dig('permissions', 'contents')).to(eq('read'))
+      expect(workflow.dig('jobs', 'rubocop', 'permissions', 'contents')).to(eq('read'))
+      expect(workflow.dig('jobs', 'rubocop', 'permissions', 'pull-requests')).to(eq('write'))
+    end
   end
 
   it 'upgrades the ci-actions pin on the preserved step rather than keeping the old one' do # rubocop:disable RSpec/MultipleExpectations

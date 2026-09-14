@@ -690,6 +690,31 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
   end
 
+  describe 'linter job permissions' do
+    def sample_job_permissions(linter, old_job_permissions: nil)
+      old_workflow.do_job(:sample) { do_permissions(old_job_permissions) } if old_job_permissions
+      config = { short_name: 'Sample', long_name: 'Sample Linter', uses: 'cloud-officer/ci-actions/linters/sample' }.merge(linter)
+      build_linter_job_builder.__send__(:add_linter_job, :sample, config)
+      new_workflow.jobs[:sample].permissions
+    end
+
+    it 'grants pull-requests: write to a reviewdog linter job' do
+      expect(sample_job_permissions({ reviewdog: true })).to(eq({ contents: 'read', 'pull-requests': 'write' }))
+    end
+
+    it 'keeps a linter job that does not use reviewdog read-only' do
+      expect(sample_job_permissions({})).to(eq({ contents: 'read' }))
+    end
+
+    it 'uses the permissions declared in linters.yaml instead of the default' do
+      expect(sample_job_permissions({ reviewdog: true, permissions: { actions: 'read', contents: 'read' } })).to(eq({ actions: 'read', contents: 'read' }))
+    end
+
+    it 'preserves job permissions already set on the existing workflow' do
+      expect(sample_job_permissions({ reviewdog: true }, old_job_permissions: { contents: 'write' })).to(eq({ contents: 'write' }))
+    end
+  end
+
   # Workflow DSL scripts (*.workflow.js) must not trigger the JS-based linters:
   # they are validated by the Workflow runtime, not eslint/semgrep.
   describe 'workflow DSL detection patterns' do # rubocop:disable RSpec/MultipleMemoizedHelpers

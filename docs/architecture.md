@@ -120,7 +120,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `validate_entries(data, relative_path, entry_type, required_keys)`: Validates config entries have required keys
 - `validate_option_entries(data, relative_path)`: Validates option config entries
 - `workflow_read`: Reads existing workflow YAML file
-- `workflow_set_defaults`: Sets workflow defaults from existing or new values
+- `workflow_set_defaults`: Sets workflow defaults from existing or new values. The workflow-level `permissions:` default is `{ contents: read }`; a block that exactly matches a superseded generator default (`contents: read` with `pull-requests: read` or `write`) is upgraded to it on regeneration, while any other user-tailored block is kept
 - `collect_required_status_checks`: Collects status checks from generated jobs for branch protection, expanding matrix jobs into the per-combination check names GitHub actually creates (`Job (ubuntu-latest, 3.3)`); a job whose matrix cannot be expanded statically is warned about and skipped. Called from `execute` immediately after `LanguageJobBuilder` and `DockerBuildJobBuilder` and *before* `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder` and `SlackJobBuilder` run, so only the variables, linter, licenses, unit-test and Docker build jobs become required checks — deploy and notification jobs are gated by `deploy_if_statement` and must not block a merge
 - `matrix_combinations(matrix)` and its helpers (`symbolize_matrix_keys`, `matrix_control_entries`, `matrix_control_entry`, `expandable_axis?`, `scalar_matrix_value?`, `expand_axes`, `reject_excluded`, `apply_includes`): Expand a job matrix in GitHub's documented order — `exclude:` rows dropped first, then `include:` rows merged — returning `nil` when the matrix carries dynamic or non-scalar values
 - `workflow_write`: Writes the generated workflow to YAML file
@@ -335,6 +335,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `initialize(context:)`: Accepts a `GHB::BuildContext`
 - `build`: Loads linter config, parses `.gitmodules`, scans for matching files, and creates linter jobs with config file copying. When a linter declares `shebang_match`, extensionless matches must also carry a matching shebang on their first line, so a loose `pattern` that has to admit every extensionless file (the normal shape of a shell deliverable installed onto `PATH`) is narrowed back down to the intended language. When copying a bundled linter config that `GHB::LinterIgnoreRenderer` manages, regenerates its excluded-dirs block from `excluded_dirs_from_config` so every linter's ignore list stays aligned with `languages.yaml`
+- `self.default_permissions(linter)`: Job-level `permissions:` for a linter job that has none on the existing workflow and no `permissions` entry in `linters.yaml` — `{ contents: read, pull-requests: write }` (`REVIEWDOG_PERMISSIONS`) when the linter reports through reviewdog, which posts review comments with the job's `GITHUB_TOKEN`, and `{ contents: read }` (`READ_ONLY_PERMISSIONS`) otherwise. Keeps `pull-requests: write` off the workflow level, so test, licenses and deploy jobs never receive it
 
 **Internal Dependencies:**
 
