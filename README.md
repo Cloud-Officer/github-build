@@ -223,6 +223,11 @@ options:
   exceptions for committable files such as `.env.example`, `.env.test` and AWS RDS CA bundles. An existing
   `# BEGIN AI Assistants` section is replaced on regeneration.
 
+The fetched gitignore.io template is validated before `.gitignore` is written: a body over 1 MB, not valid
+UTF-8, containing control characters, looking like HTML, missing the `# Created by` / `# End of` gitignore.io
+framing, or containing a bare `!`, a line over 1024 characters, a trailing unescaped backslash, or a catch-all
+pattern such as `*` or `/**` makes the run fail with a `ConfigError` and leaves `.gitignore` untouched.
+
 ```yaml
 always_enabled:
   - linux
