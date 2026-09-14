@@ -145,8 +145,7 @@ module GHB
       xcode_checks = discover_xcode_cloud_checks(github_client, repo_url, actual_checks, expected_checks, protection_exists)
       expected_checks.concat(xcode_checks)
 
-      validate_required_checks!(expected_checks, actual_checks, protection_exists)
-      sync = protection_exists && @options.sync_required_status_checks && required_checks_differ?(expected_checks, actual_checks)
+      sync = sync_required_checks?(expected_checks, actual_checks, protection_exists)
       branch_protection = build_branch_protection_payload(current_protection, expected_checks, protection_exists, sync)
 
       puts('    Setting branch protection...')
@@ -279,23 +278,18 @@ module GHB
       end
     end
 
-    # True when expected and actual required-check lists differ in either direction.
-    def required_checks_differ?(expected_checks, actual_checks)
-      (expected_checks - actual_checks).any? || (actual_checks - expected_checks).any?
-    end
-
-    # Prints the check status and raises on an unsynced mismatch. No return value.
-    def validate_required_checks!(expected_checks, actual_checks, protection_exists)
+    # Prints the check status and returns whether to overwrite the remote check list; raises on a declined mismatch.
+    def sync_required_checks?(expected_checks, actual_checks, protection_exists)
       puts('    Checking required status checks...')
 
       unless protection_exists
         puts('        No existing branch protection, will create with expected checks')
-        return
+        return false
       end
 
       missing_checks = expected_checks - actual_checks
       extra_checks = actual_checks - expected_checks
-      return if missing_checks.none? && extra_checks.none?
+      return false if missing_checks.none? && extra_checks.none?
 
       if missing_checks.any?
         warn('        MISSING (expected but not in branch protection):')
@@ -307,10 +301,18 @@ module GHB
         extra_checks.each { |check| warn("          + #{check}") }
       end
 
-      raise(RepositorySettingsError, 'branch protection checks mismatch!') unless @options.sync_required_status_checks
+      raise(RepositorySettingsError, 'branch protection checks mismatch!') unless sync_confirmed?
 
-      puts('        --sync_required_status_checks set: overwriting remote check list with expected')
-      nil
+      puts('        Overwriting remote check list with expected')
+      true
+    end
+
+    def sync_confirmed?
+      return true if @options.sync_required_status_checks
+      return false unless $stdin.tty?
+
+      $stderr.print("        Sync required status checks on #{@default_branch}? [y/N] ")
+      %w[y yes].include?($stdin.gets.to_s.strip.downcase)
     end
 
     def build_branch_protection_payload(current_protection, expected_checks, protection_exists, sync_required_status_checks)

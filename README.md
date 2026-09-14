@@ -73,7 +73,7 @@ options
                                      Ignore linter keys in linter config file
         --no_strict_version_check    Do not auto-update when VERSION options do not match recommended defaults
         --sync_required_status_checks
-                                     On branch protection check mismatch, overwrite remote check list with the expected one instead of erroring (useful when renaming jobs/matrix values)
+                                     On branch protection check mismatch, overwrite remote check list with the expected one without asking (useful when renaming jobs/matrix values)
         --skip_semgrep               Skip Semgrep
         --skip_gitignore             Skip update of gitignore file
         --skip_license_check         Skip license check

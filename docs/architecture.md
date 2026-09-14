@@ -197,7 +197,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `skip_semgrep`: Skip semgrep linter
 - `skip_slack`: Skip Slack notification job
 - `strict_version_check`: Auto-update version files and env vars to recommended values on mismatch (default: true)
-- `sync_required_status_checks`: On branch protection check mismatch, overwrite the remote check list with the expected one instead of erroring (useful when renaming jobs or matrix values)
+- `sync_required_status_checks`: On branch protection check mismatch, overwrite the remote check list with the expected one without asking (useful when renaming jobs or matrix values)
 
 **Constants:**
 
@@ -580,7 +580,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `log_codeql_languages(github_client, repo_url)`: Reports the languages CodeQL default setup covers (filtering the redundant `javascript-typescript` / `typescript` entries the API returns alongside `javascript`); informational only — it contributes no required checks
 - `discover_xcode_cloud_checks(github_client, repo_url, actual_checks, expected_checks, protection_exists)`: Returns Xcode Cloud checks when a `ci_scripts` directory exists, dispatching to the protection-based or commit-status-based discovery below
 - `required_checks_differ?(expected_checks, actual_checks)`: Returns whether the two check lists differ in either direction
-- `validate_required_checks!(expected_checks, actual_checks, protection_exists)`: Prints the missing/extra checks and raises on a mismatch unless `--sync_required_status_checks` is set
+- `sync_required_checks?(expected_checks, actual_checks, protection_exists)`: Prints the missing/extra checks and returns whether to overwrite the remote check list. On a mismatch it syncs when `--sync_required_status_checks` is set or, when stdin is a terminal, when the user answers `y`/`yes` to a `[y/N]` prompt; otherwise it raises
 - `build_branch_protection_payload(current_protection, expected_checks, protection_exists, sync_required_status_checks)`: Builds the PUT body — reusing the remote check list unless syncing, preserving `app_id` values when syncing, and `filter_map`-ing dismissal/bypass users and teams so the payload never carries a `[null]` array (which GitHub rejects with 422)
 - `enforce_force_push_allowlist(github_client, repository)`: Reads the default branch's force-push actor allowlist over GraphQL after the PUT and clears it when non-empty. The `allow_force_pushes: false` sent in the PUT is silently a no-op while that allowlist exists — the PUT still returns 200, but the branch stays force-pushable and REST reports the same `allow_force_pushes` boolean for "nobody may force push" and "only these actors may". Names every actor found and raises if the list survives clearing, so the run never reports success over a rewritable branch history
 - `fetch_branch_protection_rule(github_client, repository)`: Fetches the classic branch protection rule (id plus `bypassForcePushAllowances`) for `refs/heads/<default_branch>`. Returns `nil` when no rule exists, and warns without failing when GraphQL is unreachable — an unreadable allowlist is undetected drift, not proven drift

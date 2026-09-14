@@ -179,7 +179,7 @@ module GHB
         @strict_version_check = false
       end
 
-      @parser.on('', '--sync_required_status_checks', 'On branch protection check mismatch, overwrite remote check list with the expected one instead of erroring (useful when renaming jobs/matrix values)') do
+      @parser.on('', '--sync_required_status_checks', 'On branch protection check mismatch, overwrite remote check list with the expected one without asking (useful when renaming jobs/matrix values)') do
         @sync_required_status_checks = true
       end
     end
