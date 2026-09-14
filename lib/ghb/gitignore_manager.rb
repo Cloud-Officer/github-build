@@ -52,6 +52,8 @@ module GHB
 
       raise(ConfigError, "Cannot fetch gitignore templates: #{response.message}") unless response.code == 200
 
+      @rules.validate_template!(response.body)
+
       # Skip the first line (gitignore.io header comment), default to empty string if response is empty
       new_git_ignore = response.body.to_s.split("\n", 2).last || ''
 

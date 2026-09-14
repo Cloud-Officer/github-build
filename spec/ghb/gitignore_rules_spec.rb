@@ -228,6 +228,109 @@ RSpec.describe(GHB::GitignoreRules) do
     end
   end
 
+  describe '#validate_template!' do
+    def sample
+      File.binread(File.expand_path('../fixtures/gitignore_io_sample.txt', __dir__))
+    end
+
+    def header
+      "# Created by https://www.toptal.com/developers/gitignore/api/ruby\n"
+    end
+
+    def footer
+      "\n# End of https://www.toptal.com/developers/gitignore/api/ruby\n"
+    end
+
+    def framed(*lines)
+      "#{header}#{lines.join("\n")}\n#{footer}"
+    end
+
+    def rejection(body)
+      rules.validate_template!(body)
+      nil
+    rescue GHB::ConfigError => e
+      e.message
+    end
+
+    def git_ignores?(content, path)
+      Dir.mktmpdir do |dir|
+        system('git', 'init', '-q', dir, exception: true)
+        File.binwrite(File.join(dir, '.gitignore'), content)
+        system('git', '-C', dir, 'check-ignore', '-q', '--no-index', path)
+      end
+    end
+
+    it 'accepts the real gitignore.io output for this repository templates' do
+      expect(rejection(sample)).to(be_nil)
+    end
+
+    it 'keeps app/main.rb tracked under the accepted sample, per git check-ignore' do
+      expect(git_ignores?(sample, 'app/main.rb')).to(be(false))
+    end
+
+    it 'accepts a negated catch-all' do
+      expect(rejection(framed('!*'))).to(be_nil)
+    end
+
+    it 'accepts an escaped trailing backslash' do
+      expect(rejection(framed('foo\\\\'))).to(be_nil)
+    end
+
+    it 'rejects a body larger than 1 MB' do
+      expect(rejection(framed(*Array.new(1100, 'x' * 1000)))).to(include('over the 1048576-byte limit'))
+    end
+
+    it 'rejects a body that is not valid UTF-8' do
+      expect(rejection(framed("caf\xC3".b))).to(include('not valid UTF-8'))
+    end
+
+    ["foo\0bar", "foo\ebar"].each do |line|
+      it "rejects a control character in #{line.inspect}" do
+        expect(rejection(framed(line))).to(include('NUL or control characters'))
+      end
+    end
+
+    ["  <div>Maintenance</div>\n", "Error\n<!DOCTYPE html>\n", "x\n<HTML lang=\"en\">\n"].each do |body|
+      it "rejects an HTML body #{body.inspect}" do
+        expect(rejection(body)).to(include('looks like HTML'))
+      end
+    end
+
+    it 'rejects a body without the gitignore.io header line' do
+      expect(rejection("*.log\n#{footer}")).to(include("missing '# Created by https://www.toptal.com/developers/gitignore/api/' header line"))
+    end
+
+    it 'rejects a body without the gitignore.io footer line' do
+      expect(rejection("#{header}*.log\n")).to(include("missing '# End of https://www.toptal.com/developers/gitignore/api/' footer line"))
+    end
+
+    it 'rejects content appended after the footer line' do
+      expect(rejection("#{framed('*.log')}*.rb\n")).to(include('footer line'))
+    end
+
+    it 'rejects a bare negation' do
+      expect(rejection(framed('*.log', '!'))).to(include("line 3 is a bare '!'"))
+    end
+
+    it 'rejects a line longer than 1024 characters' do
+      expect(rejection(framed('a' * 1025))).to(include('line 2 exceeds 1024 characters'))
+    end
+
+    it 'rejects a trailing unescaped backslash' do
+      expect(rejection(framed('foo\\'))).to(include('line 2 ends with an unescaped backslash'))
+    end
+
+    %w[* ** *.* /* /** **/* */].each do |pattern|
+      it "rejects the catch-all #{pattern}" do
+        expect(rejection(framed(pattern))).to(include("line 2 '#{pattern}' would ignore the entire repository"))
+      end
+
+      it "confirms git ignores app/main.rb under #{pattern}" do
+        expect(git_ignores?("#{pattern}\n", 'app/main.rb')).to(be(true))
+      end
+    end
+  end
+
   describe 'credentials patterns shipped in config/gitignore.yaml' do
     let(:credentials_patterns) do
       config = Psych.safe_load_file(File.expand_path('../../config/gitignore.yaml', __dir__), symbolize_names: true)

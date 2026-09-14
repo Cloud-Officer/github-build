@@ -14,8 +14,17 @@ module GHB
     MANAGED_SECTION_END = '# END Managed patterns'
     LEGACY_SECTION_BEGIN_MARKERS = ['# BEGIN AI Assistants', '# AI Assistants'].freeze
     LEGACY_SECTION_END = '# END AI Assistants'
+    TEMPLATE_MAX_BYTES = 1_048_576
+    TEMPLATE_MAX_LINE_LENGTH = 1024
+    TEMPLATE_HEADER_PREFIX = '# Created by https://www.toptal.com/developers/gitignore/api/'
+    TEMPLATE_FOOTER_PREFIX = '# End of https://www.toptal.com/developers/gitignore/api/'
+    TEMPLATE_CONTROL_CHARACTERS = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/
+    TEMPLATE_HTML = /\A\s*<|<html|<!doctype/i
+    CATCH_ALL_PATTERNS = %w[* ** *.* **/*].freeze
     public_constant :MANAGED_SECTION_BEGIN, :MANAGED_SECTION_END
     private_constant :LEGACY_SECTION_BEGIN_MARKERS, :LEGACY_SECTION_END
+    private_constant :TEMPLATE_MAX_BYTES, :TEMPLATE_MAX_LINE_LENGTH, :TEMPLATE_HEADER_PREFIX, :TEMPLATE_FOOTER_PREFIX
+    private_constant :TEMPLATE_CONTROL_CHARACTERS, :TEMPLATE_HTML, :CATCH_ALL_PATTERNS
 
     def initialize(context:)
       @options = context.options
@@ -111,7 +120,49 @@ module GHB
       groups
     end
 
+    def validate_template!(body)
+      text = body.to_s.dup.force_encoding(Encoding::UTF_8)
+      error = template_body_error(text) || template_framing_error(text.lines(chomp: true)) || template_lines_error(text.lines(chomp: true))
+
+      raise(ConfigError, "Refusing gitignore.io response, .gitignore left unchanged: #{error}") if error
+    end
+
     private
+
+    def template_body_error(text)
+      return "body is #{text.bytesize} bytes, over the #{TEMPLATE_MAX_BYTES}-byte limit" if text.bytesize > TEMPLATE_MAX_BYTES
+      return 'body is not valid UTF-8' unless text.valid_encoding?
+      return 'body contains NUL or control characters' if text.match?(TEMPLATE_CONTROL_CHARACTERS)
+
+      'body looks like HTML, not a gitignore template' if text.match?(TEMPLATE_HTML)
+    end
+
+    def template_framing_error(lines)
+      return "missing '#{TEMPLATE_HEADER_PREFIX}' header line" unless lines.first.to_s.start_with?(TEMPLATE_HEADER_PREFIX)
+
+      content_lines = lines.reject { |line| line.strip.empty? }
+
+      "missing '#{TEMPLATE_FOOTER_PREFIX}' footer line" unless content_lines.last.to_s.start_with?(TEMPLATE_FOOTER_PREFIX)
+    end
+
+    def template_lines_error(lines)
+      index = lines.index { |line| template_line_error(line) }
+
+      "line #{index + 1} #{template_line_error(lines[index])}" if index
+    end
+
+    def template_line_error(line)
+      return if line.strip.empty? || line.start_with?('#')
+      return "is a bare '!'" if line.rstrip == '!'
+      return "exceeds #{TEMPLATE_MAX_LINE_LENGTH} characters" if line.length > TEMPLATE_MAX_LINE_LENGTH
+      return 'ends with an unescaped backslash' if line[/\\+\z/].to_s.length.odd?
+
+      "'#{line.strip}' would ignore the entire repository" if catch_all_pattern?(line)
+    end
+
+    def catch_all_pattern?(line)
+      !line.start_with?('!') && CATCH_ALL_PATTERNS.include?(line.rstrip.gsub(%r{\A/+|/+\z}, ''))
+    end
 
     def template_detected?(detection_config, excluded_paths)
       extension_detected?(detection_config[:extensions], excluded_paths) ||

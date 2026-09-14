@@ -32,6 +32,10 @@ RSpec.describe(GHB::GitignoreManager) do
     }
   end
 
+  let(:api_body) do
+    "# Created by https://www.toptal.com/developers/gitignore/api/linux\n# Edit at https://www.toptal.com/developers/gitignore?templates=linux\n\n### Linux ###\n*~\n\n# End of https://www.toptal.com/developers/gitignore/api/linux\n"
+  end
+
   def generate_gitignore(config, existing: nil)
     config_yaml = Psych.dump(config.deep_stringify_keys)
     allow(manager).to(receive(:cached_file_read).and_return(config_yaml))
@@ -39,7 +43,7 @@ RSpec.describe(GHB::GitignoreManager) do
     allow(File).to(receive(:exist?).and_return(false))
     allow(File).to(receive(:exist?).with('.gitignore').and_return(!existing.nil?))
     allow(File).to(receive(:read).with('.gitignore').and_return(existing)) if existing
-    api_response = instance_double(HTTParty::Response, code: 200, body: "# Created by gitignore.io\n### Linux ###\n*~\n# End of gitignore.io\n")
+    api_response = instance_double(HTTParty::Response, code: 200, body: api_body)
     allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
     written = nil
     allow(File).to(receive(:write).with('.gitignore', anything)) { |_path, content| written = content }
@@ -48,6 +52,26 @@ RSpec.describe(GHB::GitignoreManager) do
   end
 
   describe '#update' do
+    context 'when the gitignore.io response fails validation' do
+      let(:api_body) { "<!DOCTYPE html>\n<html><body>Service Unavailable</body></html>\n" }
+
+      def update_error
+        generate_gitignore(minimal_gitignore_config)
+        nil
+      rescue GHB::ConfigError => e
+        e
+      end
+
+      it 'raises ConfigError naming the problem' do
+        expect(update_error.message).to(include('body looks like HTML'))
+      end
+
+      it 'never writes .gitignore' do
+        update_error
+        expect(File).not_to(have_received(:write).with('.gitignore', anything))
+      end
+    end
+
     it 'wraps the custom patterns in Managed patterns markers' do
       expect(generate_gitignore(minimal_gitignore_config).lines.grep(/^# (BEGIN|END) /)).to(eq(["# BEGIN Managed patterns\n", "# END Managed patterns\n"]))
     end
@@ -75,7 +99,7 @@ RSpec.describe(GHB::GitignoreManager) do
       allow(gitignore_rules).to(receive_messages(cached_file_read: "# only a comment\n", find_files_matching: []))
       allow(File).to(receive(:exist?).and_return(false))
 
-      api_response = instance_double(HTTParty::Response, code: 200, body: "### Linux ###\n*~\n")
+      api_response = instance_double(HTTParty::Response, code: 200, body: api_body)
       allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
       allow(File).to(receive(:write))
 
@@ -92,7 +116,7 @@ RSpec.describe(GHB::GitignoreManager) do
       allow(File).to(receive(:exist?).with('.gitignore').and_return(false))
       allow(File).to(receive(:exist?).with(anything).and_return(false))
 
-      api_response = instance_double(HTTParty::Response, code: 200, body: "# Created by gitignore.io\n# Edit at gitignore.io\n\n### Linux ###\n*~\n")
+      api_response = instance_double(HTTParty::Response, code: 200, body: api_body)
       allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
 
       written_content = nil
@@ -121,7 +145,7 @@ RSpec.describe(GHB::GitignoreManager) do
       allow(File).to(receive(:exist?).with('.gitignore').and_return(false))
       allow(File).to(receive(:exist?).with(anything).and_return(false))
 
-      api_response = instance_double(HTTParty::Response, code: 200, body: "# Created by gitignore.io\n# Edit at gitignore.io\n\n### Linux ###\n*~\n")
+      api_response = instance_double(HTTParty::Response, code: 200, body: api_body)
       allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
 
       written_content = nil
@@ -145,7 +169,7 @@ RSpec.describe(GHB::GitignoreManager) do
       allow(File).to(receive(:exist?).with('.gitignore').and_return(true))
       allow(File).to(receive(:read).with('.gitignore').and_return(existing_gitignore))
 
-      api_response = instance_double(HTTParty::Response, code: 200, body: "# Created by gitignore.io\n# Edit at gitignore.io\n\n### Linux ###\n*~\n# End of gitignore.io\n")
+      api_response = instance_double(HTTParty::Response, code: 200, body: api_body)
       allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
 
       written_content = nil
@@ -172,7 +196,7 @@ RSpec.describe(GHB::GitignoreManager) do
       allow(File).to(receive(:exist?).with('.gitignore').and_return(false))
       allow(File).to(receive(:exist?).with(anything).and_return(false))
 
-      api_response = instance_double(HTTParty::Response, code: 200, body: "# Created by gitignore.io\n# Edit at gitignore.io\n\n### Linux ###\n*~\n")
+      api_response = instance_double(HTTParty::Response, code: 200, body: api_body)
       allow(HTTParty).to(receive(:get).with(anything, timeout: 30).and_return(api_response))
 
       written_content = nil
