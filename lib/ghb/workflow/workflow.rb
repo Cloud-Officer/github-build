@@ -157,6 +157,27 @@ module GHB
       File.write(file, content)
     end
 
+    # Moves steps still carrying the generated access-key references onto the OIDC
+    # role bundle (see GHB::LEGACY_AWS_CREDENTIALS), then grants `id-token: write` to
+    # every job with a step that can assume the role: without it the runner issues
+    # no OIDC token. A job with no permissions of its own inherits the workflow's
+    # (or `contents: read`) first, since any job-level block replaces them entirely.
+    # Customised credentials are left alone.
+    def adopt_aws_role
+      @jobs.each_value do |job|
+        next if job.nil?
+
+        job.steps.each do |step|
+          step.with.merge!(GHB.secrets(:aws).except(:'aws-region')) if GHB::LEGACY_AWS_CREDENTIALS.all? { |key, value| step.with[key] == value }
+        end
+
+        next unless job.steps.any? { |step| step.with.key?(:'aws-role-to-assume') }
+
+        inherited = @permissions.empty? ? { contents: 'read' } : @permissions
+        job.permissions = (job.permissions.empty? ? inherited : job.permissions).merge('id-token': 'write')
+      end
+    end
+
     def to_h
       hash = {}
       hash[:name] = @name unless @name.nil?
