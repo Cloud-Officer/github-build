@@ -298,6 +298,13 @@ repositories as well.
 | `AWS_DEFAULT_REGION`    | AWS region for API calls and CodeDeploy operations (e.g., `us-east-1`).                            |
 | `CODEDEPLOY_BUCKET`     | S3 bucket name for storing CodeDeploy deployment packages. Used exclusively by the CodeDeploy job. |
 
+To authenticate with GitHub OIDC instead of the access keys, set the `AWS_ROLE_TO_ASSUME` Actions **variable** (not a
+secret) on the repository or organization to the ARN of an IAM role whose trust policy allows the repository. While
+it is set, the generated steps pass `aws-role-to-assume` and leave the access-key inputs empty, the jobs using them
+are granted `id-token: write`, and `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are no longer read, so they can be
+deleted once every repository using them has the variable. `AWS_DEFAULT_REGION` is still required. Regenerating an
+existing workflow moves its generated access-key references to this form; customised credentials are left alone.
+
 #### Vercel Secrets (Vercel Deployments)
 
 Required when a `vercel.json` file (or a `vercel`/`next` dependency in `package.json`) is present and `appspec.yml`

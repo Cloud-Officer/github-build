@@ -52,13 +52,27 @@ module GHB
   SECRET_BUNDLES = {
     ssh: { 'ssh-key': '${{secrets.SSH_KEY}}' },
     github_token: { 'github-token': '${{github.token}}' },
+    # The GitHub OIDC role wins when the AWS_ROLE_TO_ASSUME variable is set (repository or
+    # organization); the access keys are blanked then, because configure-aws-credentials
+    # given both would sign the AssumeRole call with the keys instead of the OIDC token.
+    # Without the variable the step keeps authenticating with the access keys.
     aws: {
-      'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
-      'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
-      'aws-region': '${{secrets.AWS_DEFAULT_REGION}}'
+      'aws-access-key-id': "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}",
+      'aws-secret-access-key': "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}",
+      'aws-region': '${{secrets.AWS_DEFAULT_REGION}}',
+      'aws-role-to-assume': '${{vars.AWS_ROLE_TO_ASSUME}}'
     }
   }.freeze
   private_constant :SECRET_BUNDLES
+
+  # The key-only `with:` entries SECRET_BUNDLES[:aws] generated before the OIDC role.
+  # Workflow#adopt_aws_role moves steps still carrying exactly these onto the current
+  # bundle, since default_with would otherwise copy them forward forever.
+  LEGACY_AWS_CREDENTIALS = {
+    'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
+    'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}'
+  }.freeze
+  public_constant :LEGACY_AWS_CREDENTIALS
 
   # Secret references that no longer resolve, and what replaces them.
   #

@@ -104,6 +104,7 @@ module GHB
       AwsJobBuilder.new(context: context).build
       SlackJobBuilder.new(context: context).build
 
+      @new_workflow.adopt_aws_role
       workflow_write
 
       DependabotManager.new.save

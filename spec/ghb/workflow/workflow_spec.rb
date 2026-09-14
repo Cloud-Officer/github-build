@@ -494,4 +494,82 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       expect(hash).not_to(have_key(:env))
     end
   end
+
+  describe '#adopt_aws_role' do
+    let(:workflow) { described_class.new('Test') }
+    let(:legacy_credentials) do
+      {
+        'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
+        'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}',
+        'aws-region': 'eu-west-1',
+        'application-name': 'api'
+      }
+    end
+
+    def add_deploy_job(credentials)
+      workflow.do_job(:beta_deploy) do
+        do_step('Beta Deploy') { do_with(credentials.dup) }
+      end
+      workflow.jobs[:beta_deploy]
+    end
+
+    # configure-aws-credentials given both would sign AssumeRole with the keys, so
+    # the keys must expand to empty whenever the role variable is set.
+    it 'uses the role variable and blanks the access keys while it is set' do # rubocop:disable RSpec/ExampleLength
+      expect(GHB.secrets(:aws)).to(
+        include(
+          'aws-role-to-assume': '${{vars.AWS_ROLE_TO_ASSUME}}',
+          'aws-access-key-id': "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}",
+          'aws-secret-access-key': "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        )
+      )
+    end
+
+    it 'moves a step carrying the generated access keys onto the role bundle, keeping its other inputs' do
+      job = add_deploy_job(legacy_credentials)
+      workflow.adopt_aws_role
+      expect(job.steps.first.with).to(eq(GHB.secrets(:aws).merge('aws-region': 'eu-west-1', 'application-name': 'api')))
+    end
+
+    it 'grants id-token: write on top of the workflow permissions' do
+      workflow.do_permissions({ contents: 'write' })
+      job = add_deploy_job(GHB.secrets(:aws))
+      workflow.adopt_aws_role
+      expect(job.permissions).to(eq({ contents: 'write', 'id-token': 'write' }))
+    end
+
+    it 'falls back to contents: read when the workflow declares no permissions' do
+      job = add_deploy_job(legacy_credentials)
+      workflow.adopt_aws_role
+      expect(job.permissions).to(eq({ contents: 'read', 'id-token': 'write' }))
+    end
+
+    it 'adds id-token: write to the permissions a job already declares' do
+      job = add_deploy_job(GHB.secrets(:aws))
+      job.do_permissions({ contents: 'read', 'pull-requests': 'write' })
+      workflow.adopt_aws_role
+      expect(job.permissions).to(eq({ contents: 'read', 'pull-requests': 'write', 'id-token': 'write' }))
+    end
+
+    it 'leaves customised access keys and their job permissions alone', :aggregate_failures do
+      custom = { 'aws-access-key-id': '${{secrets.CUSTOM_KEY}}', 'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}' }
+      job = add_deploy_job(custom)
+      workflow.adopt_aws_role
+      expect(job.steps.first.with).to(eq(custom))
+      expect(job.permissions).to(be_empty)
+    end
+
+    it 'leaves jobs without AWS credentials alone' do
+      workflow.do_job(:licenses) { do_step('Licenses') { do_with({ parameters: '--no_prompt' }) } }
+      workflow.adopt_aws_role
+      expect(workflow.jobs[:licenses].to_h).not_to(have_key(:permissions))
+    end
+
+    it 'produces the same workflow when run again' do
+      add_deploy_job(legacy_credentials)
+      workflow.adopt_aws_role
+      expect { workflow.adopt_aws_role }
+        .not_to(change(workflow, :to_h))
+    end
+  end
 end
