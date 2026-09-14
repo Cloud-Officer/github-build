@@ -3,6 +3,19 @@
 module GHB
   # Manages DockerHub workflow configuration.
   class DockerhubManager
+    VERIFY_DEFAULT_BRANCH_SCRIPT = <<~BASH
+      status="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${DEFAULT_BRANCH}...${GITHUB_SHA}" --jq .status)"
+
+      case "${status}" in
+        identical|behind) ;;
+        *)
+          echo "::error::Tag ${GITHUB_REF_NAME} points at ${GITHUB_SHA}, which is not on ${DEFAULT_BRANCH} (compare status: ${status}); refusing to publish."
+          exit 1
+          ;;
+      esac
+    BASH
+    private_constant :VERIFY_DEFAULT_BRANCH_SCRIPT
+
     def initialize(dockerhub_workflow:)
       @dockerhub_workflow = dockerhub_workflow
     end
@@ -45,6 +58,17 @@ module GHB
             'id-token': 'write'
           }
         )
+
+        # Only commits already on the default branch passed its required checks.
+        do_step('Verify Tag Is On Default Branch') do
+          do_env(
+            {
+              GH_TOKEN: '${{github.token}}',
+              DEFAULT_BRANCH: '${{github.event.repository.default_branch}}'
+            }
+          )
+          do_run(VERIFY_DEFAULT_BRANCH_SCRIPT)
+        end
 
         do_step('Publish Docker image') do
           do_uses("cloud-officer/ci-actions/docker@#{CI_ACTIONS_VERSION}")

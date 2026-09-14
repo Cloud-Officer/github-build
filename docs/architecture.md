@@ -518,7 +518,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(dockerhub_workflow:)`: Accepts DockerHub workflow object
-- `save`: Configures and writes `.github/workflows/docker.yml` if a `.dockerhub` file exists. The workflow declares a `contents: read` least-privilege default and the single publish job opts into the scopes `cloud-officer/ci-actions/docker` needs (`attestations: write`, `id-token: write` for build-provenance signing); Docker Hub itself authenticates via `DOCKER_USERNAME` / `DOCKER_PASSWORD`, so `packages: write` is deliberately not requested
+- `save`: Configures and writes `.github/workflows/docker.yml` if a `.dockerhub` file exists. The publish job's first step, `Verify Tag Is On Default Branch`, asks the GitHub compare API (`${{github.token}}`, no checkout) whether the tagged commit is identical to or behind the default branch and fails otherwise, so only a commit that already passed the default branch's required status checks can be published. The workflow declares a `contents: read` least-privilege default and the single publish job opts into the scopes `cloud-officer/ci-actions/docker` needs (`attestations: write`, `id-token: write` for build-provenance signing); Docker Hub itself authenticates via `DOCKER_USERNAME` / `DOCKER_PASSWORD`, so `packages: write` is deliberately not requested
 
 ### GHB::GitignoreManager
 
