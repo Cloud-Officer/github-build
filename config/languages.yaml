@@ -358,7 +358,7 @@ proto:
     - name: go-architecture
       value:
     - name: xcode-version
-      value: 26.6
+      value: 27.0
   dependencies:
     - dependency_file: go.mod
       install_dirs:
