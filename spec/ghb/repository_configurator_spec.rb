@@ -57,7 +57,19 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
     allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
   end
 
+  def answer_sync_prompt(answer)
+    allow($stdin).to(receive_messages(tty?: true, gets: "#{answer}\n"))
+    allow($stderr).to(receive(:print))
+  end
+
+  def stub_successful_writes
+    ok = instance_double(HTTParty::Response, code: 200, body: '{}')
+    allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)))
+    allow(github_client).to(receive_messages(put: ok, post: ok, patch: ok))
+  end
+
   before do
+    allow($stdin).to(receive(:tty?).and_return(false))
     allow($stdout).to(receive(:puts))
     allow(ENV).to(receive(:fetch).with('GITHUB_TOKEN', nil).and_return(github_token))
     allow(Dir).to(receive(:pwd).and_return("/home/user/#{repository}"))
@@ -628,6 +640,45 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       end
 
       it 'raises an error when expected checks are missing from branch protection' do
+        expect { configurator.configure }
+          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+      end
+
+      it 'does not prompt when stdin is not a terminal' do
+        allow($stdin).to(receive(:gets).and_raise('prompted without a terminal'))
+        expect { configurator.configure }
+          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+      end
+
+      it 'asks on stderr before syncing' do
+        answer_sync_prompt('y')
+        stub_successful_writes
+        configurator.configure
+        expect($stderr).to(have_received(:print).with('        Sync required status checks on master? [y/N] '))
+      end
+
+      it 'syncs the expected checks when the prompt is accepted' do
+        answer_sync_prompt('y')
+        stub_successful_writes
+        configurator.configure
+        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: hash_including(required_status_checks: { strict: false, checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }] })))
+      end
+
+      it 'accepts yes in any case' do
+        answer_sync_prompt('YES')
+        stub_successful_writes
+        expect { configurator.configure }
+          .not_to(raise_error)
+      end
+
+      it 'raises when the prompt is declined' do
+        answer_sync_prompt('n')
+        expect { configurator.configure }
+          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+      end
+
+      it 'raises when the prompt is left empty' do
+        answer_sync_prompt('')
         expect { configurator.configure }
           .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
       end
