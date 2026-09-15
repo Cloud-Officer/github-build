@@ -113,6 +113,51 @@ RSpec.describe(GHB::FileScanner) do
       expect(scanner.find_files_matching(temp_dir, /\.rb$/, ['', 'generated'])).to(eq(["#{temp_dir}/app.rb"]))
     end
 
+    it 'excludes nothing when no exclusions are configured' do
+      FileUtils.mkdir_p("#{temp_dir}/vendor")
+      FileUtils.touch("#{temp_dir}/vendor/gem.rb")
+      allow(scanner).to(receive(:excluded_dirs_from_config).and_return([]))
+
+      expect(scanner.find_files_matching(temp_dir, /\.rb$/, [''])).to(eq(["#{temp_dir}/vendor/gem.rb"]))
+    end
+
+    it 'does not exclude a directory whose name starts with an excluded fragment' do
+      FileUtils.mkdir_p(["#{temp_dir}/app", "#{temp_dir}/application"])
+      FileUtils.touch(["#{temp_dir}/app/sub.rb", "#{temp_dir}/application/main.rb"])
+
+      expect(scanner.find_files_matching(temp_dir, /\.rb$/, ['app'])).to(eq(["#{temp_dir}/application/main.rb"]))
+    end
+
+    it 'does not exclude a directory that contains an excluded fragment' do
+      FileUtils.mkdir_p("#{temp_dir}/mylibraries")
+      FileUtils.touch("#{temp_dir}/mylibraries/util.rb")
+
+      expect(scanner.find_files_matching(temp_dir, /\.rb$/, ['lib'])).to(eq(["#{temp_dir}/mylibraries/util.rb"]))
+    end
+
+    it 'normalises a leading ./ and trailing slash on excluded fragments' do
+      FileUtils.mkdir_p(["#{temp_dir}/generated", "#{temp_dir}/generated_docs"])
+      FileUtils.touch(["#{temp_dir}/generated/gem.rb", "#{temp_dir}/generated_docs/doc.rb"])
+
+      expect(scanner.find_files_matching(temp_dir, /\.rb$/, ['./generated/'])).to(eq(["#{temp_dir}/generated_docs/doc.rb"]))
+    end
+
+    it 'excludes a multi-segment submodule path and an excluded file' do
+      FileUtils.mkdir_p(["#{temp_dir}/modules/shared", "#{temp_dir}/modules/shared_ui", "#{temp_dir}/config"])
+      FileUtils.touch(["#{temp_dir}/modules/shared/a.yaml", "#{temp_dir}/modules/shared_ui/b.yaml", "#{temp_dir}/config/linters.yaml", "#{temp_dir}/config/linters.yaml.bak"])
+
+      matches = scanner.find_files_matching(temp_dir, /\.(yaml|bak)$/, ['modules/shared', 'config/linters.yaml'])
+
+      expect(matches).to(contain_exactly("#{temp_dir}/modules/shared_ui/b.yaml", "#{temp_dir}/config/linters.yaml.bak"))
+    end
+
+    it 'does not exclude a directory whose name only starts with a configured excluded dir' do
+      FileUtils.mkdir_p("#{temp_dir}/vendored_tools")
+      FileUtils.touch("#{temp_dir}/vendored_tools/tool.rb")
+
+      expect(scanner.find_files_matching(temp_dir, /\.rb$/, [])).to(eq(["#{temp_dir}/vendored_tools/tool.rb"]))
+    end
+
     it 'excludes node_modules by default' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       FileUtils.mkdir_p("#{temp_dir}/node_modules")
       FileUtils.touch("#{temp_dir}/app.js")

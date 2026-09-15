@@ -55,7 +55,7 @@ Usage: github-build options
 options
         --build_file file            Path to build file
         --excluded_folders excluded_folders
-                                     Comma separated list of folders to ignore
+                                     Comma separated list of folder paths to ignore
         --gitignore_config_file file Path to gitignore config file
         --languages_config_file file Path to languages config file
         --linters_config_file file   Path to linters config file
