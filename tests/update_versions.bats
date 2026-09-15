@@ -8,15 +8,27 @@
 #
 # Fake behaviour is driven by env knobs: FAKE_CURL_FAIL (substring of the URL to
 # fail on), FAKE_AWS_OK (AWS answers instead of failing), FAKE_JAVA_NULL,
-# FAKE_PYENV_EMPTY and FAKE_VALKEY_UNSUPPORTED.
+# FAKE_NODE_NO_LTS, FAKE_PYENV_EMPTY and FAKE_VALKEY_UNSUPPORTED.
+
+require_tool() {
+  command -v "${1}" >/dev/null && return 0
+
+  if [ -n "${CI:-}" ]; then
+    echo "${1} is not installed" >&2
+    return 1
+  fi
+
+  skip "${1} is not installed"
+}
 
 setup() {
-  command -v jq >/dev/null || skip "jq is not installed"
-  command -v yq >/dev/null || skip "yq is not installed"
+  require_tool jq
+  require_tool yq
 
   SCRIPT="${BATS_TEST_DIRNAME}/../bin/update_versions.sh"
   BIN="$(mktemp -d)"
   WORK="$(mktemp -d)"
+  export AWS_CALLS="${BIN}/aws_calls"
   export PATH="${BIN}:${PATH}"
   make_fakes
   cp -R "${BATS_TEST_DIRNAME}/../config" "${WORK}/config"
@@ -45,7 +57,11 @@ case "${url}" in
   *go.dev/VERSION*)
     printf 'go1.25.3\ntime 2026-01-01T00:00:00Z\n' ;;
   *nodejs.org/dist/index.json*)
-    printf '[{"version":"v24.4.1"},{"version":"v24.4.0"}]\n' ;;
+    if [ -n "${FAKE_NODE_NO_LTS:-}" ]; then
+      printf '[{"version":"v25.2.1","lts":false},{"version":"v25.2.0","lts":false}]\n'
+    else
+      printf '[{"version":"v25.2.1","lts":false},{"version":"v24.4.1","lts":"Krypton"},{"version":"v24.4.0","lts":"Krypton"},{"version":"v22.17.0","lts":"Jod"}]\n'
+    fi ;;
   *api.adoptium.net*)
     if [ -n "${FAKE_JAVA_NULL:-}" ]; then printf '{}\n'; else printf '{"most_recent_lts":21}\n'; fi ;;
   *php.net/releases*)
@@ -75,6 +91,7 @@ EOF
 
   cat > "${BIN}/aws" <<'EOF'
 #!/usr/bin/env bash
+echo "$*" >> "${AWS_CALLS}"
 if [ -z "${FAKE_AWS_OK:-}" ]; then
   echo "Unable to locate credentials." >&2
   exit 255
@@ -119,6 +136,28 @@ value_of() {
   ! grep -qE '^set -e$' "${BATS_TEST_DIRNAME}/../bin/update_versions.sh"
 }
 
+@test "a missing tool fails under CI instead of skipping" {
+  export CI=true
+  run require_tool ghb-no-such-tool
+  [ "${status}" -eq 1 ]
+  [ "${output}" = "ghb-no-such-tool is not installed" ]
+}
+
+@test "a missing tool skips outside CI" {
+  unset CI
+  skip() { echo "skipped: $*"; }
+  run require_tool ghb-no-such-tool
+  [ "${status}" -eq 0 ]
+  [ "${output}" = "skipped: ghb-no-such-tool is not installed" ]
+}
+
+@test "a present tool passes the guard under CI" {
+  export CI=true
+  run require_tool jq
+  [ "${status}" -eq 0 ]
+  [ -z "${output}" ]
+}
+
 @test "every yq invocation uses the same flag order" {
   script="${BATS_TEST_DIRNAME}/../bin/update_versions.sh"
   total="$(grep -cE '^yq ' "${script}")"
@@ -149,6 +188,12 @@ value_of() {
   [ "$(value_of config/options/opensearch.yaml options opensearch-version)" = "3.8" ]
 }
 
+@test "the Node.js lookup skips a newer Current release for the latest LTS" {
+  run "${SCRIPT}"
+  [ "${status}" -eq 0 ]
+  [ "$(value_of config/languages.yaml js.setup_options node-version)" = "24.4.1" ]
+}
+
 @test "the MongoDB fallback resolves from tags, which is where mongodb/mongo publishes versions" {
   run "${SCRIPT}"
   [ "${status}" -eq 0 ]
@@ -165,10 +210,16 @@ value_of() {
 @test "AWS-sourced versions win over the public fallbacks when AWS answers" {
   FAKE_AWS_OK=1 run "${SCRIPT}"
   [ "${status}" -eq 0 ]
-  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "5.0.0" ]
   [ "$(value_of config/options/mysql.yaml options mysql-version)" = "8.0" ]
   [ "$(value_of config/options/redis.yaml options redis-version)" = "8.1.0" ]
   [ "$(value_of config/options/opensearch.yaml options opensearch-version)" = "3.5" ]
+}
+
+@test "MongoDB tracks upstream tags even when AWS answers, never DocumentDB engine versions" {
+  FAKE_AWS_OK=1 run "${SCRIPT}"
+  [ "${status}" -eq 0 ]
+  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "8.3.8" ]
+  ! grep -q '^docdb' "${AWS_CALLS}"
 }
 
 @test "a failing aws CLI falls back to the public sources instead of aborting" {
@@ -224,11 +275,42 @@ value_of() {
   [ "$(value_of config/languages.yaml kotlin.setup_options java-version)" != "null" ]
 }
 
-@test "a service whose AWS and public lookups both fail exits non-zero" {
+@test "a Node.js index without any LTS release exits non-zero" {
+  before="$(value_of config/languages.yaml js.setup_options node-version)"
+  FAKE_NODE_NO_LTS=1 run "${SCRIPT}"
+  [ "${status}" -ne 0 ]
+  [[ "${output}" == *"could not resolve the latest Node.js version"* ]]
+  [ "$(value_of config/languages.yaml js.setup_options node-version)" = "${before}" ]
+}
+
+@test "a failed MongoDB tag lookup exits non-zero" {
   FAKE_CURL_FAIL="mongodb/mongo" run "${SCRIPT}"
   [ "${status}" -ne 0 ]
   [[ "${output}" == *"could not resolve the latest MongoDB version"* ]]
   [ "$(value_of config/options/mongodb.yaml options mongodb-version)" != "" ]
+}
+
+@test "a MongoDB version below the committed major is rejected and writes nothing" {
+  yq e --indent=2 '(.options[] | select(.name == "mongodb-version").value) = "9.0.0"' -i config/options/mongodb.yaml
+  before="$(cat config/options/mongodb.yaml)"
+  run "${SCRIPT}"
+  [ "${status}" -ne 0 ]
+  [[ "${output}" == *"resolved MongoDB 8.3.8 is below the committed major version 9"* ]]
+  [ "$(cat config/options/mongodb.yaml)" = "${before}" ]
+}
+
+@test "a MongoDB version on or above the committed major is accepted" {
+  yq e --indent=2 '(.options[] | select(.name == "mongodb-version").value) = "7.0.0"' -i config/options/mongodb.yaml
+  run "${SCRIPT}"
+  [ "${status}" -eq 0 ]
+  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "8.3.8" ]
+}
+
+@test "an unset committed MongoDB version skips the major floor" {
+  yq e --indent=2 '(.options[] | select(.name == "mongodb-version").value) = null' -i config/options/mongodb.yaml
+  run "${SCRIPT}"
+  [ "${status}" -eq 0 ]
+  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "8.3.8" ]
 }
 
 @test "every remaining lookup guards its own version" {
