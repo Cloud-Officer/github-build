@@ -19,10 +19,15 @@ LANGUAGE_FILE="config/languages.yaml"
 # into a config file.
 function require_version()
 {
-  local name="$1" value="$2"
+  local name="$1" value="$2" min_major="${3:-}"
 
   if [ -z "${value}" ] || [ "${value}" == "null" ]; then
     echo "::error::could not resolve the latest ${name} version" >&2
+    exit 1
+  fi
+
+  if [[ "${min_major}" =~ ^[0-9]+$ ]] && { ! [[ "${value%%.*}" =~ ^[0-9]+$ ]] || [ "${value%%.*}" -lt "${min_major}" ]; }; then
+    echo "::error::resolved ${name} ${value} is below the committed major version ${min_major}" >&2
     exit 1
   fi
 }
@@ -81,16 +86,11 @@ require_version "Ruby" "${latest_ruby}"
 export latest_ruby
 yq e --indent=2 '(.ruby.setup_options[] | select(.name == "ruby-version").value) = env(latest_ruby)' -i "${LANGUAGE_FILE}"
 
-# MongoDB (DocumentDB)
+# MongoDB (upstream tags only: DocumentDB engine versions are not MongoDB server releases or mongo image tags)
 
-latest_mongodb=$(aws docdb describe-db-engine-versions --engine docdb --query 'DBEngineVersions[*].EngineVersion' --output text 2>/dev/null | tr '\t' '\n' | sort -V | tail -n1 || true)
-
-# mongodb/mongo publishes no GitHub Releases, so the fallback reads tags.
-if [ -z "${latest_mongodb}" ]; then
-    latest_mongodb=$(curl -fsS 'https://api.github.com/repos/mongodb/mongo/tags?per_page=100' | jq -r '[.[].name | select(test("^r[0-9]+\\.[0-9]+\\.[0-9]+$")) | ltrimstr("r")] | sort_by(split(".") | map(tonumber)) | last' || true)
-fi
-
-require_version "MongoDB" "${latest_mongodb}"
+current_mongodb=$(yq e '(.options[] | select(.name == "mongodb-version").value)' "config/options/mongodb.yaml" || true)
+latest_mongodb=$(curl -fsS 'https://api.github.com/repos/mongodb/mongo/tags?per_page=100' | jq -r '[.[].name | select(test("^r[0-9]+\\.[0-9]+\\.[0-9]+$")) | ltrimstr("r")] | sort_by(split(".") | map(tonumber)) | last' || true)
+require_version "MongoDB" "${latest_mongodb}" "${current_mongodb%%.*}"
 export latest_mongodb
 yq e --indent=2 '(.options[] | select(.name == "mongodb-version").value) = env(latest_mongodb)' -i "config/options/mongodb.yaml"
 

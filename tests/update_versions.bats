@@ -17,6 +17,7 @@ setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/../bin/update_versions.sh"
   BIN="$(mktemp -d)"
   WORK="$(mktemp -d)"
+  export AWS_CALLS="${BIN}/aws_calls"
   export PATH="${BIN}:${PATH}"
   make_fakes
   cp -R "${BATS_TEST_DIRNAME}/../config" "${WORK}/config"
@@ -75,6 +76,7 @@ EOF
 
   cat > "${BIN}/aws" <<'EOF'
 #!/usr/bin/env bash
+echo "$*" >> "${AWS_CALLS}"
 if [ -z "${FAKE_AWS_OK:-}" ]; then
   echo "Unable to locate credentials." >&2
   exit 255
@@ -165,10 +167,16 @@ value_of() {
 @test "AWS-sourced versions win over the public fallbacks when AWS answers" {
   FAKE_AWS_OK=1 run "${SCRIPT}"
   [ "${status}" -eq 0 ]
-  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "5.0.0" ]
   [ "$(value_of config/options/mysql.yaml options mysql-version)" = "8.0" ]
   [ "$(value_of config/options/redis.yaml options redis-version)" = "8.1.0" ]
   [ "$(value_of config/options/opensearch.yaml options opensearch-version)" = "3.5" ]
+}
+
+@test "MongoDB tracks upstream tags even when AWS answers, never DocumentDB engine versions" {
+  FAKE_AWS_OK=1 run "${SCRIPT}"
+  [ "${status}" -eq 0 ]
+  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "8.3.8" ]
+  ! grep -q '^docdb' "${AWS_CALLS}"
 }
 
 @test "a failing aws CLI falls back to the public sources instead of aborting" {
@@ -224,11 +232,34 @@ value_of() {
   [ "$(value_of config/languages.yaml kotlin.setup_options java-version)" != "null" ]
 }
 
-@test "a service whose AWS and public lookups both fail exits non-zero" {
+@test "a failed MongoDB tag lookup exits non-zero" {
   FAKE_CURL_FAIL="mongodb/mongo" run "${SCRIPT}"
   [ "${status}" -ne 0 ]
   [[ "${output}" == *"could not resolve the latest MongoDB version"* ]]
   [ "$(value_of config/options/mongodb.yaml options mongodb-version)" != "" ]
+}
+
+@test "a MongoDB version below the committed major is rejected and writes nothing" {
+  yq e --indent=2 '(.options[] | select(.name == "mongodb-version").value) = "9.0.0"' -i config/options/mongodb.yaml
+  before="$(cat config/options/mongodb.yaml)"
+  run "${SCRIPT}"
+  [ "${status}" -ne 0 ]
+  [[ "${output}" == *"resolved MongoDB 8.3.8 is below the committed major version 9"* ]]
+  [ "$(cat config/options/mongodb.yaml)" = "${before}" ]
+}
+
+@test "a MongoDB version on or above the committed major is accepted" {
+  yq e --indent=2 '(.options[] | select(.name == "mongodb-version").value) = "7.0.0"' -i config/options/mongodb.yaml
+  run "${SCRIPT}"
+  [ "${status}" -eq 0 ]
+  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "8.3.8" ]
+}
+
+@test "an unset committed MongoDB version skips the major floor" {
+  yq e --indent=2 '(.options[] | select(.name == "mongodb-version").value) = null' -i config/options/mongodb.yaml
+  run "${SCRIPT}"
+  [ "${status}" -eq 0 ]
+  [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "8.3.8" ]
 }
 
 @test "every remaining lookup guards its own version" {
