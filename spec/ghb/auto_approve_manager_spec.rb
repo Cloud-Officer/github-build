@@ -282,9 +282,9 @@ RSpec.describe(GHB::AutoApproveManager) do
           cat > '#{dir}/bin/gh' <<'GH_EOF'
           #!/usr/bin/env bash
           case "$1 $2" in
-            "api user") echo approver-bot ;;
-            "api repos/"*) [ -n "${COMMIT_LOOKUP_FAILS}" ] && exit 1; printf '%s' "$COMMIT_MESSAGE_FIXTURE" ;;
-            "pr review") echo "APPROVED PR $4" ;;
+            "api user") [ "$GH_TOKEN" = bot-pat ] || exit 3; echo approver-bot ;;
+            "api repos/"*) [ "$GH_TOKEN" = run-token ] || exit 3; [ -n "${COMMIT_LOOKUP_FAILS}" ] && exit 1; printf '%s' "$COMMIT_MESSAGE_FIXTURE" ;;
+            "pr review") [ "$GH_TOKEN" = bot-pat ] || exit 3; echo "APPROVED PR $4" ;;
             *) exit 2 ;;
           esac
           GH_EOF
@@ -292,6 +292,8 @@ RSpec.describe(GHB::AutoApproveManager) do
           export PATH='#{dir}/bin':"$PATH"
         SH
         env = {
+          GH_TOKEN: 'bot-pat',
+          GITHUB_TOKEN: 'run-token',
           AUTHOR: 'alice',
           PR: '42',
           REPO: 'org/repo',
