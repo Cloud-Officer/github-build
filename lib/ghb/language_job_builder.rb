@@ -399,60 +399,54 @@ module GHB
       skipped_option = version_file && version_option_name(version_file)
 
       options&.each do |option|
-        # If a version file exists and this option matches the version file,
-        # skip setting it so the ci-actions setup will use the version file instead
         if skipped_option && option[:name] == skipped_option
-          option_value = option[:value]
-
-          if option_value
-            file_version = File.read(version_file).strip
-
-            if version_file_mismatch?(file_version, option_value.to_s)
-              puts("\e[31m\n#{'*' * 80}")
-              puts("WARNING: Value mismatch for #{option[:name].upcase}")
-              puts("Version file (#{version_file}): #{file_version}")
-              puts("Recommended value: #{option_value}")
-
-              if @options.strict_version_check
-                puts("Updating #{version_file} to #{option_value}.")
-                puts("#{'*' * 80}\n\e[0m")
-                File.write(version_file, "#{option_value}\n")
-              else
-                puts('Using version file.')
-                puts("#{'*' * 80}\n\e[0m")
-              end
-            end
-          end
-
-          @new_workflow.env.delete(option[:name].upcase.to_sym)
-          next
+          reconcile_version_file(option, version_file)
+        else
+          merge_env_option(setup_options, option)
         end
-
-        existing_value = @new_workflow.env[option[:name].upcase.to_sym]
-        option_value = option[:value]
-        value = existing_value || option_value
-
-        next unless value
-
-        if existing_value && option_value && existing_value.to_s != option_value.to_s
-          puts("\e[31m\n#{'*' * 80}")
-          puts("WARNING: Value mismatch for #{option[:name].upcase}")
-          puts("Existing value: #{existing_value}")
-          puts("Recommended value: #{option_value}")
-
-          if @options.strict_version_check && option[:name].upcase.include?('VERSION')
-            puts("Updating #{option[:name].upcase} to #{option_value}.")
-            @new_workflow.env[option[:name].upcase.to_sym] = option_value
-          else
-            puts('Using existing value.')
-          end
-
-          puts("#{'*' * 80}\n\e[0m")
-        end
-
-        @new_workflow.env[option[:name].upcase.to_sym] = value unless @new_workflow.env[option[:name].upcase.to_sym]
-        setup_options[option[:name]] = "${{env.#{option[:name].upcase}}}"
       end
+    end
+
+    # The ci-actions setup reads the version file itself, so the option must not also land in env.
+    def reconcile_version_file(option, version_file)
+      @new_workflow.env.delete(option[:name].upcase.to_sym)
+      recommended = option[:value]
+      return unless recommended
+
+      file_version = File.read(version_file).strip
+      return unless version_file_mismatch?(file_version, recommended.to_s)
+
+      strict = @options.strict_version_check
+      resolution = strict ? "Updating #{version_file} to #{recommended}." : 'Using version file.'
+      warn_value_mismatch(option[:name], "Version file (#{version_file}): #{file_version}", recommended, resolution)
+      File.write(version_file, "#{recommended}\n") if strict
+    end
+
+    def merge_env_option(setup_options, option)
+      env_key = option[:name].upcase.to_sym
+      existing_value = @new_workflow.env[env_key]
+      recommended = option[:value]
+      value = existing_value || recommended
+      return unless value
+
+      if existing_value && recommended && existing_value.to_s != recommended.to_s
+        update = @options.strict_version_check && env_key.to_s.include?('VERSION')
+        resolution = update ? "Updating #{env_key} to #{recommended}." : 'Using existing value.'
+        warn_value_mismatch(option[:name], "Existing value: #{existing_value}", recommended, resolution)
+        value = recommended if update
+      end
+
+      @new_workflow.env[env_key] = value
+      setup_options[option[:name]] = "${{env.#{env_key}}}"
+    end
+
+    def warn_value_mismatch(name, actual, recommended, resolution)
+      puts("\e[31m\n#{'*' * 80}")
+      puts("WARNING: Value mismatch for #{name.upcase}")
+      puts(actual)
+      puts("Recommended value: #{recommended}")
+      puts(resolution)
+      puts("#{'*' * 80}\n\e[0m")
     end
 
     # A version file may intentionally pin fewer segments than the recommended
