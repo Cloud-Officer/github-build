@@ -234,8 +234,7 @@ module GHB
     end
 
     def augment_required_status_checks
-      # Add Vercel check if Next.js project
-      @required_status_checks << 'Vercel' if File.exist?('package.json') && File.read('package.json').include?('"next"')
+      @required_status_checks << 'Vercel' if GHB.vercel?
 
       # Add checks for a hand-maintained .github/workflows/smoke.yml. That
       # workflow is intentionally NOT generated (e.g. ci-actions smoke-tests
