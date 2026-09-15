@@ -1,0 +1,110 @@
+---
+ruby_aws_slack:
+  argv: []
+  files:
+    app.rb: "puts 'hello'\n"
+    Gemfile: "source 'https://rubygems.org'\n"
+    .aws: ""
+    README.md: "# App\n"
+    bin/deploy.sh: "#!/bin/bash\necho deploy\n"
+    .bats: ""
+    test/app.bats: "@test 'app' { true; }\n"
+js_next_vercel:
+  argv:
+    - --skip_slack
+  files:
+    index.js: "console.log('hello');\n"
+    package.json: "{\"dependencies\":{\"next\":\"15.0.0\"}}\n"
+    package-lock.json: "{}\n"
+    .node-version: "18.0.0\n"
+vercel_json_legacy_token:
+  argv:
+    - --skip_slack
+    - --skip_license_check
+  legacy_vercel: true
+  files:
+    vercel.json: "{}\n"
+    index.js: "console.log('hello');\n"
+    package.json: "{\"dependencies\":{\"react\":\"18.0.0\"}}\n"
+    yarn.lock: "\n"
+codedeploy_go_php:
+  argv:
+    - --skip_slack
+    - --application_name
+    - demo-app
+  files:
+    appspec.yml: "version: 0.0\n"
+    main.go: "package main\n"
+    go.mod: "module example.com/demo\n"
+    .go-version: "1.20.0\n"
+    index.php: "<?php echo 'hello';\n"
+    composer.json: "{}\n"
+codedeploy_ruby_checkout:
+  argv:
+    - --skip_slack
+    - --skip_license_check
+    - --application_name
+    - demo-app
+  files:
+    appspec.yml: "version: 0.0\n"
+    app.rb: "puts 'hello'\n"
+    Gemfile: "source 'https://rubygems.org'\n"
+force_codedeploy_python_no_strict:
+  argv:
+    - --skip_slack
+    - --force_codedeploy_setup
+    - --no_strict_version_check
+    - --application_name
+    - demo-app
+  files:
+    appspec.yml: "version: 0.0\n"
+    app.py: "print('hello')\n"
+    requirements.txt: "requests\n"
+    .python-version: "3.8.0\n"
+swift_podfile_licenses:
+  argv:
+    - --skip_slack
+  files:
+    App.swift: "print(\"hello\")\n"
+    Podfile: "platform :ios, '17.0'\n"
+    Podfile.lock: "PODS:\n"
+swift_xcode_cloud:
+  argv:
+    - --skip_slack
+    - --skip_license_check
+  files:
+    App.swift: "print(\"hello\")\n"
+    Package.swift: "// swift-tools-version:5.9\n"
+    ci_scripts/ci_post_clone.sh: "#!/bin/sh\n"
+mono_kotlin_proto_docker:
+  argv:
+    - --skip_slack
+    - --skip_license_check
+    - --skip_semgrep
+    - --ignored_linters
+    - yamllint,markdownlint
+  files:
+    services/api/index.js: "console.log('api');\n"
+    services/api/package-lock.json: "{}\n"
+    services/web/index.php: "<?php echo 'web';\n"
+    services/web/composer.json: "{}\n"
+    tools/check.bats: "@test 'check' { true; }\n"
+    tools/.bats: ""
+    Main.kt: "fun main() {}\n"
+    build.gradle: "plugins {}\n"
+    api.proto: "syntax = \"proto3\";\n"
+    go.mod: "module example.com/proto\n"
+    Dockerfile: "FROM ubuntu:26.04\n"
+    .dockerhub: ""
+submodule_scripts:
+  argv:
+    - --skip_slack
+    - --excluded_folders
+    - tmp
+  files:
+    .gitmodules: "[submodule \"scripts\"]\n\tpath = scripts\n\turl = git@github.com:test-org/scripts.git\n"
+    scripts/linters/.rubocop.yml: "AllCops:\n  NewCops: enable\n"
+    scripts/tool.rb: "puts 'excluded'\n"
+    tmp/ignored.py: "print('excluded')\n"
+    app.rb: "puts 'hello'\n"
+    Gemfile: "source 'https://rubygems.org'\n"

@@ -205,36 +205,34 @@ module GHB
     end
 
     def add_linter_job(short_name, linter)
-      old_workflow = @old_workflow
-
-      @new_workflow.do_job(short_name) do
-        copy_properties(old_workflow.jobs[id])
-        do_name(linter[:long_name])
-        do_runs_on(old_workflow.jobs[short_name]&.runs_on || DEFAULT_UBUNTU_VERSION)
-        do_needs(%w[variables])
-        do_permissions(linter[:permissions] || LinterJobBuilder.default_permissions(linter)) if permissions.empty?
+      @new_workflow.do_job(short_name) do |job|
+        job.copy_properties(@old_workflow.jobs[job.id])
+        job.do_name(linter[:long_name])
+        job.do_runs_on(@old_workflow.jobs[short_name]&.runs_on || DEFAULT_UBUNTU_VERSION)
+        job.do_needs(%w[variables])
+        job.do_permissions(linter[:permissions] || LinterJobBuilder.default_permissions(linter)) if job.permissions.empty?
 
         if linter[:condition]
-          do_if("${{needs.variables.outputs.SKIP_LINTERS != '1' && #{linter[:condition]}}}")
+          job.do_if("${{needs.variables.outputs.SKIP_LINTERS != '1' && #{linter[:condition]}}}")
         else
-          do_if("${{needs.variables.outputs.SKIP_LINTERS != '1'}}")
+          job.do_if("${{needs.variables.outputs.SKIP_LINTERS != '1'}}")
         end
 
-        do_step(linter[:short_name]) do
-          copy_properties(find_step(old_workflow.jobs[short_name]&.steps, name))
-          do_uses("#{linter[:uses]}@#{CI_ACTIONS_VERSION}")
+        job.do_step(linter[:short_name]) do |step|
+          step.copy_properties(step.find_step(@old_workflow.jobs[short_name]&.steps, step.name))
+          step.do_uses("#{linter[:uses]}@#{CI_ACTIONS_VERSION}")
 
           defaults = { linters: '${{needs.variables.outputs.LINTERS}}' }.merge(GHB.secrets(:ssh, :github_token))
           defaults.merge!(linter[:options]) if linter[:options]
-          default_with(defaults)
+          step.default_with(defaults)
 
           # The run token, not the org PAT (SEC-001). Private cross-repo submodules
           # resolve over SSH through secrets.SSH_KEY -- every .gitmodules we generate for
           # uses a git@github.com: URL -- so actions/checkout never needs the PAT here.
           # Assigned rather than defaulted so workflows generated before this change are
           # upgraded in place on regeneration. reviewdog keeps the same run token.
-          with[:'github-token'] = '${{github.token}}'
-          with[:'reviewdog-token'] = '${{github.token}}' if linter[:reviewdog]
+          step.with[:'github-token'] = '${{github.token}}'
+          step.with[:'reviewdog-token'] = '${{github.token}}' if linter[:reviewdog]
         end
       end
     end

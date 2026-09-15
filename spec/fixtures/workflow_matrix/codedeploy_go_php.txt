@@ -1,0 +1,1265 @@
+#### fresh generation
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack --application_name demo-app
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+env:
+  PHP-TOOLS: composer
+  PHP-VERSION: <php-version>
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  golangci:
+    name: Go Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Golangci-lint
+      uses: cloud-officer/ci-actions/linters/golangci@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  phpcs:
+    name: PHP CS Linter
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: PHPCS
+      uses: cloud-officer/ci-actions/linters/phpcs@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  phpstan:
+    name: PHP Stan Linter
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: PHPStan
+      uses: cloud-officer/ci-actions/linters/phpstan@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  semgrep:
+    name: Semgrep Security Scanner
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Semgrep
+      uses: cloud-officer/ci-actions/linters/semgrep@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  trivy:
+    name: Container & IaC Vulnerability Scanner
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Trivy
+      uses: cloud-officer/ci-actions/linters/trivy@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  yamllint:
+    name: YAML Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Yamllint
+      uses: cloud-officer/ci-actions/linters/yamllint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  licenses:
+    name: Licenses Check
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Licenses
+      uses: cloud-officer/ci-actions/soup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        parameters: "--no_prompt"
+  go_unit_tests:
+    name: Go Unit Tests
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+    - name: Go Modules
+      shell: bash
+      run: go mod vendor
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+    - name: Testing
+      shell: bash
+      run: go test
+  php_unit_tests:
+    name: PHP Unit Tests
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        php-version: "${{env.PHP-VERSION}}"
+        php-tools: "${{env.PHP-TOOLS}}"
+    - name: Composer
+      shell: bash
+      run: composer install
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+    - name: PHPUnit
+      shell: bash
+      run: vendor/bin/phpunit
+  codedeploy:
+    name: Code Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - golangci
+    - phpcs
+    - phpstan
+    - semgrep
+    - trivy
+    - yamllint
+    - licenses
+    - go_unit_tests
+    - php_unit_tests
+    if: "${{always() && (needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1') && needs.variables.result != 'failure' && needs.golangci.result != 'failure' && needs.phpcs.result != 'failure' && needs.phpstan.result != 'failure' && needs.semgrep.result != 'failure' && needs.trivy.result != 'failure' && needs.yamllint.result != 'failure' && needs.licenses.result != 'failure' && needs.go_unit_tests.result != 'failure' && needs.php_unit_tests.result != 'failure'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+    - name: Go Modules
+      shell: bash
+      run: go mod vendor
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        php-version: "${{env.PHP-VERSION}}"
+        php-tools: "${{env.PHP-TOOLS}}"
+    - name: Composer
+      shell: bash
+      run: composer install
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+    - name: Update Packages
+      shell: bash
+      if: "${{needs.variables.outputs.UPDATE_PACKAGES == '1'}}"
+      run: touch update-packages
+    - name: Zip
+      shell: bash
+      run: zip --quiet --recurse-paths "${{needs.variables.outputs.BUILD_NAME}}.zip" ./*
+    - name: S3Copy
+      uses: cloud-officer/ci-actions/codedeploy/s3copy@v3
+      with:
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        source: deployment
+        target: s3://${{secrets.CODEDEPLOY_BUCKET}}/${{github.repository}}
+  beta_deploy:
+    name: Beta Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - codedeploy
+    if: "${{always() && needs.codedeploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_BETA == '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Beta Deploy
+      uses: cloud-officer/ci-actions/codedeploy/deploy@v3
+      with:
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        application-name: demo-app
+        deployment-group-name: beta
+        s3-bucket: "${{secrets.CODEDEPLOY_BUCKET}}"
+        s3-key: "${{github.repository}}/${{needs.variables.outputs.BUILD_NAME}}.zip"
+  rc_deploy:
+    name: Rc Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - codedeploy
+    if: "${{always() && needs.codedeploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_RC == '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Rc Deploy
+      uses: cloud-officer/ci-actions/codedeploy/deploy@v3
+      with:
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        application-name: demo-app
+        deployment-group-name: rc
+        s3-bucket: "${{secrets.CODEDEPLOY_BUCKET}}"
+        s3-key: "${{github.repository}}/${{needs.variables.outputs.BUILD_NAME}}.zip"
+  prod_deploy:
+    name: Prod Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - codedeploy
+    if: "${{always() && needs.codedeploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_PROD == '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prod Deploy
+      uses: cloud-officer/ci-actions/codedeploy/deploy@v3
+      with:
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        application-name: demo-app
+        deployment-group-name: prod
+        s3-bucket: "${{secrets.CODEDEPLOY_BUCKET}}"
+        s3-key: "${{github.repository}}/${{needs.variables.outputs.BUILD_NAME}}.zip"
+#### files
+.github/workflows/auto-approve.yml
+.github/workflows/build.yml
+.go-version
+.golangci.yml
+.semgrepignore
+.trivyignore
+.yamllint.yml
+appspec.yml
+composer.json
+go.mod
+index.php
+main.go
+trivy.yaml
+#### regeneration over a customized build.yml
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack --application_name demo-app
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+env:
+  CUSTOM_WORKFLOW_ENV: kept
+  PHP-TOOLS: composer
+  PHP-VERSION: <php-version>
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  actionlint:
+    name: Github Actions Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Actionlint
+      uses: cloud-officer/ci-actions/linters/actionlint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  golangci:
+    name: Go Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Golangci-lint
+      uses: cloud-officer/ci-actions/linters/golangci@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  phpcs:
+    name: PHP CS Linter
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: PHPCS
+      uses: cloud-officer/ci-actions/linters/phpcs@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  phpstan:
+    name: PHP Stan Linter
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: PHPStan
+      uses: cloud-officer/ci-actions/linters/phpstan@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  semgrep:
+    name: Semgrep Security Scanner
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Semgrep
+      uses: cloud-officer/ci-actions/linters/semgrep@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  trivy:
+    name: Container & IaC Vulnerability Scanner
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Trivy
+      uses: cloud-officer/ci-actions/linters/trivy@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  yamllint:
+    name: YAML Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Yamllint
+      uses: cloud-officer/ci-actions/linters/yamllint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  licenses:
+    name: Licenses Check
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Licenses
+      uses: cloud-officer/ci-actions/soup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        parameters: "--no_prompt"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  go_unit_tests:
+    name: Go Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Go Modules
+      shell: bash
+      run: go mod vendor --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Testing
+      shell: bash
+      run: go test --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  php_unit_tests:
+    name: PHP Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        php-version: "${{env.PHP-VERSION}}"
+        php-tools: "${{env.PHP-TOOLS}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Composer
+      shell: bash
+      run: composer install --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: PHPUnit
+      shell: bash
+      run: vendor/bin/phpunit --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  codedeploy:
+    name: Code Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - actionlint
+    - golangci
+    - phpcs
+    - phpstan
+    - semgrep
+    - trivy
+    - yamllint
+    - licenses
+    - go_unit_tests
+    - php_unit_tests
+    if: "${{always() && (needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1') && needs.variables.result != 'failure' && needs.actionlint.result != 'failure' && needs.golangci.result != 'failure' && needs.phpcs.result != 'failure' && needs.phpstan.result != 'failure' && needs.semgrep.result != 'failure' && needs.trivy.result != 'failure' && needs.yamllint.result != 'failure' && needs.licenses.result != 'failure' && needs.go_unit_tests.result != 'failure' && needs.php_unit_tests.result != 'failure'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Go Modules
+      shell: bash
+      run: go mod vendor --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        php-version: "${{env.PHP-VERSION}}"
+        php-tools: "${{env.PHP-TOOLS}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Composer
+      shell: bash
+      run: composer install --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Update Packages
+      shell: bash
+      if: "${{needs.variables.outputs.UPDATE_PACKAGES == '1'}}"
+      run: touch update-packages
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Zip
+      shell: bash
+      run: zip --quiet --recurse-paths "${{needs.variables.outputs.BUILD_NAME}}.zip" ./* --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: S3Copy
+      uses: cloud-officer/ci-actions/codedeploy/s3copy@v3
+      with:
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        source: deployment
+        target: s3://${{secrets.CODEDEPLOY_BUCKET}}/${{github.repository}}
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  beta_deploy:
+    name: Beta Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - codedeploy
+    if: "${{always() && needs.codedeploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_BETA == '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Beta Deploy
+      uses: cloud-officer/ci-actions/codedeploy/deploy@v3
+      with:
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        application-name: demo-app
+        deployment-group-name: beta
+        s3-bucket: "${{secrets.CODEDEPLOY_BUCKET}}"
+        s3-key: "${{github.repository}}/${{needs.variables.outputs.BUILD_NAME}}.zip"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  rc_deploy:
+    name: Rc Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - codedeploy
+    if: "${{always() && needs.codedeploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_RC == '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Rc Deploy
+      uses: cloud-officer/ci-actions/codedeploy/deploy@v3
+      with:
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        application-name: demo-app
+        deployment-group-name: rc
+        s3-bucket: "${{secrets.CODEDEPLOY_BUCKET}}"
+        s3-key: "${{github.repository}}/${{needs.variables.outputs.BUILD_NAME}}.zip"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  prod_deploy:
+    name: Prod Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - codedeploy
+    if: "${{always() && needs.codedeploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_PROD == '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Prod Deploy
+      uses: cloud-officer/ci-actions/codedeploy/deploy@v3
+      with:
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        application-name: demo-app
+        deployment-group-name: prod
+        s3-bucket: "${{secrets.CODEDEPLOY_BUCKET}}"
+        s3-key: "${{github.repository}}/${{needs.variables.outputs.BUILD_NAME}}.zip"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+#### files
+.github/workflows/auto-approve.yml
+.github/workflows/build.yml
+.go-version
+.golangci.yml
+.semgrepignore
+.trivyignore
+.yamllint.yml
+appspec.yml
+composer.json
+go.mod
+index.php
+main.go
+trivy.yaml
+#### idempotent regeneration
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack --application_name demo-app
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+env:
+  CUSTOM_WORKFLOW_ENV: kept
+  PHP-TOOLS: composer
+  PHP-VERSION: <php-version>
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  actionlint:
+    name: Github Actions Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Actionlint
+      uses: cloud-officer/ci-actions/linters/actionlint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  golangci:
+    name: Go Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Golangci-lint
+      uses: cloud-officer/ci-actions/linters/golangci@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  phpcs:
+    name: PHP CS Linter
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: PHPCS
+      uses: cloud-officer/ci-actions/linters/phpcs@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  phpstan:
+    name: PHP Stan Linter
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: PHPStan
+      uses: cloud-officer/ci-actions/linters/phpstan@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  semgrep:
+    name: Semgrep Security Scanner
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Semgrep
+      uses: cloud-officer/ci-actions/linters/semgrep@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  trivy:
+    name: Container & IaC Vulnerability Scanner
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Trivy
+      uses: cloud-officer/ci-actions/linters/trivy@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  yamllint:
+    name: YAML Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Yamllint
+      uses: cloud-officer/ci-actions/linters/yamllint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  licenses:
+    name: Licenses Check
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Licenses
+      uses: cloud-officer/ci-actions/soup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        parameters: "--no_prompt"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  go_unit_tests:
+    name: Go Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Go Modules
+      shell: bash
+      run: go mod vendor --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Testing
+      shell: bash
+      run: go test --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  php_unit_tests:
+    name: PHP Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        php-version: "${{env.PHP-VERSION}}"
+        php-tools: "${{env.PHP-TOOLS}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Composer
+      shell: bash
+      run: composer install --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: PHPUnit
+      shell: bash
+      run: vendor/bin/phpunit --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  codedeploy:
+    name: Code Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - actionlint
+    - golangci
+    - phpcs
+    - phpstan
+    - semgrep
+    - trivy
+    - yamllint
+    - licenses
+    - go_unit_tests
+    - php_unit_tests
+    if: "${{always() && (needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1') && needs.variables.result != 'failure' && needs.actionlint.result != 'failure' && needs.golangci.result != 'failure' && needs.phpcs.result != 'failure' && needs.phpstan.result != 'failure' && needs.semgrep.result != 'failure' && needs.trivy.result != 'failure' && needs.yamllint.result != 'failure' && needs.licenses.result != 'failure' && needs.go_unit_tests.result != 'failure' && needs.php_unit_tests.result != 'failure'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Go Modules
+      shell: bash
+      run: go mod vendor --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        php-version: "${{env.PHP-VERSION}}"
+        php-tools: "${{env.PHP-TOOLS}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Composer
+      shell: bash
+      run: composer install --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Update Packages
+      shell: bash
+      if: "${{needs.variables.outputs.UPDATE_PACKAGES == '1'}}"
+      run: touch update-packages
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Zip
+      shell: bash
+      run: zip --quiet --recurse-paths "${{needs.variables.outputs.BUILD_NAME}}.zip" ./* --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: S3Copy
+      uses: cloud-officer/ci-actions/codedeploy/s3copy@v3
+      with:
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        source: deployment
+        target: s3://${{secrets.CODEDEPLOY_BUCKET}}/${{github.repository}}
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  beta_deploy:
+    name: Beta Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - codedeploy
+    if: "${{always() && needs.codedeploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_BETA == '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Beta Deploy
+      uses: cloud-officer/ci-actions/codedeploy/deploy@v3
+      with:
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        application-name: demo-app
+        deployment-group-name: beta
+        s3-bucket: "${{secrets.CODEDEPLOY_BUCKET}}"
+        s3-key: "${{github.repository}}/${{needs.variables.outputs.BUILD_NAME}}.zip"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  rc_deploy:
+    name: Rc Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - codedeploy
+    if: "${{always() && needs.codedeploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_RC == '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Rc Deploy
+      uses: cloud-officer/ci-actions/codedeploy/deploy@v3
+      with:
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        application-name: demo-app
+        deployment-group-name: rc
+        s3-bucket: "${{secrets.CODEDEPLOY_BUCKET}}"
+        s3-key: "${{github.repository}}/${{needs.variables.outputs.BUILD_NAME}}.zip"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  prod_deploy:
+    name: Prod Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - codedeploy
+    if: "${{always() && needs.codedeploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_PROD == '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Prod Deploy
+      uses: cloud-officer/ci-actions/codedeploy/deploy@v3
+      with:
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        application-name: demo-app
+        deployment-group-name: prod
+        s3-bucket: "${{secrets.CODEDEPLOY_BUCKET}}"
+        s3-key: "${{github.repository}}/${{needs.variables.outputs.BUILD_NAME}}.zip"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+#### files
+.github/workflows/auto-approve.yml
+.github/workflows/build.yml
+.go-version
+.golangci.yml
+.semgrepignore
+.trivyignore
+.yamllint.yml
+appspec.yml
+composer.json
+go.mod
+index.php
+main.go
+trivy.yaml

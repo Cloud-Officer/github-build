@@ -21,20 +21,19 @@ module GHB
         return if @options.skip_license_check
 
         puts('    Adding soup...')
-        old_workflow = @old_workflow
 
-        @new_workflow.do_job(:licenses) do
-          copy_properties(old_workflow.jobs[id])
-          do_name('Licenses Check')
-          do_runs_on(old_workflow.jobs[:licenses]&.runs_on || DEFAULT_UBUNTU_VERSION)
-          do_needs(%w[variables])
-          do_if("${{needs.variables.outputs.SKIP_LICENSES != '1'}}")
+        @new_workflow.do_job(:licenses) do |job|
+          job.copy_properties(@old_workflow.jobs[job.id])
+          job.do_name('Licenses Check')
+          job.do_runs_on(@old_workflow.jobs[:licenses]&.runs_on || DEFAULT_UBUNTU_VERSION)
+          job.do_needs(%w[variables])
+          job.do_if("${{needs.variables.outputs.SKIP_LICENSES != '1'}}")
 
-          do_step('Licenses') do
-            copy_properties(find_step(old_workflow.jobs[:licenses]&.steps, name))
-            do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
+          job.do_step('Licenses') do |step|
+            step.copy_properties(step.find_step(@old_workflow.jobs[:licenses]&.steps, step.name))
+            step.do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
 
-            default_with(GHB.secrets(:ssh, :github_token).merge(parameters: '--no_prompt'))
+            step.default_with(GHB.secrets(:ssh, :github_token).merge(parameters: '--no_prompt'))
           end
         end
       end

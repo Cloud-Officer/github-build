@@ -1,0 +1,1267 @@
+#### fresh generation
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack --skip_license_check --skip_semgrep --ignored_linters yamllint,markdownlint
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+env:
+  ANDROID-SDK-VERSION: <android-sdk-version>
+  GO-VERSION: <go-version>
+  JAVA-DISTRIBUTION: temurin
+  JAVA-VERSION: <java-version>
+  NODE-CACHE: npm
+  NODE-VERSION: <node-version>
+  PHP-TOOLS: composer
+  PHP-VERSION: <php-version>
+  XCODE-VERSION: <xcode-version>
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  eslint:
+    name: JavaScript ES Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: ESLint
+      uses: cloud-officer/ci-actions/linters/eslint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  hadolint:
+    name: Docker Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Hadolint
+      uses: cloud-officer/ci-actions/linters/hadolint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  ktlint:
+    name: Kotlin Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: KTLint
+      uses: cloud-officer/ci-actions/linters/ktlint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  phpcs:
+    name: PHP CS Linter
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: PHPCS
+      uses: cloud-officer/ci-actions/linters/phpcs@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  phpstan:
+    name: PHP Stan Linter
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: PHPStan
+      uses: cloud-officer/ci-actions/linters/phpstan@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  protolint:
+    name: Protocol Buffer Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Protolint
+      uses: cloud-officer/ci-actions/linters/protolint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  trivy:
+    name: Container & IaC Vulnerability Scanner
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Trivy
+      uses: cloud-officer/ci-actions/linters/trivy@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  js_unit_tests:
+    name: JavaScript Unit Tests
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        node-version: "${{env.NODE-VERSION}}"
+        node-cache: "${{env.NODE-CACHE}}"
+        node-cache-dependency-path: services/api/package-lock.json
+    - name: NPM (services/api)
+      shell: bash
+      run: cd services/api && npm install
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+    - name: Jest (services/api)
+      shell: bash
+      run: cd services/api && npx jest
+  kotlin_unit_tests:
+    name: Kotlin Unit Tests
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        java-version: "${{env.JAVA-VERSION}}"
+        java-distribution: "${{env.JAVA-DISTRIBUTION}}"
+        android-sdk-version: "${{env.ANDROID-SDK-VERSION}}"
+    - name: Gradle
+      shell: bash
+      run: gradle build
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+    - name: JUnit
+      shell: bash
+      run: gradle test
+  php_unit_tests:
+    name: PHP Unit Tests
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        php-version: "${{env.PHP-VERSION}}"
+        php-tools: "${{env.PHP-TOOLS}}"
+    - name: Composer (services/web)
+      shell: bash
+      run: cd services/web && composer install
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+    - name: PHPUnit (services/web)
+      shell: bash
+      run: cd services/web && vendor/bin/phpunit
+  proto_unit_tests:
+    name: Protocol Buffer Unit Tests
+    runs-on: macos-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        go-version: "${{env.GO-VERSION}}"
+        xcode-version: "${{env.XCODE-VERSION}}"
+    - name: Go Modules
+      shell: bash
+      run: go mod vendor
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+    - name: Protoc
+      shell: bash
+      run: protoc
+  shell_script_unit_tests:
+    name: Shell Script Unit Tests
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+    - name: Bats Install
+      shell: bash
+      run: |-
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew install bats-core
+        else
+          sudo apt-get update && sudo apt-get install -y bats
+        fi
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+    - name: Bats (tools)
+      shell: bash
+      run: cd tools && bats tests/
+  docker_build_amd64:
+    name: Docker Build (amd64)
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Docker Build
+      uses: cloud-officer/ci-actions/docker@v3
+      with:
+        push: 'false'
+        platforms: linux/amd64
+  docker_build_arm64:
+    name: Docker Build (arm64)
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04-arm
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Docker Build
+      uses: cloud-officer/ci-actions/docker@v3
+      with:
+        push: 'false'
+        platforms: linux/arm64
+#### files
+.dockerhub
+.editorconfig
+.eslintrc.json
+.github/workflows/auto-approve.yml
+.github/workflows/build.yml
+.github/workflows/docker.yml
+.hadolint.yaml
+.protolint.yaml
+.trivyignore
+Dockerfile
+Main.kt
+api.proto
+build.gradle
+go.mod
+services/api/index.js
+services/api/package-lock.json
+services/web/composer.json
+services/web/index.php
+tools/.bats
+tools/check.bats
+trivy.yaml
+#### regeneration over a customized build.yml
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack --skip_license_check --skip_semgrep --ignored_linters yamllint,markdownlint
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+env:
+  ANDROID-SDK-VERSION: <android-sdk-version>
+  CUSTOM_WORKFLOW_ENV: kept
+  GO-VERSION: <go-version>
+  JAVA-DISTRIBUTION: temurin
+  JAVA-VERSION: <java-version>
+  NODE-CACHE: npm
+  NODE-VERSION: <node-version>
+  PHP-TOOLS: composer
+  PHP-VERSION: <php-version>
+  XCODE-VERSION: <xcode-version>
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  actionlint:
+    name: Github Actions Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Actionlint
+      uses: cloud-officer/ci-actions/linters/actionlint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  eslint:
+    name: JavaScript ES Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: ESLint
+      uses: cloud-officer/ci-actions/linters/eslint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  hadolint:
+    name: Docker Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Hadolint
+      uses: cloud-officer/ci-actions/linters/hadolint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  ktlint:
+    name: Kotlin Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: KTLint
+      uses: cloud-officer/ci-actions/linters/ktlint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  phpcs:
+    name: PHP CS Linter
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: PHPCS
+      uses: cloud-officer/ci-actions/linters/phpcs@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  phpstan:
+    name: PHP Stan Linter
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: PHPStan
+      uses: cloud-officer/ci-actions/linters/phpstan@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  protolint:
+    name: Protocol Buffer Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Protolint
+      uses: cloud-officer/ci-actions/linters/protolint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  trivy:
+    name: Container & IaC Vulnerability Scanner
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Trivy
+      uses: cloud-officer/ci-actions/linters/trivy@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  js_unit_tests:
+    name: JavaScript Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        node-version: "${{env.NODE-VERSION}}"
+        node-cache: "${{env.NODE-CACHE}}"
+        node-cache-dependency-path: services/api/package-lock.json
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: NPM (services/api)
+      shell: bash
+      run: cd services/api && npm install --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Jest (services/api)
+      shell: bash
+      run: cd services/api && npx jest --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  kotlin_unit_tests:
+    name: Kotlin Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        java-version: "${{env.JAVA-VERSION}}"
+        java-distribution: "${{env.JAVA-DISTRIBUTION}}"
+        android-sdk-version: "${{env.ANDROID-SDK-VERSION}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Gradle
+      shell: bash
+      run: gradle build --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: JUnit
+      shell: bash
+      run: gradle test --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  php_unit_tests:
+    name: PHP Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        php-version: "${{env.PHP-VERSION}}"
+        php-tools: "${{env.PHP-TOOLS}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Composer (services/web)
+      shell: bash
+      run: cd services/web && composer install --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: PHPUnit (services/web)
+      shell: bash
+      run: cd services/web && vendor/bin/phpunit --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  proto_unit_tests:
+    name: Protocol Buffer Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        go-version: "${{env.GO-VERSION}}"
+        xcode-version: "${{env.XCODE-VERSION}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Go Modules
+      shell: bash
+      run: go mod vendor --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Protoc
+      shell: bash
+      run: protoc --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  shell_script_unit_tests:
+    name: Shell Script Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Bats Install
+      shell: bash
+      run: |-
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew install bats-core
+        else
+          sudo apt-get update && sudo apt-get install -y bats
+        fi --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Bats (tools)
+      shell: bash
+      run: cd tools && bats tests/ --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  docker_build_amd64:
+    name: Docker Build (amd64)
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Docker Build
+      uses: cloud-officer/ci-actions/docker@v3
+      with:
+        push: 'false'
+        platforms: linux/amd64
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  docker_build_arm64:
+    name: Docker Build (arm64)
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Docker Build
+      uses: cloud-officer/ci-actions/docker@v3
+      with:
+        push: 'false'
+        platforms: linux/arm64
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+#### files
+.dockerhub
+.editorconfig
+.eslintrc.json
+.github/workflows/auto-approve.yml
+.github/workflows/build.yml
+.github/workflows/docker.yml
+.hadolint.yaml
+.protolint.yaml
+.trivyignore
+Dockerfile
+Main.kt
+api.proto
+build.gradle
+go.mod
+services/api/index.js
+services/api/package-lock.json
+services/web/composer.json
+services/web/index.php
+tools/.bats
+tools/check.bats
+trivy.yaml
+#### idempotent regeneration
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack --skip_license_check --skip_semgrep --ignored_linters yamllint,markdownlint
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+env:
+  ANDROID-SDK-VERSION: <android-sdk-version>
+  CUSTOM_WORKFLOW_ENV: kept
+  GO-VERSION: <go-version>
+  JAVA-DISTRIBUTION: temurin
+  JAVA-VERSION: <java-version>
+  NODE-CACHE: npm
+  NODE-VERSION: <node-version>
+  PHP-TOOLS: composer
+  PHP-VERSION: <php-version>
+  XCODE-VERSION: <xcode-version>
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  actionlint:
+    name: Github Actions Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Actionlint
+      uses: cloud-officer/ci-actions/linters/actionlint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  eslint:
+    name: JavaScript ES Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: ESLint
+      uses: cloud-officer/ci-actions/linters/eslint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  hadolint:
+    name: Docker Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Hadolint
+      uses: cloud-officer/ci-actions/linters/hadolint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  ktlint:
+    name: Kotlin Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: KTLint
+      uses: cloud-officer/ci-actions/linters/ktlint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  phpcs:
+    name: PHP CS Linter
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: PHPCS
+      uses: cloud-officer/ci-actions/linters/phpcs@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  phpstan:
+    name: PHP Stan Linter
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: PHPStan
+      uses: cloud-officer/ci-actions/linters/phpstan@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  protolint:
+    name: Protocol Buffer Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Protolint
+      uses: cloud-officer/ci-actions/linters/protolint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  trivy:
+    name: Container & IaC Vulnerability Scanner
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Trivy
+      uses: cloud-officer/ci-actions/linters/trivy@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  js_unit_tests:
+    name: JavaScript Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        node-version: "${{env.NODE-VERSION}}"
+        node-cache: "${{env.NODE-CACHE}}"
+        node-cache-dependency-path: services/api/package-lock.json
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: NPM (services/api)
+      shell: bash
+      run: cd services/api && npm install --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Jest (services/api)
+      shell: bash
+      run: cd services/api && npx jest --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  kotlin_unit_tests:
+    name: Kotlin Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        java-version: "${{env.JAVA-VERSION}}"
+        java-distribution: "${{env.JAVA-DISTRIBUTION}}"
+        android-sdk-version: "${{env.ANDROID-SDK-VERSION}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Gradle
+      shell: bash
+      run: gradle build --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: JUnit
+      shell: bash
+      run: gradle test --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  php_unit_tests:
+    name: PHP Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        php-version: "${{env.PHP-VERSION}}"
+        php-tools: "${{env.PHP-TOOLS}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Composer (services/web)
+      shell: bash
+      run: cd services/web && composer install --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: PHPUnit (services/web)
+      shell: bash
+      run: cd services/web && vendor/bin/phpunit --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  proto_unit_tests:
+    name: Protocol Buffer Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        go-version: "${{env.GO-VERSION}}"
+        xcode-version: "${{env.XCODE-VERSION}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Go Modules
+      shell: bash
+      run: go mod vendor --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Protoc
+      shell: bash
+      run: protoc --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  shell_script_unit_tests:
+    name: Shell Script Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Bats Install
+      shell: bash
+      run: |-
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew install bats-core
+        else
+          sudo apt-get update && sudo apt-get install -y bats
+        fi --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Bats (tools)
+      shell: bash
+      run: cd tools && bats tests/ --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  docker_build_amd64:
+    name: Docker Build (amd64)
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Docker Build
+      uses: cloud-officer/ci-actions/docker@v3
+      with:
+        push: 'false'
+        platforms: linux/amd64
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  docker_build_arm64:
+    name: Docker Build (arm64)
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Docker Build
+      uses: cloud-officer/ci-actions/docker@v3
+      with:
+        push: 'false'
+        platforms: linux/arm64
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+#### files
+.dockerhub
+.editorconfig
+.eslintrc.json
+.github/workflows/auto-approve.yml
+.github/workflows/build.yml
+.github/workflows/docker.yml
+.hadolint.yaml
+.protolint.yaml
+.trivyignore
+Dockerfile
+Main.kt
+api.proto
+build.gradle
+go.mod
+services/api/index.js
+services/api/package-lock.json
+services/web/composer.json
+services/web/index.php
+tools/.bats
+tools/check.bats
+trivy.yaml

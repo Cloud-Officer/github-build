@@ -246,28 +246,24 @@ module GHB
 
     def add_language_job(language, setup_options, version_file, mono_dependency_locations, cache_options = {})
       additional_checks = additional_unit_test_checks(language)
-      skip_license_check = @options.skip_license_check
       needs_codedeploy_setup = needs_codedeploy_setup?(language)
-      old_workflow = @old_workflow
-      unit_tests_conditions = @unit_tests_conditions
       # Swift with Xcode Cloud (ci_scripts): build the job to collect dependency info, then delete it below.
       skip_unit_test_job = xcode_cloud_unit_tests?(language)
-      builder = self
 
-      @new_workflow.do_job(:"#{language[:short_name]}_unit_tests") do
-        copy_properties(old_workflow.jobs[id])
-        do_name("#{language[:long_name]} Unit Tests")
-        do_runs_on(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.runs_on || GHB.runner_image(language[:'runs-on']))
-        do_needs(%w[variables])
-        do_if("${{#{unit_tests_conditions}#{additional_checks}}}")
+      @new_workflow.do_job(:"#{language[:short_name]}_unit_tests") do |job|
+        job.copy_properties(@old_workflow.jobs[job.id])
+        job.do_name("#{language[:long_name]} Unit Tests")
+        job.do_runs_on(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.runs_on || GHB.runner_image(language[:'runs-on']))
+        job.do_needs(%w[variables])
+        job.do_if("${{#{@unit_tests_conditions}#{additional_checks}}}")
 
-        builder.__send__(:build_setup_step, self, language, version_file, setup_options, needs_codedeploy_setup, cache_options)
-        dependency_detected = builder.__send__(:build_dependency_steps, self, language, needs_codedeploy_setup)
-        builder.__send__(:build_mono_dependency_steps, self, language, mono_dependency_locations)
+        build_setup_step(job, language, version_file, setup_options, needs_codedeploy_setup, cache_options)
+        dependency_detected = build_dependency_steps(job, language, needs_codedeploy_setup)
+        build_mono_dependency_steps(job, language, mono_dependency_locations)
 
         next unless dependency_detected || mono_dependency_locations.any?
 
-        builder.__send__(:build_licenses_step, self, language) if File.exist?('Podfile.lock') && skip_license_check == false
+        build_licenses_step(job, language) if File.exist?('Podfile.lock') && @options.skip_license_check == false
       end
 
       # Remove the unit test job from the workflow when Xcode Cloud handles tests.
@@ -278,35 +274,31 @@ module GHB
     end
 
     def build_setup_step(job, language, version_file, setup_options, needs_codedeploy_setup, cache_options = {})
-      old_workflow = @old_workflow
-      code_deploy_pre_steps = @code_deploy_pre_steps
       version_option_key = version_file && version_option_name(version_file).to_sym
 
-      job.do_step('Setup') do
-        copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
-        do_uses("cloud-officer/ci-actions/setup@#{CI_ACTIONS_VERSION}")
+      job.do_step('Setup') do |step|
+        step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
+        step.do_uses("cloud-officer/ci-actions/setup@#{CI_ACTIONS_VERSION}")
 
         # Remove version parameter from with if version file exists (version file takes precedence)
-        with.delete(version_option_key) if version_option_key
+        step.with.delete(version_option_key) if version_option_key
 
-        default_with(GHB.secrets(:ssh, :github_token).merge(setup_options))
+        step.default_with(GHB.secrets(:ssh, :github_token).merge(setup_options))
 
-        with[:'github-token'] = '${{github.token}}'
+        step.with[:'github-token'] = '${{github.token}}'
 
         # Applied outside the `with.empty?` branch above on purpose. A workflow generated
         # before the cache was wired already carries a populated `with`, so merging only on
         # the empty path would leave the cache dead in every existing repo -- exactly the
         # NODE-CACHE-is-declared-but-never-passed state issue #263 reported. An operator's
         # own value still wins: only keys absent from `with` are filled in.
-        cache_options.each { |key, value| with[key.to_sym] = value unless with.key?(key.to_sym) }
+        cache_options.each { |key, value| step.with[key.to_sym] = value unless step.with.key?(key.to_sym) }
 
-        code_deploy_pre_steps << deep_dup if needs_codedeploy_setup
+        @code_deploy_pre_steps << step.deep_dup if needs_codedeploy_setup
       end
     end
 
     def build_dependency_steps(job, language, needs_codedeploy_setup)
-      old_workflow = @old_workflow
-      code_deploy_pre_steps = @code_deploy_pre_steps
       dependency_detected = false
 
       language[:dependencies].each do |dependency|
@@ -315,21 +307,21 @@ module GHB
         dependency_detected = true
         @installed_once << dependency[:package_manager_name] if dependency[:package_manager_once]
 
-        job.do_step(dependency[:package_manager_name]) do
-          copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
-          do_shell('bash')
-          do_run(dependency[:package_manager_default]) if run.nil?
-          env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
-          code_deploy_pre_steps << deep_dup if needs_codedeploy_setup
+        job.do_step(dependency[:package_manager_name]) do |step|
+          step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
+          step.do_shell('bash')
+          step.do_run(dependency[:package_manager_default]) if step.run.nil?
+          step.env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
+          @code_deploy_pre_steps << step.deep_dup if needs_codedeploy_setup
         end
       end
 
       if dependency_detected
-        job.do_step(language[:unit_test_framework_name]) do
-          copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
-          do_shell('bash')
-          do_run(language[:unit_test_framework_default]) if run.nil?
-          LanguageJobBuilder.drop_injected_pat(env)
+        job.do_step(language[:unit_test_framework_name]) do |step|
+          step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
+          step.do_shell('bash')
+          step.do_run(language[:unit_test_framework_default]) if step.run.nil?
+          LanguageJobBuilder.drop_injected_pat(step.env)
         end
       end
 
@@ -337,8 +329,6 @@ module GHB
     end
 
     def build_mono_dependency_steps(job, language, mono_dependency_locations)
-      old_workflow = @old_workflow
-
       mono_dependency_locations.each do |loc|
         dep = loc[:dependency]
         subdir = loc[:subdir]
@@ -355,39 +345,37 @@ module GHB
           unless @installed_once.include?(dep[:package_manager_name])
             @installed_once << dep[:package_manager_name]
 
-            job.do_step(dep[:package_manager_name]) do
-              copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
-              do_shell('bash')
-              do_run(dep[:package_manager_default]) if run.nil?
-              env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
+            job.do_step(dep[:package_manager_name]) do |step|
+              step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
+              step.do_shell('bash')
+              step.do_run(dep[:package_manager_default]) if step.run.nil?
+              step.env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
             end
           end
         else
-          job.do_step("#{dep[:package_manager_name]} (#{subdir})") do
-            copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
-            do_shell('bash')
-            do_run("cd #{subdir} && #{dep[:package_manager_default]}") if run.nil?
-            env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
+          job.do_step("#{dep[:package_manager_name]} (#{subdir})") do |step|
+            step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
+            step.do_shell('bash')
+            step.do_run("cd #{subdir} && #{dep[:package_manager_default]}") if step.run.nil?
+            step.env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
           end
         end
 
-        job.do_step("#{language[:unit_test_framework_name]} (#{subdir})") do
-          copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
-          do_shell('bash')
-          do_run("cd #{subdir} && #{language[:unit_test_framework_default]}") if run.nil?
-          LanguageJobBuilder.drop_injected_pat(env)
+        job.do_step("#{language[:unit_test_framework_name]} (#{subdir})") do |step|
+          step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
+          step.do_shell('bash')
+          step.do_run("cd #{subdir} && #{language[:unit_test_framework_default]}") if step.run.nil?
+          LanguageJobBuilder.drop_injected_pat(step.env)
         end
       end
     end
 
     def build_licenses_step(job, language)
-      old_workflow = @old_workflow
+      job.do_step('Licenses') do |step|
+        step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
+        step.do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
 
-      job.do_step('Licenses') do
-        copy_properties(find_step(old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, name))
-        do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
-
-        default_with(GHB.secrets(:ssh, :github_token).merge(parameters: '--no_prompt'))
+        step.default_with(GHB.secrets(:ssh, :github_token).merge(parameters: '--no_prompt'))
       end
     end
 

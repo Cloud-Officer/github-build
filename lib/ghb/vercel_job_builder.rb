@@ -79,18 +79,17 @@ module GHB
       target = config[:target]
       if_statement = build_if_statement(environment, needs)
       old_job = @old_workflow.jobs[job_id]
-      builder = self
 
-      @new_workflow.do_job(job_id) do
-        copy_properties(old_job)
-        do_name(job_name)
-        do_runs_on(DEFAULT_UBUNTU_VERSION)
-        do_needs(needs)
-        do_if(if_statement)
-        do_timeout_minutes(DEPLOY_JOB_TIMEOUT_MINUTES) if timeout_minutes.nil?
+      @new_workflow.do_job(job_id) do |job|
+        job.copy_properties(old_job)
+        job.do_name(job_name)
+        job.do_runs_on(DEFAULT_UBUNTU_VERSION)
+        job.do_needs(needs)
+        job.do_if(if_statement)
+        job.do_timeout_minutes(DEPLOY_JOB_TIMEOUT_MINUTES) if job.timeout_minutes.nil?
 
-        if env.empty?
-          do_env(
+        if job.env.empty?
+          job.do_env(
             {
               VERCEL_ORG_ID: '${{secrets.VERCEL_ORG_ID}}',
               VERCEL_PROJECT_ID: '${{secrets.VERCEL_PROJECT_ID}}'
@@ -98,13 +97,13 @@ module GHB
           )
         end
 
-        do_env(env.merge(VERCEL_TOKEN: VERCEL_TOKEN_ENV)) unless env.key?(:VERCEL_TOKEN)
+        job.do_env(job.env.merge(VERCEL_TOKEN: VERCEL_TOKEN_ENV)) unless job.env.key?(:VERCEL_TOKEN)
 
-        builder.__send__(:build_setup_step, self, old_job)
-        builder.__send__(:build_install_step, self, old_job)
-        builder.__send__(:build_pull_step, self, old_job, target)
-        builder.__send__(:build_deploy_step, self, old_job, target)
-        builder.__send__(:append_custom_steps, self, old_job)
+        build_setup_step(job, old_job)
+        build_install_step(job, old_job)
+        build_pull_step(job, old_job, target)
+        build_deploy_step(job, old_job, target)
+        append_custom_steps(job, old_job)
       end
     end
 
