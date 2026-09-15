@@ -36,9 +36,9 @@ export latest_go
 yq e --indent=2 '(.go.setup_options[] | select(.name == "go-version").value) = env(latest_go)' -i "${LANGUAGE_FILE}"
 yq e --indent=2 '(.proto.setup_options[] | select(.name == "go-version").value) = env(latest_go)' -i "${LANGUAGE_FILE}"
 
-# Node.js
+# Node.js (track the latest LTS release, not the newest Current release)
 
-latest=$(curl -fsS "https://nodejs.org/dist/index.json" | jq -r '.[0].version' || true)
+latest=$(curl -fsS "https://nodejs.org/dist/index.json" | jq -r '[.[] | select(.lts)][0].version' || true)
 latest_node=${latest#v}
 require_version "Node.js" "${latest_node}"
 export latest_node
