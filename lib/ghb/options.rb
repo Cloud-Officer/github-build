@@ -123,7 +123,7 @@ module GHB
         @build_file = file
       end
 
-      @parser.on('', '--excluded_folders excluded_folders', 'Comma separated list of folders to ignore') do |excluded_folders|
+      @parser.on('', '--excluded_folders excluded_folders', 'Comma separated list of folder paths to ignore') do |excluded_folders|
         @excluded_folders = excluded_folders.split(',').reject(&:empty?)
       end
 
