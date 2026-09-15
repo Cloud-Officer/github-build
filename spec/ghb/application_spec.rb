@@ -170,11 +170,50 @@ RSpec.describe(GHB::Application) do
         .to(raise_error(GHB::ConfigError, %r{Invalid YAML in external actions file \(config/actions\.yaml\)}))
     end
 
+    it 'raises ConfigError when get_ignored_folders is set and the languages config is missing' do # rubocop:disable RSpec/ExampleLength
+      ignored_options = instance_double(
+        GHB::Options,
+        get_ignored_folders: true,
+        linters_config_file: 'config/linters.yaml',
+        languages_config_file: 'config/nonexistent-languages.yaml',
+        options_config_files: GHB::SERVICES.to_h { |name| [name, "config/options/#{name}.yaml"] },
+        gitignore_config_file: 'config/gitignore.yaml'
+      )
+      app = config_test_class.new(ignored_options)
+
+      expect { app.execute }
+        .to(raise_error(GHB::ConfigError, 'Missing required languages config file: config/nonexistent-languages.yaml'))
+    end
+
+    it 'raises ConfigError when get_ignored_folders is set and the languages config is malformed' do # rubocop:disable RSpec/ExampleLength
+      ignored_options = instance_double(
+        GHB::Options,
+        get_ignored_folders: true,
+        linters_config_file: 'config/linters.yaml',
+        languages_config_file: 'config/languages.yaml',
+        options_config_files: GHB::SERVICES.to_h { |name| [name, "config/options/#{name}.yaml"] },
+        gitignore_config_file: 'config/gitignore.yaml'
+      )
+      app = config_test_class.new(ignored_options)
+
+      allow(app).to(
+        receive(:cached_file_read).and_wrap_original do |original, path|
+          path.end_with?('languages.yaml') ? 'invalid: yaml: syntax: [' : original.call(path)
+        end
+      )
+
+      expect { app.execute }
+        .to(raise_error(GHB::ConfigError, %r{Invalid YAML in languages config file \(config/languages\.yaml\)}))
+    end
+
     it 'outputs ignored folders as JSON when get_ignored_folders is set' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       ignored_options = instance_double(
         GHB::Options,
         get_ignored_folders: true,
-        languages_config_file: 'config/languages.yaml'
+        linters_config_file: 'config/linters.yaml',
+        languages_config_file: 'config/languages.yaml',
+        options_config_files: GHB::SERVICES.to_h { |name| [name, "config/options/#{name}.yaml"] },
+        gitignore_config_file: 'config/gitignore.yaml'
       )
       app = config_test_class.new(ignored_options)
 
