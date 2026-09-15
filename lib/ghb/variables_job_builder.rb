@@ -35,12 +35,7 @@ module GHB
         do_step('Prepare variables') do
           do_id('variables')
           do_uses("cloud-officer/ci-actions/variables@#{CI_ACTIONS_VERSION}")
-          do_with(
-            {
-              'ssh-key': '${{secrets.SSH_KEY}}',
-              'github-token': '${{github.token}}'
-            }
-          )
+          do_with(GHB.secrets(:ssh, :github_token))
         end
       end
     end
