@@ -53,7 +53,7 @@ module GHB
 
     def build
       return if File.exist?('appspec.yml') # CodeDeploy owns the *_deploy jobs
-      return unless vercel?
+      return unless GHB.vercel?
 
       puts('    Adding Vercel deploys...')
 
@@ -67,15 +67,6 @@ module GHB
     end
 
     private
-
-    # A repo deploys to Vercel when a vercel.json marker exists, or package.json
-    # declares a "vercel" or "next" dependency. Mirrors the Next.js detection
-    # RepositoryConfigurator uses to require the "Vercel" status check.
-    def vercel?
-      return true if File.exist?('vercel.json')
-
-      File.exist?('package.json') && File.read('package.json').match?(/"(?:vercel|next)"/)
-    end
 
     def build_deploy_job(environment, config, needs)
       job_id = :"#{environment}_deploy"

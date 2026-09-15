@@ -74,6 +74,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
     allow(ENV).to(receive(:fetch).with('GITHUB_TOKEN', nil).and_return(github_token))
     allow(Dir).to(receive(:pwd).and_return("/home/user/#{repository}"))
     allow(GHB::GitHubAPIClient).to(receive(:new).with(github_token).and_return(github_client))
+    allow(File).to(receive(:exist?).with('vercel.json').and_return(false))
     allow(File).to(receive(:exist?).with('package.json').and_return(false))
     allow(File).to(receive(:exist?).with('.github/workflows/smoke.yml').and_return(false))
     allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(false))
@@ -858,6 +859,13 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
             )
           )
         )
+      end
+
+      it 'adds Vercel to the expected checks when vercel.json exists' do
+        allow(File).to(receive(:exist?).with('vercel.json').and_return(true))
+        configurator.configure
+
+        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: hash_including(required_status_checks: hash_including(checks: include({ context: 'Vercel', app_id: nil })))))
       end
     end
 

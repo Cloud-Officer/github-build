@@ -88,6 +88,36 @@ RSpec.describe(GHB) do
     end
   end
 
+  describe '.vercel?' do
+    before do
+      allow(File).to(receive(:exist?).and_return(false))
+    end
+
+    it 'is false when neither vercel.json nor package.json exists' do
+      expect(described_class.vercel?).to(be(false))
+    end
+
+    it 'is true when vercel.json exists' do
+      allow(File).to(receive(:exist?).with('vercel.json').and_return(true))
+
+      expect(described_class.vercel?).to(be(true))
+    end
+
+    [
+      ['{ "dependencies": { "next": "^16" } }', true],
+      ['{ "devDependencies": { "vercel": "^39" } }', true],
+      ['{ "dependencies": { "next-auth": "^5" } }', false],
+      ['{ "dependencies": { "react": "^18" } }', false]
+    ].each do |package_json, expected|
+      it "is #{expected} for package.json #{package_json}" do
+        allow(File).to(receive(:exist?).with('package.json').and_return(true))
+        allow(File).to(receive(:read).with('package.json').and_return(package_json))
+
+        expect(described_class.vercel?).to(be(expected))
+      end
+    end
+  end
+
   describe '.validate_external_actions!' do
     it 'accepts a non-empty map of action name to version string' do
       expect { described_class.validate_external_actions!({ 'actions/checkout': 'v7' }.transform_keys(&:to_s)) }
