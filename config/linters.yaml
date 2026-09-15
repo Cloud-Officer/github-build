@@ -15,7 +15,8 @@
 #                                         runs. Common value: "github.event_name == 'pull_request'"
 #                                         If omitted, the linter runs on all event types
 #   uses             (string, required) - GitHub Actions action reference (without version suffix).
-#                                         Version @v2 is appended automatically
+#                                         The cloud-officer/ci-actions version
+#                                         (GHB::CI_ACTIONS_VERSION) is appended automatically
 #   config           (string|list, optional) - Linter config file name (e.g., ".eslintrc.json"),
 #                                         or a list of file names when a linter ships several
 #                                         (e.g., Trivy: ["trivy.yaml", ".trivyignore"]). Each entry
