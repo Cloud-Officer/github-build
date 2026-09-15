@@ -157,6 +157,18 @@ RSpec.describe(GHB::LinterJobBuilder) do
 
         expect(submodules).to(eq(['shared-lib']))
       end
+
+      it 'ignores absolute and traversing submodule paths' do
+        build_with_gitmodules("\tpath = ../../outside/scripts\n\tpath = /etc/scripts\n\tpath = lib/../../scripts\n\tpath = shared-lib\n")
+
+        expect(submodules).to(eq(['shared-lib']))
+      end
+
+      it 'keeps an equals sign inside a submodule path' do
+        build_with_gitmodules("\tpath = scripts=v2\n")
+
+        expect(submodules).to(eq(['scripts=v2']))
+      end
     end
 
     context 'when a linter has a condition' do
@@ -686,6 +698,29 @@ RSpec.describe(GHB::LinterJobBuilder) do
           expect(result).to(include('- "**/node_modules"')) # still tracks the shared block
           expect(result).not_to(include('- "**/stale-entry"'))
         end
+      end
+
+      def in_repo_beside_outside_scripts(gitmodules_path = nil)
+        Dir.mktmpdir do |dir|
+          repo = File.join(dir, 'repo')
+          FileUtils.mkdir_p([repo, File.join(dir, 'outside/scripts/linters')])
+          File.write(File.join(dir, 'outside/scripts/linters/trivy.yaml'), "attacker\n")
+          File.write(File.join(repo, '.gitmodules'), "  path = #{gitmodules_path}\n") if gitmodules_path
+          Dir.chdir(repo) { yield(repo) } # rubocop:disable ThreadSafety/DirChdir
+        end
+      end
+
+      it 'does not symlink a config from a scripts submodule outside the repository' do
+        allow(File).to(receive(:delete).and_call_original)
+        in_repo_beside_outside_scripts('../outside/scripts') { build_trivy_only.build }
+
+        expect(FileUtils).not_to(have_received(:ln_s).with('../outside/scripts/linters/trivy.yaml', 'trivy.yaml', force: true))
+      end
+
+      it 'refuses a symlink target that resolves outside the repository' do
+        in_repo_beside_outside_scripts { build_trivy_only.__send__(:copy_single_config, {}, 'trivy.yaml', '../outside/scripts') }
+
+        expect(FileUtils).not_to(have_received(:ln_s).with('../outside/scripts/linters/trivy.yaml', 'trivy.yaml', force: true))
       end
     end
   end
