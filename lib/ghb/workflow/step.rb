@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'active_support/core_ext/object/deep_dup'
+
 require_relative 'copyable_properties'
 
 module GHB
@@ -26,6 +28,12 @@ module GHB
     end
 
     attr_accessor :id, :if, :name, :uses, :run, :shell, :with, :env, :continue_on_error, :timeout_minutes
+
+    def initialize_copy(source)
+      super
+      @with = source.with.deep_dup
+      @env = source.env.deep_dup
+    end
 
     def do_id(id)
       @id = id unless id.nil?

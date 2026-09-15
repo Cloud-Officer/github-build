@@ -28,7 +28,6 @@ GEM
     date (3.5.1)
     diff-lcs (1.6.2)
     drb (2.2.3)
-    duplicate (1.1.1)
     hashdiff (1.2.1)
     httparty (0.24.2)
       csv
@@ -132,7 +131,6 @@ PLATFORMS
 
 DEPENDENCIES
   activesupport (>= 7.0.0)
-  duplicate (>= 1.1.1)
   httparty (>= 0.21.0)
   optparse (>= 0.3.1)
   psych (>= 5.1.0)

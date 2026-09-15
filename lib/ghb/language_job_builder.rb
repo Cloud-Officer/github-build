@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'active_support/core_ext/hash/keys'
+require 'active_support/core_ext/object/deep_dup'
 require 'psych'
 
 require_relative '../ghb'
@@ -299,7 +300,7 @@ module GHB
         # own value still wins: only keys absent from `with` are filled in.
         cache_options.each { |key, value| with[key.to_sym] = value unless with.key?(key.to_sym) }
 
-        code_deploy_pre_steps << duplicate(self) if needs_codedeploy_setup
+        code_deploy_pre_steps << deep_dup if needs_codedeploy_setup
       end
     end
 
@@ -319,7 +320,7 @@ module GHB
           do_shell('bash')
           do_run(dependency[:package_manager_default]) if run.nil?
           env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
-          code_deploy_pre_steps << duplicate(self) if needs_codedeploy_setup
+          code_deploy_pre_steps << deep_dup if needs_codedeploy_setup
         end
       end
 
