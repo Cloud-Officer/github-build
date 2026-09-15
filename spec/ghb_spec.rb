@@ -64,6 +64,48 @@ RSpec.describe(GHB) do
       expect { described_class.external_action('nonexistent/action') }
         .to(raise_error(GHB::ConfigError, %r{not found in config/actions\.yaml}))
     end
+
+    it 'raises ConfigError when the manifest is missing' do
+      allow(File).to(receive(:exist?).and_call_original)
+      allow(File).to(receive(:exist?).with(%r{config/actions\.yaml\z}).and_return(false))
+
+      expect { described_class.external_action('actions/checkout') }
+        .to(raise_error(GHB::ConfigError, 'Missing required external actions file: config/actions.yaml'))
+    end
+
+    it 'raises ConfigError when the manifest is empty or comment-only' do
+      allow(Psych).to(receive(:safe_load_file).and_return(nil))
+
+      expect { described_class.external_action('actions/checkout') }
+        .to(raise_error(GHB::ConfigError, %r{config/actions\.yaml must be a non-empty map}))
+    end
+
+    it 'raises ConfigError when the manifest is not valid YAML' do
+      allow(Psych).to(receive(:safe_load_file).and_raise(Psych::SyntaxError.new('config/actions.yaml', 1, 1, 0, 'bad', 'context')))
+
+      expect { described_class.external_action('actions/checkout') }
+        .to(raise_error(GHB::ConfigError, %r{Invalid YAML in external actions file \(config/actions\.yaml\)}))
+    end
+  end
+
+  describe '.validate_external_actions!' do
+    it 'accepts a non-empty map of action name to version string' do
+      expect { described_class.validate_external_actions!({ 'actions/checkout': 'v7' }.transform_keys(&:to_s)) }
+        .not_to(raise_error)
+    end
+
+    [
+      ['nil', nil],
+      ['an empty map', {}],
+      ['a list', ['actions/checkout']],
+      ['a map with a non-string version', { 'actions/checkout': 7 }.transform_keys(&:to_s)],
+      ['a map with a non-string action name', { checkout: 'v7' }]
+    ].each do |description, actions|
+      it "raises ConfigError for #{description}" do
+        expect { described_class.validate_external_actions!(actions) }
+          .to(raise_error(GHB::ConfigError, 'config/actions.yaml must be a non-empty map of action name to version string'))
+      end
+    end
   end
 
   describe 'hand-maintained workflows' do

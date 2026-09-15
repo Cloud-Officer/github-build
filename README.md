@@ -244,7 +244,8 @@ custom_patterns:
 A map of external (non `cloud-officer/*`) action name → pinned version, used as the single source of truth for the
 third-party actions emitted into generated workflows. It has no CLI flag: the weekly
 `.github/workflows/external-actions-bump.yml` cron bumps these entries to the latest upstream major and opens a pull
-request for review. `cloud-officer/*` actions are versioned separately.
+request for review. `cloud-officer/*` actions are versioned separately. The file must be a non-empty map of
+action name to version string.
 
 ```yaml
 actions/checkout: v7
