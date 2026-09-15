@@ -66,6 +66,28 @@ RSpec.describe(GHB) do
     end
   end
 
+  describe 'hand-maintained workflows' do
+    let(:github_root) { File.expand_path('../.github', __dir__) }
+    let(:ci_actions_references) do
+      Dir.glob("#{github_root}/**/*.{yml,yaml}").flat_map do |path|
+        File.foreach(path).with_index(1).filter_map do |line, number|
+          match = line.match(%r{cloud-officer/ci-actions[^@\s]*@(\S+)})
+          match && { location: "#{path.delete_prefix("#{github_root}/")}:#{number}", version: match[1] }
+        end
+      end
+    end
+
+    it 'references cloud-officer/ci-actions under .github' do
+      expect(ci_actions_references).not_to(be_empty)
+    end
+
+    it 'pins every cloud-officer/ci-actions reference under .github to CI_ACTIONS_VERSION' do
+      drifted = ci_actions_references.reject { |reference| reference[:version] == described_class.const_get(:CI_ACTIONS_VERSION) }
+
+      expect(drifted).to(eq([]))
+    end
+  end
+
   describe 'private constants' do
     it 'keeps configuration constants private' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       # These constants exist but are private - accessing them should raise NameError
