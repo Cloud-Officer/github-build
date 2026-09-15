@@ -173,6 +173,14 @@ RSpec.describe(GHB::AutoApproveManager) do
         expect(approve_step.env[:HEAD_SHA]).to(eq('${{github.event.pull_request.head.sha}}'))
       end
 
+      it 'passes the run token through env' do
+        expect(approve_step.env[:GITHUB_TOKEN]).to(eq('${{github.token}}'))
+      end
+
+      it 'reads the head commit with the run token, not GH_BOT_PAT' do
+        expect(approve_step.run).to(include('SUBJECT=$(GH_TOKEN="$GITHUB_TOKEN" gh api "repos/${REPO}/commits/${HEAD_SHA}"'))
+      end
+
       it 'does not interpolate workflow expressions into the script' do
         expect(approve_step.run).not_to(include('${{'))
       end
@@ -274,9 +282,9 @@ RSpec.describe(GHB::AutoApproveManager) do
           cat > '#{dir}/bin/gh' <<'GH_EOF'
           #!/usr/bin/env bash
           case "$1 $2" in
-            "api user") echo approver-bot ;;
-            "api repos/"*) [ -n "${COMMIT_LOOKUP_FAILS}" ] && exit 1; printf '%s' "$COMMIT_MESSAGE_FIXTURE" ;;
-            "pr review") echo "APPROVED PR $4" ;;
+            "api user") [ "$GH_TOKEN" = bot-pat ] || exit 3; echo approver-bot ;;
+            "api repos/"*) [ "$GH_TOKEN" = run-token ] || exit 3; [ -n "${COMMIT_LOOKUP_FAILS}" ] && exit 1; printf '%s' "$COMMIT_MESSAGE_FIXTURE" ;;
+            "pr review") [ "$GH_TOKEN" = bot-pat ] || exit 3; echo "APPROVED PR $4" ;;
             *) exit 2 ;;
           esac
           GH_EOF
@@ -284,6 +292,8 @@ RSpec.describe(GHB::AutoApproveManager) do
           export PATH='#{dir}/bin':"$PATH"
         SH
         env = {
+          GH_TOKEN: 'bot-pat',
+          GITHUB_TOKEN: 'run-token',
           AUTHOR: 'alice',
           PR: '42',
           REPO: 'org/repo',

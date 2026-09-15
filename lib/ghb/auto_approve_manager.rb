@@ -61,10 +61,12 @@ module GHB
     # when GH_BOT_PAT resolves to the same account that opened the PR (e.g. the
     # dependency-update bot approving its own PRs) we skip instead of failing the
     # job. Human code-owner PRs (author != bot) are still approved as before.
+    # The head-commit lookup uses the run token: GH_BOT_PAT has no contents read
+    # on the target repository, so that call would be refused with HTTP 403.
     APPROVE_SCRIPT = <<~BASH
       set -euo pipefail
 
-      SUBJECT=$(gh api "repos/${REPO}/commits/${HEAD_SHA}" --jq .commit.message)
+      SUBJECT=$(GH_TOKEN="$GITHUB_TOKEN" gh api "repos/${REPO}/commits/${HEAD_SHA}" --jq .commit.message)
       SUBJECT="${SUBJECT%%$'\\n'*}"
       for trigger in '#skip-all' '#skip-licenses' '#skip-linters' '#skip-tests'; do
         if grep -iqF -- "$trigger" <<< "$SUBJECT"; then
@@ -99,9 +101,9 @@ module GHB
             }
         }
 
-      # Least privilege: the only GITHUB_TOKEN consumer is actions/checkout (base SHA),
-      # which needs contents: read. Both gh steps authenticate via GH_PAT / GH_BOT_PAT,
-      # so the workflow token needs no write scopes.
+      # Least privilege: the run token only checks out the base SHA and reads the PR
+      # head commit, both contents: read. Membership checks and the approval itself
+      # authenticate via GH_BOT_PAT, so the workflow token needs no write scopes.
       @auto_approve_workflow.permissions =
         {
           contents: 'read'
@@ -148,6 +150,7 @@ module GHB
           do_env(
             {
               GH_TOKEN: '${{secrets.GH_BOT_PAT}}',
+              GITHUB_TOKEN: '${{github.token}}',
               AUTHOR: '${{github.event.pull_request.user.login}}',
               PR: '${{github.event.pull_request.number}}',
               REPO: '${{github.repository}}',
