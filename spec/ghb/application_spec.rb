@@ -146,6 +146,30 @@ RSpec.describe(GHB::Application) do
       end
     end
 
+    it 'raises ConfigError when the external actions file is missing' do
+      allow(File).to(receive(:exist?).and_call_original)
+      allow(File).to(receive(:exist?).with(%r{config/actions\.yaml\z}).and_return(false))
+
+      expect { config_test_class.new(mock_options).validate_config! }
+        .to(raise_error(GHB::ConfigError, 'Missing required external actions file: config/actions.yaml'))
+    end
+
+    def app_reading_actions_yaml(content)
+      config_app = config_test_class.new(mock_options)
+      allow(config_app).to(receive(:cached_file_read).and_wrap_original { |original, path| path.end_with?('actions.yaml') ? content : original.call(path) })
+      config_app
+    end
+
+    it 'raises ConfigError when the external actions file is comment-only' do
+      expect { app_reading_actions_yaml("# no actions\n").validate_config! }
+        .to(raise_error(GHB::ConfigError, 'config/actions.yaml must be a non-empty map of action name to version string'))
+    end
+
+    it 'raises ConfigError when the external actions file has invalid YAML' do
+      expect { app_reading_actions_yaml('actions/checkout: [').validate_config! }
+        .to(raise_error(GHB::ConfigError, %r{Invalid YAML in external actions file \(config/actions\.yaml\)}))
+    end
+
     it 'outputs ignored folders as JSON when get_ignored_folders is set' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       ignored_options = instance_double(
         GHB::Options,

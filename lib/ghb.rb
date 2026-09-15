@@ -135,9 +135,21 @@ module GHB
   # version from config/actions.yaml (the single source of truth bumped by the
   # external-actions-bump cron). Raises ConfigError if the action is not listed.
   def self.external_action(name)
-    actions = Psych.safe_load_file(File.expand_path("../#{EXTERNAL_ACTIONS_CONFIG_FILE}", __dir__))
+    path = File.expand_path("../#{EXTERNAL_ACTIONS_CONFIG_FILE}", __dir__)
+    raise(ConfigError, "Missing required external actions file: #{EXTERNAL_ACTIONS_CONFIG_FILE}") unless File.exist?(path)
+
+    actions = Psych.safe_load_file(path)
+    validate_external_actions!(actions)
     raise(ConfigError, "External action '#{name}' not found in #{EXTERNAL_ACTIONS_CONFIG_FILE}") unless actions.key?(name)
 
     "#{name}@#{actions[name]}"
+  rescue Psych::SyntaxError => e
+    raise(ConfigError, "Invalid YAML in external actions file (#{EXTERNAL_ACTIONS_CONFIG_FILE}): #{e.message}")
+  end
+
+  def self.validate_external_actions!(actions)
+    return if actions.is_a?(Hash) && !actions.empty? && actions.all? { |name, version| name.is_a?(String) && version.is_a?(String) }
+
+    raise(ConfigError, "#{EXTERNAL_ACTIONS_CONFIG_FILE} must be a non-empty map of action name to version string")
   end
 end
