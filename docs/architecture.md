@@ -478,8 +478,8 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(auto_approve_workflow:)`: Accepts the auto-approve workflow object
-- `save`: Configures the auto-approve workflow with CODEOWNERS detection and auto-approval, and writes `.github/workflows/auto-approve.yml` (removing the legacy `auto-merge.yml` if present). Both the CODEOWNERS membership check and the approval step use `GH_BOT_PAT`, so the bot identity satisfies the `require_code_owner_reviews` branch-protection rule
-- `save` also declares a `contents: read` least-privilege token (both `gh` steps authenticate via their own PAT), a per-PR `concurrency` group cancelling superseded runs, and an `if:` guard that skips drafts and never runs the privileged `pull_request_target` token against a fork's head
+- `save`: Configures the auto-approve workflow with CODEOWNERS detection and auto-approval, and writes `.github/workflows/auto-approve.yml` (removing the legacy `auto-merge.yml` if present). Both the CODEOWNERS membership check and the approval step use `GH_BOT_PAT`, so the bot identity satisfies the `require_code_owner_reviews` branch-protection rule. The approval step's head-commit lookup (the `#skip-*` trigger check) runs with the run's `${{github.token}}` instead, since `GH_BOT_PAT` has no contents read on the target repository
+- `save` also declares a `contents: read` least-privilege token (used only for the base checkout and the head-commit lookup; team membership and approval authenticate via `GH_BOT_PAT`), a per-PR `concurrency` group cancelling superseded runs, and an `if:` guard that skips drafts and never runs the privileged `pull_request_target` token against a fork's head
 
 **Constants:**
 

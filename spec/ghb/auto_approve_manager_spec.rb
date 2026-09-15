@@ -173,6 +173,14 @@ RSpec.describe(GHB::AutoApproveManager) do
         expect(approve_step.env[:HEAD_SHA]).to(eq('${{github.event.pull_request.head.sha}}'))
       end
 
+      it 'passes the run token through env' do
+        expect(approve_step.env[:GITHUB_TOKEN]).to(eq('${{github.token}}'))
+      end
+
+      it 'reads the head commit with the run token, not GH_BOT_PAT' do
+        expect(approve_step.run).to(include('SUBJECT=$(GH_TOKEN="$GITHUB_TOKEN" gh api "repos/${REPO}/commits/${HEAD_SHA}"'))
+      end
+
       it 'does not interpolate workflow expressions into the script' do
         expect(approve_step.run).not_to(include('${{'))
       end
