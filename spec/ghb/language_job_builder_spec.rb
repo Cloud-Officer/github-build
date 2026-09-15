@@ -410,6 +410,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
 
       expect(new_workflow.jobs).to(have_key(:go_unit_tests))
       expect(codedeploy_builder.code_deploy_pre_steps).not_to(be_empty)
+
+      setup_step = new_workflow.jobs[:go_unit_tests].steps.find { |step| step.name == 'Setup' }
+      pre_setup_step = codedeploy_builder.code_deploy_pre_steps.find { |step| step.name == 'Setup' }
+
+      expect(pre_setup_step.to_h).to(eq(setup_step.to_h))
+      expect(pre_setup_step).not_to(be(setup_step))
+      expect(pre_setup_step.with).not_to(be(setup_step.with))
+      expect(pre_setup_step.env).not_to(be(setup_step.env))
     end
 
     it 'prints warning when existing env value differs from option value' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
