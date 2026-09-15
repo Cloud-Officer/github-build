@@ -41,12 +41,17 @@ module GHB
 
     # Single regexp matching any caller-supplied excluded path fragment or any
     # excluded directory from languages.yaml, so each scanned path is tested once.
-    # Fragments are matched literally (Regexp.union escapes them), mirroring String#include?.
-    # @param excluded_paths [Array<String>] paths to exclude (partial matches)
-    # @return [Regexp] union of every exclusion fragment (never matches when empty)
+    # Entries match literally and only as whole path segments ("app" never matches "application").
+    # @param excluded_paths [Array<String>] directory or file paths to exclude
+    # @return [Regexp] alternation of every exclusion path (never matches when empty)
     def excluded_paths_pattern(excluded_paths)
-      fragments = excluded_paths + excluded_dirs_from_config.map { |dir| "/#{dir}/" }
-      Regexp.union(fragments.reject { |fragment| fragment.to_s.strip.empty? })
+      segments =
+        (excluded_paths + excluded_dirs_from_config).filter_map do |entry|
+          segment = entry.to_s.strip.delete_prefix('./').chomp('/')
+          Regexp.escape(segment) unless segment.empty?
+        end
+
+      segments.empty? ? Regexp.union : Regexp.new("(?:\\A|/)(?:#{segments.uniq.join('|')})(?:/|\\z)")
     end
 
     # Pure Ruby file finder - avoids shell command injection (SEC-001, SEC-002)
