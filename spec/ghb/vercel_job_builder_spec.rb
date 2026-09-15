@@ -96,6 +96,18 @@ RSpec.describe(GHB::VercelJobBuilder) do
         expect(prod.env[:VERCEL_PROJECT_ID]).to(eq('${{secrets.VERCEL_PROJECT_ID}}'))
       end
 
+      it 'passes the Vercel token through the job env' do
+        run_build
+
+        expect(new_workflow.jobs[:prod_deploy].env[:VERCEL_TOKEN]).to(eq('${{secrets.VERCEL_TOKEN}}'))
+      end
+
+      it 'never puts the Vercel token on a generated command line' do
+        run_build
+
+        expect(new_workflow.to_h.to_s).not_to(include('--token'))
+      end
+
       it 'generates the four Vercel CLI steps' do
         run_build
 
@@ -107,9 +119,9 @@ RSpec.describe(GHB::VercelJobBuilder) do
         run_build
 
         deploy = new_workflow.jobs[:prod_deploy].steps.last
-        expect(deploy.run).to(eq('vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}'))
+        expect(deploy.run).to(eq('vercel deploy --prod'))
         expect(deploy.id).to(be_nil)
-        expect(new_workflow.jobs[:prod_deploy].steps[2].run).to(include('--environment=production'))
+        expect(new_workflow.jobs[:prod_deploy].steps[2].run).to(eq('vercel pull --yes --environment=production'))
       end
 
       it 'deploys preview environments capturing the URL into the deploy step output' do # rubocop:disable RSpec/MultipleExpectations
@@ -117,8 +129,8 @@ RSpec.describe(GHB::VercelJobBuilder) do
 
         deploy = new_workflow.jobs[:rc_deploy].steps.last
         expect(deploy.id).to(eq('deploy'))
-        expect(deploy.run).to(eq('echo "url=$(vercel deploy --token=${{ secrets.VERCEL_TOKEN }})" >> "${GITHUB_OUTPUT}"'))
-        expect(new_workflow.jobs[:rc_deploy].steps[2].run).to(include('--environment=preview'))
+        expect(deploy.run).to(eq('echo "url=$(vercel deploy)" >> "${GITHUB_OUTPUT}"'))
+        expect(new_workflow.jobs[:rc_deploy].steps[2].run).to(eq('vercel pull --yes --environment=preview'))
       end
 
       it 'drops a carried-over node-version from Setup when a version file pins it' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
@@ -203,6 +215,55 @@ RSpec.describe(GHB::VercelJobBuilder) do
 
         pull = new_workflow.jobs[:rc_deploy].steps[2]
         expect(pull.run).to(eq('vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }} --custom'))
+      end
+    end
+
+    context 'when an existing deploy job was generated with the token on the command line' do
+      before do
+        allow(File).to(receive(:exist?).with('vercel.json').and_return(true))
+        populate_base_jobs
+
+        { beta_deploy: 'preview', prod_deploy: 'production' }.each do |job_id, target|
+          old_workflow.do_job(job_id) do
+            do_env({ VERCEL_ORG_ID: '${{secrets.VERCEL_ORG_ID}}', VERCEL_PROJECT_ID: '${{secrets.VERCEL_PROJECT_ID}}' })
+            do_step('Pull Vercel Environment Information') { do_run("vercel pull --yes --environment=#{target} --token=${{ secrets.VERCEL_TOKEN }}") }
+            do_step('Deploy Project to Vercel') do
+              if target == 'preview'
+                do_run('echo "url=$(vercel deploy --token=${{ secrets.VERCEL_TOKEN }})" >> "${GITHUB_OUTPUT}"')
+              else
+                do_run('vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}')
+              end
+            end
+          end
+        end
+      end
+
+      it 'rewrites the generated pull and deploy bodies without the token flag' do # rubocop:disable RSpec/MultipleExpectations
+        run_build
+
+        expect(new_workflow.jobs[:beta_deploy].steps.map(&:run).last(2))
+          .to(eq(['vercel pull --yes --environment=preview', 'echo "url=$(vercel deploy)" >> "${GITHUB_OUTPUT}"']))
+        expect(new_workflow.jobs[:prod_deploy].steps.map(&:run).last(2))
+          .to(eq(['vercel pull --yes --environment=production', 'vercel deploy --prod']))
+      end
+
+      it 'adds VERCEL_TOKEN to the carried-over job env' do
+        run_build
+
+        expect(new_workflow.jobs[:prod_deploy].env)
+          .to(eq({ VERCEL_ORG_ID: '${{secrets.VERCEL_ORG_ID}}', VERCEL_PROJECT_ID: '${{secrets.VERCEL_PROJECT_ID}}', VERCEL_TOKEN: '${{secrets.VERCEL_TOKEN}}' }))
+      end
+    end
+
+    context 'when an existing deploy job sets its own VERCEL_TOKEN' do
+      it 'keeps the user-provided value' do
+        allow(File).to(receive(:exist?).with('vercel.json').and_return(true))
+        populate_base_jobs
+        old_workflow.do_job(:prod_deploy) { do_env({ VERCEL_TOKEN: '${{secrets.CUSTOM_VERCEL_TOKEN}}' }) }
+
+        run_build
+
+        expect(new_workflow.jobs[:prod_deploy].env[:VERCEL_TOKEN]).to(eq('${{secrets.CUSTOM_VERCEL_TOKEN}}'))
       end
     end
   end

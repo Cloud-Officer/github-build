@@ -45,6 +45,11 @@ module GHB
     DEPLOY_JOB_TIMEOUT_MINUTES = 60
     private_constant :DEPLOY_JOB_TIMEOUT_MINUTES
 
+    # The Vercel CLI reads its token from the environment, keeping it out of argv.
+    VERCEL_TOKEN_ENV = '${{secrets.VERCEL_TOKEN}}'
+    LEGACY_TOKEN_FLAG = ' --token=${{ secrets.VERCEL_TOKEN }}'
+    private_constant :VERCEL_TOKEN_ENV, :LEGACY_TOKEN_FLAG
+
     def initialize(context:)
       @options = context.options
       @old_workflow = context.old_workflow
@@ -102,6 +107,8 @@ module GHB
           )
         end
 
+        do_env(env.merge(VERCEL_TOKEN: VERCEL_TOKEN_ENV)) unless env.key?(:VERCEL_TOKEN)
+
         builder.__send__(:build_setup_step, self, old_job)
         builder.__send__(:build_install_step, self, old_job)
         builder.__send__(:build_pull_step, self, old_job, target)
@@ -145,27 +152,24 @@ module GHB
     end
 
     def build_pull_step(job, old_job, target)
+      command = "vercel pull --yes --environment=#{target}"
+      legacy_command = "#{command}#{LEGACY_TOKEN_FLAG}"
+
       job.do_step('Pull Vercel Environment Information') do
         copy_properties(find_step(old_job&.steps, name))
-        do_run("vercel pull --yes --environment=#{target} --token=${{ secrets.VERCEL_TOKEN }}") if run.nil?
+        do_run(command) if run.nil? || run == legacy_command
       end
     end
 
     def build_deploy_step(job, old_job, target)
       preview = target != 'production'
+      command = preview ? 'echo "url=$(vercel deploy)" >> "${GITHUB_OUTPUT}"' : 'vercel deploy --prod'
+      legacy_command = preview ? %(echo "url=$(vercel deploy#{LEGACY_TOKEN_FLAG})" >> "${GITHUB_OUTPUT}") : "vercel deploy --prod#{LEGACY_TOKEN_FLAG}"
 
       job.do_step('Deploy Project to Vercel') do
         copy_properties(find_step(old_job&.steps, name))
         do_id('deploy') if preview
-        next unless run.nil?
-
-        do_run(
-          if preview
-            'echo "url=$(vercel deploy --token=${{ secrets.VERCEL_TOKEN }})" >> "${GITHUB_OUTPUT}"'
-          else
-            'vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}'
-          end
-        )
+        do_run(command) if run.nil? || run == legacy_command
       end
     end
 
