@@ -8,7 +8,7 @@
 #
 # Fake behaviour is driven by env knobs: FAKE_CURL_FAIL (substring of the URL to
 # fail on), FAKE_AWS_OK (AWS answers instead of failing), FAKE_JAVA_NULL,
-# FAKE_PYENV_EMPTY and FAKE_VALKEY_UNSUPPORTED.
+# FAKE_NODE_NO_LTS, FAKE_PYENV_EMPTY and FAKE_VALKEY_UNSUPPORTED.
 
 setup() {
   command -v jq >/dev/null || skip "jq is not installed"
@@ -45,7 +45,11 @@ case "${url}" in
   *go.dev/VERSION*)
     printf 'go1.25.3\ntime 2026-01-01T00:00:00Z\n' ;;
   *nodejs.org/dist/index.json*)
-    printf '[{"version":"v24.4.1"},{"version":"v24.4.0"}]\n' ;;
+    if [ -n "${FAKE_NODE_NO_LTS:-}" ]; then
+      printf '[{"version":"v25.2.1","lts":false},{"version":"v25.2.0","lts":false}]\n'
+    else
+      printf '[{"version":"v25.2.1","lts":false},{"version":"v24.4.1","lts":"Krypton"},{"version":"v24.4.0","lts":"Krypton"},{"version":"v22.17.0","lts":"Jod"}]\n'
+    fi ;;
   *api.adoptium.net*)
     if [ -n "${FAKE_JAVA_NULL:-}" ]; then printf '{}\n'; else printf '{"most_recent_lts":21}\n'; fi ;;
   *php.net/releases*)
@@ -149,6 +153,12 @@ value_of() {
   [ "$(value_of config/options/opensearch.yaml options opensearch-version)" = "3.8" ]
 }
 
+@test "the Node.js lookup skips a newer Current release for the latest LTS" {
+  run "${SCRIPT}"
+  [ "${status}" -eq 0 ]
+  [ "$(value_of config/languages.yaml js.setup_options node-version)" = "24.4.1" ]
+}
+
 @test "the MongoDB fallback resolves from tags, which is where mongodb/mongo publishes versions" {
   run "${SCRIPT}"
   [ "${status}" -eq 0 ]
@@ -222,6 +232,14 @@ value_of() {
   [ "${status}" -ne 0 ]
   [[ "${output}" == *"could not resolve the latest Java version"* ]]
   [ "$(value_of config/languages.yaml kotlin.setup_options java-version)" != "null" ]
+}
+
+@test "a Node.js index without any LTS release exits non-zero" {
+  before="$(value_of config/languages.yaml js.setup_options node-version)"
+  FAKE_NODE_NO_LTS=1 run "${SCRIPT}"
+  [ "${status}" -ne 0 ]
+  [[ "${output}" == *"could not resolve the latest Node.js version"* ]]
+  [ "$(value_of config/languages.yaml js.setup_options node-version)" = "${before}" ]
 }
 
 @test "a service whose AWS and public lookups both fail exits non-zero" {

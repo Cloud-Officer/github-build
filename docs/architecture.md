@@ -731,6 +731,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - Fetches latest versions from official sources (go.dev, nodejs.org, etc.)
+- Tracks LTS lines where the upstream distinguishes them: Node.js takes the newest `nodejs.org/dist/index.json` entry whose `lts` field is set (skipping Current releases), and Java takes Adoptium's `most_recent_lts`
 - Updates `config/languages.yaml` with latest language versions
 - Updates `config/options/*.yaml` with latest service versions
 - Uses `yq` for YAML manipulation (always invoked as `yq e --indent=2 ... -i <file>`)
