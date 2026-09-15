@@ -10,9 +10,20 @@
 # fail on), FAKE_AWS_OK (AWS answers instead of failing), FAKE_JAVA_NULL,
 # FAKE_PYENV_EMPTY and FAKE_VALKEY_UNSUPPORTED.
 
+require_tool() {
+  command -v "${1}" >/dev/null && return 0
+
+  if [ -n "${CI:-}" ]; then
+    echo "${1} is not installed" >&2
+    return 1
+  fi
+
+  skip "${1} is not installed"
+}
+
 setup() {
-  command -v jq >/dev/null || skip "jq is not installed"
-  command -v yq >/dev/null || skip "yq is not installed"
+  require_tool jq
+  require_tool yq
 
   SCRIPT="${BATS_TEST_DIRNAME}/../bin/update_versions.sh"
   BIN="$(mktemp -d)"
@@ -117,6 +128,28 @@ value_of() {
 @test "the script runs under strict mode" {
   grep -q '^set -euo pipefail$' "${BATS_TEST_DIRNAME}/../bin/update_versions.sh"
   ! grep -qE '^set -e$' "${BATS_TEST_DIRNAME}/../bin/update_versions.sh"
+}
+
+@test "a missing tool fails under CI instead of skipping" {
+  export CI=true
+  run require_tool ghb-no-such-tool
+  [ "${status}" -eq 1 ]
+  [ "${output}" = "ghb-no-such-tool is not installed" ]
+}
+
+@test "a missing tool skips outside CI" {
+  unset CI
+  skip() { echo "skipped: $*"; }
+  run require_tool ghb-no-such-tool
+  [ "${status}" -eq 0 ]
+  [ "${output}" = "skipped: ghb-no-such-tool is not installed" ]
+}
+
+@test "a present tool passes the guard under CI" {
+  export CI=true
+  run require_tool jq
+  [ "${status}" -eq 0 ]
+  [ -z "${output}" ]
 }
 
 @test "every yq invocation uses the same flag order" {
