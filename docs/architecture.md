@@ -438,7 +438,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(context:)`: Accepts a `GHB::BuildContext`
-- `build`: Creates the three per-environment Vercel CLI deploy jobs (`prod` publishes with `--prod`; `beta`/`rc` deploy a preview build and capture the URL). Generated steps are Setup, Install Vercel CLI, Pull Vercel Environment Information, and Deploy Project to Vercel; any other step on an existing `*_deploy` job (e.g. project-specific `vercel alias` steps) is preserved across regenerations.
+- `build`: Creates the three per-environment Vercel CLI deploy jobs (`prod` publishes with `--prod`; `beta`/`rc` deploy a preview build and capture the URL). Generated steps are Setup, Install Vercel CLI, Pull Vercel Environment Information, and Deploy Project to Vercel; any other step on an existing `*_deploy` job (e.g. project-specific `vercel alias` steps) is preserved across regenerations. The Vercel token reaches the CLI through the job `env` (`VERCEL_TOKEN`, alongside `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID`), never as a `--token` argument, so it stays out of the runner's process table; pull and deploy bodies that exactly match the earlier `--token=${{ secrets.VERCEL_TOKEN }}` form are rewritten on regeneration, and customized bodies are left untouched.
 
 **Constants:**
 
@@ -446,6 +446,8 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `GENERATED_STEP_NAMES`: The step names this builder owns; every other step found on an existing `*_deploy` job is treated as a custom step to preserve
 - `NODE_VERSION_FILES`: Version files (`.node-version`, `.nvmrc`) that make the ci-actions setup read the Node version from the repository, so a `node-version` carried over from a previous Setup step is dropped (mirrors `LanguageJobBuilder#build_setup_step`)
 - `DEPLOY_JOB_TIMEOUT_MINUTES`: Timeout for the deploy jobs (60), double the `GHB::DEFAULT_JOB_TIMEOUT_MINUTES` used elsewhere, because a Vercel build runs inside the deploy step
+- `VERCEL_TOKEN_ENV`: The `${{secrets.VERCEL_TOKEN}}` value added to each deploy job's `env` unless the job already sets `VERCEL_TOKEN`
+- `LEGACY_TOKEN_FLAG`: The `--token=${{ secrets.VERCEL_TOKEN }}` argument earlier generated run bodies carried, matched exactly to migrate those bodies
 
 ### GHB::AwsJobBuilder
 
