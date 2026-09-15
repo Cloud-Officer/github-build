@@ -60,12 +60,13 @@ module GHB
     end
 
     def execute
+      validate_config!
+
       if @options.get_ignored_folders
         puts(JSON.pretty_generate({ ignored_folders: excluded_dirs_from_config }))
         return Status::SUCCESS_EXIT_CODE
       end
 
-      validate_config!
       puts('Generating build file...')
       workflow_read
       workflow_set_defaults
@@ -142,7 +143,8 @@ module GHB
         linters_config: @options.linters_config_file,
         languages_config: @options.languages_config_file,
         **service_config_files,
-        gitignore_config: @options.gitignore_config_file
+        gitignore_config: @options.gitignore_config_file,
+        external_actions: EXTERNAL_ACTIONS_CONFIG_FILE
       }
 
       config_files.each do |name, relative_path|
@@ -170,6 +172,8 @@ module GHB
       when :languages_config
         validate_entries(data, relative_path, 'language', %w[short_name long_name])
         validate_language_dependencies(data, relative_path)
+      when :external_actions
+        GHB.validate_external_actions!(data)
       end
     end
 
