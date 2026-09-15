@@ -40,8 +40,9 @@ module GHB
         File.read('.gitmodules').each_line do |line|
           next unless line.include?('path = ')
 
-          submodule_path = line.split('=').last.to_s.strip
+          submodule_path = line.split('=', 2).last.to_s.strip
           next if submodule_path.empty?
+          next unless relative_in_repo?(submodule_path)
 
           @submodules << submodule_path
           script_path = submodule_path if line.include?('scripts')
@@ -150,7 +151,7 @@ module GHB
 
       if linter[:preserve_config] && File.exist?(config_name) && !File.symlink?(config_name)
         puts("            Preserving existing #{config_name} (project-specific config)")
-      elsif File.exist?("#{script_path}/linters/#{config_name}") && config_name != '.editorconfig' && !project_owned_config?(config_name)
+      elsif script_path && File.exist?("#{script_path}/linters/#{config_name}") && inside_repo?("#{script_path}/linters/#{config_name}") && config_name != '.editorconfig' && !project_owned_config?(config_name)
         FileUtils.ln_s("#{script_path}/linters/#{config_name}", config_name, force: true)
       elsif File.exist?("linters/#{config_name}") && config_name != '.editorconfig' && !project_owned_config?(config_name)
         FileUtils.ln_s("linters/#{config_name}", config_name, force: true)
@@ -171,6 +172,15 @@ module GHB
           content
         end
       end
+    end
+
+    def relative_in_repo?(path)
+      !path.start_with?('/') && !path.split(%r{[/\\]}).include?('..')
+    end
+
+    def inside_repo?(path)
+      root = File.expand_path(Dir.pwd)
+      File.absolute_path(path, root).start_with?("#{root}/")
     end
 
     # True when a merge-managed config has been deliberately turned from a symlink
