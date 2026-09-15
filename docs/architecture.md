@@ -153,7 +153,6 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **External Dependencies:**
 
 - `active_support/core_ext/hash/keys`
-- `duplicate`
 - `find`
 - `httparty`
 - `json`
@@ -398,8 +397,8 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **External Dependencies:**
 
 - `active_support/core_ext/hash/keys`
+- `active_support/core_ext/object/deep_dup` (deep-clones dependency steps staged as CodeDeploy pre-steps)
 - `psych`
-- `duplicate` (used to deep-clone dependency steps; currently satisfied by the require in `lib/ghb/application.rb`)
 
 ### GHB::DockerBuildJobBuilder
 
@@ -696,6 +695,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `do_id`, `do_if`, `do_name`, `do_uses`, `do_run`, `do_shell`, `do_with`, `do_env`, `do_continue_on_error`, `do_timeout_minutes`: DSL setters for the step keys
 - `find_step(steps, step_name)`: Finds a step by name in a list
 - `to_h`: Converts step to hash for YAML serialization
+- `initialize_copy(source)`: Deep-copies `with` and `env` so `dup`/`deep_dup` yield a step independent of its source
 
 **Constants:**
 
@@ -761,7 +761,7 @@ See [soup.md](soup.md) for the complete list of third-party dependencies.
 
 This project uses Ruby gems for:
 
-- **Core functionality:** activesupport (hash manipulation), httparty (HTTP client), psych (YAML parsing), optparse (CLI arguments), duplicate (deep cloning)
+- **Core functionality:** activesupport (hash manipulation and deep cloning), httparty (HTTP client), psych (YAML parsing), optparse (CLI arguments)
 - **Development:** rubocop and extensions (code linting), rspec (testing), webmock (HTTP stubbing), simplecov (coverage reporting)
 
 All dependencies are managed via Bundler with versions locked in `Gemfile.lock`. `.soup.json` at the repository root is the source of truth for the hand-authored fields below; `docs/soup.md` is generated from it by the `cloud-officer/ci-actions/soup` step in the build and dependency-update workflows and is never edited by hand.

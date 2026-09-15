@@ -143,18 +143,6 @@
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
   },
-  "Ruby:duplicate": {
-    "language": "Ruby",
-    "package": "duplicate",
-    "version": "1.1.1",
-    "license": "Apache License Version 2.0",
-    "description": "Originally extracted from rack-app project",
-    "website": "http://www.rack-app.com",
-    "last_verified_at": "2026-05-22",
-    "risk_level": "Low",
-    "requirements": "Handle deep clone",
-    "verification_reasoning": "Lightweight deep cloning library with no additional dependencies"
-  },
   "Ruby:hashdiff": {
     "language": "Ruby",
     "package": "hashdiff",

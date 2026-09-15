@@ -14,7 +14,6 @@
 | Ruby | date | 3.5.1 | Ruby | The official date library for Ruby. | <https://github.com/ruby/date> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | diff-lcs | 1.6.2 | MIT | Diff::LCS computes the difference between two Enumerable sequences using the | <https://github.com/halostatue/diff-lcs> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | drb | 2.2.3 | Ruby | Distributed object system for Ruby | <https://github.com/ruby/drb> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | duplicate | 1.1.1 | Apache License Version 2.0 | Originally extracted from rack-app project | <http://www.rack-app.com> | 2026-05-22 | Low | Handle deep clone | Lightweight deep cloning library with no additional dependencies |
 | Ruby | hashdiff | 1.2.1 | MIT | Hashdiff is a diff lib to compute the smallest difference between two hashes | <https://github.com/liufengyun/hashdiff> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | httparty | 0.24.2 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2026-05-22 | High | HTTP client for GitHub REST API communication | Industry-standard Ruby HTTP client with active maintenance and security updates |
 | Ruby | i18n | 1.15.2 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2026-05-22 | Low | Dependency | Dependency |

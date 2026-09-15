@@ -6,6 +6,7 @@ require 'open3'
 # library is required by the file under test.
 LIBRARY_PROBES = {
   active_support: ['({}.respond_to?(:deep_symbolize_keys) && {}.respond_to?(:deep_stringify_keys)).to_s', 'true'],
+  deep_dup: ['Object.new.respond_to?(:deep_dup).to_s', 'true'],
   fileutils: ['defined?(FileUtils).to_s', 'constant'],
   psych: ['defined?(Psych).to_s', 'constant']
 }.freeze
@@ -18,15 +19,17 @@ GUARDED_FILES = {
   dependabot_manager: %i[fileutils],
   file_scanner: %i[active_support fileutils psych],
   gitignore_manager: %i[active_support psych],
-  language_job_builder: %i[active_support psych],
+  language_job_builder: %i[active_support deep_dup psych],
   linter_job_builder: %i[active_support fileutils psych],
   repository_configurator: %i[psych],
+  'workflow/step': %i[deep_dup],
   'workflow/workflow': %i[active_support fileutils psych]
 }.freeze
 
 # Source markers that mean a file uses each guarded library.
 LIBRARY_USAGE = {
   active_support: /deep_symbolize_keys|deep_stringify_keys|deep_merge/,
+  deep_dup: /deep_dup/,
   fileutils: /FileUtils\./,
   psych: /Psych\./
 }.freeze
@@ -89,6 +92,6 @@ RSpec.describe('explicit library requires (BUG-009, CON-004)') do # rubocop:disa
     stdout, stderr, status = capture_probes(LIBRARY_PROBES.keys)
 
     expect(status).to(be_success, "probe failed: #{stderr}")
-    expect(stdout).to(eq('false,,'))
+    expect(stdout).to(eq('false,false,,'))
   end
 end

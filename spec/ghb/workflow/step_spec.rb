@@ -127,6 +127,57 @@ RSpec.describe(GHB::Step) do # rubocop:disable RSpec/SpecFilePathFormat
     end
   end
 
+  describe '#deep_dup' do
+    let(:original) do
+      described_class.new(
+        'Setup',
+        {
+          id: 'setup',
+          if: 'always()',
+          uses: 'actions/setup-go@v5',
+          run: 'go mod download',
+          shell: 'bash',
+          with: { 'go-version': '1.25', nested: { key: 'value' } },
+          env: { GITHUB_TOKEN: 'token' },
+          continue_on_error: true,
+          timeout_minutes: 10
+        }
+      )
+    end
+
+    it 'returns a distinct step' do
+      expect(original.deep_dup).not_to(be(original))
+    end
+
+    it 'copies every attribute' do
+      expect(original.deep_dup.to_h).to(eq(original.to_h))
+    end
+
+    it 'does not share the with hash with the original' do
+      copy = original.deep_dup
+      copy.with[:'go-version'] = '1.26'
+      copy.with[:nested][:key] = 'changed'
+
+      expect(original.with).to(eq({ 'go-version': '1.25', nested: { key: 'value' } }))
+    end
+
+    it 'does not share the env hash with the original' do
+      copy = original.deep_dup
+      copy.env.delete(:GITHUB_TOKEN)
+
+      expect(original.env).to(eq({ GITHUB_TOKEN: 'token' }))
+    end
+
+    it 'does not propagate later changes on the original to the copy' do
+      copy = original.deep_dup
+      snapshot = original.to_h.deep_dup
+      original.with[:extra] = 'x'
+      original.env[:NEW] = 'y'
+
+      expect(copy.to_h).to(eq(snapshot))
+    end
+  end
+
   describe '#find_step' do
     let(:step) { described_class.new('Finder') }
 
