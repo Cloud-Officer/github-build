@@ -1,12 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleMemoizedHelpers
-  let(:organization)           { 'test-org'                                                   }
-  let(:repository)             { 'my-repo'                                                    }
-  let(:default_branch)         { 'master'                                                     }
-  let(:repo_url)               { "https://api.github.com/repos/#{organization}/#{repository}" }
-  let(:github_token)           { 'test-token-abc123'                                          }
-  let(:required_status_checks) { %w[Build Lint]                                               }
+RSpec.describe(GHB::RepositoryConfigurator) do
   let(:mock_options) do
     instance_double(GHB::Options, skip_repository_settings: false, organization: organization, sync_required_status_checks: false)
   end
@@ -16,20 +10,63 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
   let(:configurator) do
     described_class.new(options: mock_options, required_status_checks: required_status_checks.dup, default_branch: default_branch)
   end
+  let(:api_responses) do
+    {
+      repo_info: http_response(200, { private: false }.to_json),
+      protection: http_response(404, '{"message":"Not Found"}'),
+      codeql_default_setup: http_response(200, { state: 'not-configured' }.to_json),
+      codeql_get: http_response(200, { state: 'not-configured' }.to_json),
+      ok: http_response(200, '{}'),
+      accepted: http_response(202, '{}')
+    }
+  end
 
-  shared_context 'with a stubbed repository API' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-    before do
-      allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-      allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-      allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-      allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
-      allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-      allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-      allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-      allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-      allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
-      allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
-    end
+  def organization = 'test-org'
+
+  def repository = 'my-repo'
+
+  def default_branch = 'master'
+
+  def repo_url = "https://api.github.com/repos/#{organization}/#{repository}"
+
+  def github_token = 'test-token-abc123'
+
+  def required_status_checks = %w[Build Lint]
+
+  def http_response(code, body) = instance_double(HTTParty::Response, code: code, body: body)
+
+  def stub_branch_protection(branch)
+    allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{branch}/protection", expected_codes: [200, 404]).and_return(api_responses[:protection]))
+    allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{branch}/protection", body: anything).and_return(api_responses[:ok]))
+    allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(api_responses[:ok]))
+  end
+
+  def stub_repository_default_branch(branch)
+    allow(github_client).to(receive(:get).with(repo_url).and_return(http_response(200, JSON.parse(api_responses[:repo_info].body, symbolize_names: true).merge(default_branch: branch).to_json)))
+    stub_branch_protection(branch)
+  end
+
+  def stub_security_patch(code, body)
+    allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil).and_return(http_response(code, body)))
+  end
+
+  def stub_codeql_disable(code, body)
+    allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(http_response(code, body)))
+  end
+
+  def stub_codeql_read(code, body)
+    allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(http_response(code, body)))
+  end
+
+  def answer_sync_prompt(answer)
+    allow($stdin).to(receive_messages(tty?: true, gets: "#{answer}\n"))
+    allow($stderr).to(receive(:print))
+  end
+
+  def stub_successful_writes
+    ok = instance_double(HTTParty::Response, code: 200, body: '{}')
+    allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)))
+    allow(github_client).to(receive_messages(put: ok, post: ok, patch: ok))
   end
 
   # Shape of the GraphQL force-push allowlist read. Defaults to a protected branch
@@ -50,22 +87,27 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
     }
   end
 
-  def stub_repository_default_branch(branch)
-    allow(github_client).to(receive(:get).with(repo_url).and_return(instance_double(HTTParty::Response, code: 200, body: JSON.parse(repo_info_response.body, symbolize_names: true).merge(default_branch: branch).to_json)))
-    allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-    allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{branch}/protection", body: anything).and_return(ok_response))
-    allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
+  shared_context 'with a stubbed repository API' do
+    before do
+      allow(github_client).to(receive(:get).with(repo_url).and_return(api_responses[:repo_info]))
+      allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(api_responses[:codeql_default_setup]))
+      allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(api_responses[:codeql_get]))
+      allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(api_responses[:ok]))
+      allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(api_responses[:ok]))
+      allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(api_responses[:ok]))
+      allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(api_responses[:ok]))
+      allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(api_responses[:accepted]))
+      stub_branch_protection(default_branch)
+    end
   end
 
-  def answer_sync_prompt(answer)
-    allow($stdin).to(receive_messages(tty?: true, gets: "#{answer}\n"))
-    allow($stderr).to(receive(:print))
-  end
+  shared_context 'with a private repository' do
+    let(:api_responses) { super().merge(repo_info: http_response(200, { private: true }.to_json)) }
 
-  def stub_successful_writes
-    ok = instance_double(HTTParty::Response, code: 200, body: '{}')
-    allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)))
-    allow(github_client).to(receive_messages(put: ok, post: ok, patch: ok))
+    before do
+      stub_security_patch(200, '{}')
+      stub_codeql_disable(200, '{}')
+    end
   end
 
   before do
@@ -81,7 +123,9 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
     allow(github_client).to(receive(:graphql).and_return(branch_protection_rule_data([])))
   end
 
-  describe '#configure' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+  include_context 'with a stubbed repository API'
+
+  describe '#configure' do
     it 'skips validation when skip_repository_settings is true' do
       skip_options = instance_double(GHB::Options, skip_repository_settings: true)
       skip_configurator = described_class.new(options: skip_options, required_status_checks: [])
@@ -103,64 +147,15 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       expect { configurator.configure }
         .to(raise_error(GHB::ConfigError, 'GITHUB_TOKEN environment variable is required for repository settings'))
     end
+  end
 
-    context 'when configuring a public repository with no existing branch protection' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured', languages: [] }.to_json)
-      end
-
-      let(:codeql_setup_not_configured_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-
-      before do
-        # GET repo info
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        # GET branch protection (404 = not found)
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        # GET CodeQL default setup (for branch protection)
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        # PUT branch protection
-        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
-        # POST required signatures
-        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-        # PUT vulnerability alerts
-        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-        # PUT automated security fixes
-        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-        # PATCH repo settings
-        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
-        # GET CodeQL default setup (for configure_codeql)
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_setup_not_configured_response))
-        # PATCH CodeQL default setup (enable)
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
-      end
-
+  describe '#configure branch protection' do
+    context 'when configuring a public repository with no existing branch protection' do
       it 'completes the full configure flow for a public repository' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         configurator.configure
 
-        # Verify repo info was fetched
         expect(github_client).to(have_received(:get).with(repo_url))
-        # Verify branch protection was checked
         expect(github_client).to(have_received(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]))
-        # Verify branch protection was set (with expected checks built from required_status_checks since no existing protection)
         expect(github_client).to(
           have_received(:put).with(
             "#{repo_url}/branches/#{default_branch}/protection",
@@ -185,13 +180,10 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
             )
           )
         )
-        # Verify required signatures were enabled
         expect(github_client).to(have_received(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]))
-        # Verify vulnerability alerts and automated security fixes
         expect(github_client).to(have_received(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]))
         expect(github_client).to(have_received(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]))
         expect(github_client).to(have_received(:put).with("#{repo_url}/actions/permissions/workflow", body: { default_workflow_permissions: 'read', can_approve_pull_request_reviews: false }, expected_codes: [204]))
-        # Verify repo options were configured
         expect(github_client).to(
           have_received(:patch).with(
             repo_url,
@@ -206,7 +198,6 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
             }
           )
         )
-        # Verify security features were enabled (public repo)
         expect(github_client).to(
           have_received(:patch).with(
             repo_url,
@@ -221,7 +212,6 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
             )
           )
         )
-        # Verify CodeQL was configured (public repo, not yet configured)
         expect(github_client).to(have_received(:get).with("#{repo_url}/code-scanning/default-setup"))
         expect(github_client).to(have_received(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'configured', query_suite: 'default' }, expected_codes: [200, 202]))
       end
@@ -242,47 +232,381 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       end
     end
 
-    context 'when configuring a private repository' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: true }.to_json)
+    context 'when branch protection exists with matching checks' do
+      let(:api_responses) do
+        super().merge(
+          protection: http_response(200, current_protection.to_json),
+          codeql_default_setup: http_response(200, { state: 'configured', languages: %w[ruby javascript javascript-typescript typescript] }.to_json),
+          codeql_get: http_response(200, { state: 'configured' }.to_json)
+        )
       end
 
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
+      def existing_checks
+        JSON.parse([{ context: 'Build', app_id: 12_345 }, { context: 'Lint', app_id: 12_345 }].to_json)
       end
 
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured', languages: [] }.to_json)
+      def current_protection
+        {
+          required_status_checks: {
+            contexts: %w[Build Lint],
+            checks: existing_checks
+          },
+          required_pull_request_reviews: {
+            dismissal_restrictions: {
+              users: [{ login: 'admin-user' }],
+              teams: [{ slug: 'core-team' }]
+            },
+            bypass_pull_request_allowances: {
+              users: [{ login: 'bot-user' }],
+              teams: [{ slug: 'release-team' }]
+            }
+          }
+        }
       end
 
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
+      it 'preserves existing checks and dismissal/bypass settings' do # rubocop:disable RSpec/ExampleLength
+        configurator.configure
+
+        expect(github_client).to(
+          have_received(:put).with(
+            "#{repo_url}/branches/#{default_branch}/protection",
+            body: hash_including(
+              required_status_checks: hash_including(
+                strict: false,
+                checks: existing_checks
+              ),
+              required_pull_request_reviews: hash_including(
+                dismissal_restrictions: {
+                  users: ['admin-user'],
+                  teams: ['core-team']
+                },
+                bypass_pull_request_allowances: {
+                  users: ['bot-user'],
+                  teams: ['release-team']
+                }
+              )
+            )
+          )
+        )
       end
 
-      let(:security_patch_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
+      it 'reports CodeQL as already configured' do
+        configurator.configure
+
+        expect(github_client).not_to(have_received(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]))
       end
 
-      let(:codeql_disable_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
+      it 'filters redundant CodeQL languages' do
+        configurator.configure
+
+        expect(github_client).to(have_received(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil))
+      end
+
+      it "reads protection from the repository API default branch when git detected 'master' but the API reports 'main'" do
+        stub_repository_default_branch('main')
+        allow(configurator).to(receive(:warn))
+        configurator.configure
+        expect(github_client).to(have_received(:get).with("#{repo_url}/branches/main/protection", expected_codes: [200, 404]))
+      end
+
+      it "writes protection to the repository API default branch when git detected 'master' but the API reports 'main'" do
+        stub_repository_default_branch('main')
+        allow(configurator).to(receive(:warn))
+        configurator.configure
+        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/main/protection", body: anything))
+      end
+
+      it "requires signatures on the repository API default branch when git detected 'master' but the API reports 'main'" do
+        stub_repository_default_branch('main')
+        allow(configurator).to(receive(:warn))
+        configurator.configure
+        expect(github_client).to(have_received(:post).with("#{repo_url}/branches/main/protection/required_signatures", expected_codes: [200, 204]))
+      end
+
+      it "reads the force-push allowlist for the repository API default branch when git detected 'master' but the API reports 'main'" do
+        stub_repository_default_branch('main')
+        allow(configurator).to(receive(:warn))
+        configurator.configure
+        expect(github_client).to(have_received(:graphql).with(/bypassForcePushAllowances/, variables: hash_including(qualifiedName: 'refs/heads/main')))
+      end
+
+      it 'warns naming both branches when the repository API default branch differs from the detected one' do
+        stub_repository_default_branch('main')
+        expect { configurator.configure }
+          .to(output(/detected default branch 'master' differs from the repository default branch 'main'/).to_stderr)
+      end
+
+      it 'emits no default-branch warning when the repository API reports the detected branch' do
+        stub_repository_default_branch('master')
+        expect { configurator.configure }
+          .not_to(output(/differs from the repository default branch/).to_stderr)
+      end
+    end
+
+    context 'when GitHub returns dismissal/bypass users without a login key' do
+      let(:api_responses) do
+        super().merge(
+          protection: http_response(200, current_protection.to_json),
+          codeql_default_setup: http_response(200, { state: 'configured', languages: %w[ruby] }.to_json),
+          codeql_get: http_response(200, { state: 'configured' }.to_json)
+        )
+      end
+
+      def current_protection
+        {
+          required_status_checks: {
+            contexts: %w[Build Lint],
+            checks: []
+          },
+          required_pull_request_reviews: {
+            dismissal_restrictions: {
+              users: [{}],
+              teams: [{}]
+            },
+            bypass_pull_request_allowances: {
+              users: [{ login: 'bot-user' }, {}],
+              teams: []
+            }
+          }
+        }
+      end
+
+      it 'compacts malformed entries so the PUT body never contains a [null] list' do # rubocop:disable RSpec/ExampleLength
+        configurator.configure
+
+        expect(github_client).to(
+          have_received(:put).with(
+            "#{repo_url}/branches/#{default_branch}/protection",
+            body: hash_including(
+              required_pull_request_reviews: hash_including(
+                dismissal_restrictions: {
+                  users: [],
+                  teams: []
+                },
+                bypass_pull_request_allowances: {
+                  users: ['bot-user'],
+                  teams: []
+                }
+              )
+            )
+          )
+        )
+      end
+    end
+
+    context 'when branch protection exists with mismatching checks' do
+      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
+
+      def current_protection
+        {
+          required_status_checks: {
+            contexts: %w[Build Lint ExtraCheck],
+            checks: []
+          },
+          required_pull_request_reviews: {}
+        }
+      end
+
+      it 'raises an error when checks do not match' do
+        expect { configurator.configure }
+          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+      end
+    end
+
+    context 'when branch protection exists with missing checks' do
+      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
+
+      def current_protection
+        {
+          required_status_checks: {
+            contexts: ['Build'],
+            checks: []
+          },
+          required_pull_request_reviews: {}
+        }
+      end
+
+      it 'raises an error when expected checks are missing from branch protection' do
+        expect { configurator.configure }
+          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+      end
+
+      it 'does not prompt when stdin is not a terminal' do
+        allow($stdin).to(receive(:gets).and_raise('prompted without a terminal'))
+        expect { configurator.configure }
+          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+      end
+
+      it 'asks on stderr before syncing' do
+        answer_sync_prompt('y')
+        stub_successful_writes
+        configurator.configure
+        expect($stderr).to(have_received(:print).with('        Sync required status checks on master? [y/N] '))
+      end
+
+      it 'syncs the expected checks when the prompt is accepted' do
+        answer_sync_prompt('y')
+        stub_successful_writes
+        configurator.configure
+        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: hash_including(required_status_checks: { strict: false, checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }] })))
+      end
+
+      it 'accepts yes in any case' do
+        answer_sync_prompt('YES')
+        stub_successful_writes
+        expect { configurator.configure }
+          .not_to(raise_error)
+      end
+
+      it 'raises when the prompt is declined' do
+        answer_sync_prompt('n')
+        expect { configurator.configure }
+          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+      end
+
+      it 'raises when the prompt is left empty' do
+        answer_sync_prompt('')
+        expect { configurator.configure }
+          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+      end
+    end
+
+    context 'when branch protection has mismatching checks and sync_required_status_checks is true' do
+      let(:mock_options) do
+        instance_double(GHB::Options, skip_repository_settings: false, organization: organization, sync_required_status_checks: true)
+      end
+      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
+
+      def current_protection
+        {
+          required_status_checks: {
+            contexts: %w[Build StaleCheck],
+            checks: [{ context: 'Build', app_id: 42 }, { context: 'StaleCheck', app_id: nil }]
+          },
+          required_pull_request_reviews: {}
+        }
+      end
+
+      def expected_checks_payload
+        hash_including(
+          required_status_checks: {
+            strict: false,
+            checks: [
+              { context: 'Build', app_id: 42 },
+              { context: 'Lint', app_id: nil }
+            ]
+          }
+        )
       end
 
       before do
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-        # For repo options PATCH
-        allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(has_wiki: false)).and_return(ok_response))
-        # For security settings PATCH (private: disable)
-        allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil).and_return(security_patch_response))
-        # For CodeQL disable PATCH (private)
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(codeql_disable_response))
+        configurator.configure
       end
+
+      it 'rewrites branch protection with expected checks while preserving app_ids' do
+        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: expected_checks_payload))
+      end
+    end
+
+    context 'when protection exists with empty dismissal_restrictions and bypass_allowances' do
+      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
+
+      def current_protection
+        {
+          required_status_checks: {
+            contexts: %w[Build Lint],
+            checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }]
+          },
+          required_pull_request_reviews: {
+            dismissal_restrictions: {
+              users: [],
+              teams: []
+            },
+            bypass_pull_request_allowances: {
+              users: [],
+              teams: []
+            }
+          }
+        }
+      end
+
+      it 'uses empty arrays for dismissal and bypass settings' do # rubocop:disable RSpec/ExampleLength
+        configurator.configure
+
+        expect(github_client).to(
+          have_received(:put).with(
+            "#{repo_url}/branches/#{default_branch}/protection",
+            body: hash_including(
+              required_pull_request_reviews: hash_including(
+                dismissal_restrictions: { users: [], teams: [] },
+                bypass_pull_request_allowances: { users: [], teams: [] }
+              )
+            )
+          )
+        )
+      end
+    end
+
+    context 'when protection exists without dismissal_restrictions or bypass keys' do
+      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
+
+      def current_protection
+        {
+          required_status_checks: {
+            contexts: %w[Build Lint],
+            checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }]
+          },
+          required_pull_request_reviews: {}
+        }
+      end
+
+      it 'defaults to empty arrays when dismissal_restrictions and bypass keys are absent' do # rubocop:disable RSpec/ExampleLength
+        configurator.configure
+
+        expect(github_client).to(
+          have_received(:put).with(
+            "#{repo_url}/branches/#{default_branch}/protection",
+            body: hash_including(
+              required_pull_request_reviews: hash_including(
+                dismissal_restrictions: { users: [], teams: [] },
+                bypass_pull_request_allowances: { users: [], teams: [] }
+              )
+            )
+          )
+        )
+      end
+    end
+
+    context 'when protection exists without required_status_checks.checks key' do
+      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
+
+      def current_protection
+        {
+          required_status_checks: {
+            contexts: %w[Build Lint]
+          },
+          required_pull_request_reviews: {}
+        }
+      end
+
+      it 'defaults to empty array for checks when key is missing' do # rubocop:disable RSpec/ExampleLength
+        configurator.configure
+
+        expect(github_client).to(
+          have_received(:put).with(
+            "#{repo_url}/branches/#{default_branch}/protection",
+            body: hash_including(
+              required_status_checks: hash_including(checks: [])
+            )
+          )
+        )
+      end
+    end
+  end
+
+  describe '#configure security features' do
+    context 'when configuring a private repository' do
+      include_context 'with a private repository'
 
       it 'disables security features for private repository' do # rubocop:disable RSpec/ExampleLength
         configurator.configure
@@ -314,18 +638,6 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         configurator.configure
 
         expect(github_client).to(have_received(:put).with("#{repo_url}/actions/permissions/workflow", body: { default_workflow_permissions: 'read', can_approve_pull_request_reviews: false }, expected_codes: [204]))
-      end
-
-      def stub_security_patch(code, body)
-        allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil).and_return(instance_double(HTTParty::Response, code: code, body: body)))
-      end
-
-      def stub_codeql_disable(code, body)
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(instance_double(HTTParty::Response, code: code, body: body)))
-      end
-
-      def stub_codeql_read(code, body)
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(instance_double(HTTParty::Response, code: code, body: body)))
       end
 
       it 'emits no warnings when every disable call succeeds' do
@@ -383,409 +695,93 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       end
     end
 
-    context 'when branch protection exists with matching checks' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:existing_checks) do
-        JSON.parse([{ context: 'Build', app_id: 12_345 }, { context: 'Lint', app_id: 12_345 }].to_json)
-      end
-
-      let(:current_protection) do
-        {
-          required_status_checks: {
-            contexts: %w[Build Lint],
-            checks: existing_checks
-          },
-          required_pull_request_reviews: {
-            dismissal_restrictions: {
-              users: [{ login: 'admin-user' }],
-              teams: [{ slug: 'core-team' }]
-            },
-            bypass_pull_request_allowances: {
-              users: [{ login: 'bot-user' }],
-              teams: [{ slug: 'release-team' }]
-            }
-          }
-        }
-      end
-
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 200, body: current_protection.to_json)
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'configured', languages: %w[ruby javascript javascript-typescript typescript] }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      include_context 'with a stubbed repository API'
-
-      it 'preserves existing checks and dismissal/bypass settings' do # rubocop:disable RSpec/ExampleLength
-        configurator.configure
-
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_status_checks: hash_including(
-                strict: false,
-                checks: existing_checks
-              ),
-              required_pull_request_reviews: hash_including(
-                dismissal_restrictions: {
-                  users: ['admin-user'],
-                  teams: ['core-team']
-                },
-                bypass_pull_request_allowances: {
-                  users: ['bot-user'],
-                  teams: ['release-team']
-                }
-              )
-            )
-          )
-        )
-      end
-
-      it 'reports CodeQL as already configured' do
-        configurator.configure
-
-        # Should not attempt to PATCH CodeQL since it is already configured
-        expect(github_client).not_to(have_received(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]))
-      end
-
-      it 'filters redundant CodeQL languages' do
-        configurator.configure
-
-        # Verify that 'javascript-typescript' and 'typescript' are filtered out.
-        # The detection happens via puts, so just verify it completes without error.
-        expect(github_client).to(have_received(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil))
-      end
-
-      it "reads protection from the repository API default branch when git detected 'master' but the API reports 'main'" do
-        stub_repository_default_branch('main')
-        allow(configurator).to(receive(:warn))
-        configurator.configure
-        expect(github_client).to(have_received(:get).with("#{repo_url}/branches/main/protection", expected_codes: [200, 404]))
-      end
-
-      it "writes protection to the repository API default branch when git detected 'master' but the API reports 'main'" do
-        stub_repository_default_branch('main')
-        allow(configurator).to(receive(:warn))
-        configurator.configure
-        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/main/protection", body: anything))
-      end
-
-      it "requires signatures on the repository API default branch when git detected 'master' but the API reports 'main'" do
-        stub_repository_default_branch('main')
-        allow(configurator).to(receive(:warn))
-        configurator.configure
-        expect(github_client).to(have_received(:post).with("#{repo_url}/branches/main/protection/required_signatures", expected_codes: [200, 204]))
-      end
-
-      it "reads the force-push allowlist for the repository API default branch when git detected 'master' but the API reports 'main'" do
-        stub_repository_default_branch('main')
-        allow(configurator).to(receive(:warn))
-        configurator.configure
-        expect(github_client).to(have_received(:graphql).with(/bypassForcePushAllowances/, variables: hash_including(qualifiedName: 'refs/heads/main')))
-      end
-
-      it 'warns naming both branches when the repository API default branch differs from the detected one' do
-        stub_repository_default_branch('main')
-        expect { configurator.configure }
-          .to(output(/detected default branch 'master' differs from the repository default branch 'main'/).to_stderr)
-      end
-
-      it 'emits no default-branch warning when the repository API reports the detected branch' do
-        stub_repository_default_branch('master')
-        expect { configurator.configure }
-          .not_to(output(/differs from the repository default branch/).to_stderr)
-      end
-    end
-
-    context 'when GitHub returns dismissal/bypass users without a login key' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:current_protection) do
-        {
-          required_status_checks: {
-            contexts: %w[Build Lint],
-            checks: []
-          },
-          required_pull_request_reviews: {
-            dismissal_restrictions: {
-              users: [{}],
-              teams: [{}]
-            },
-            bypass_pull_request_allowances: {
-              users: [{ login: 'bot-user' }, {}],
-              teams: []
-            }
-          }
-        }
-      end
-
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 200, body: current_protection.to_json)
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'configured', languages: %w[ruby] }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      include_context 'with a stubbed repository API'
-
-      it 'compacts malformed entries so the PUT body never contains a [null] list' do # rubocop:disable RSpec/ExampleLength
-        configurator.configure
-
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_pull_request_reviews: hash_including(
-                dismissal_restrictions: {
-                  users: [],
-                  teams: []
-                },
-                bypass_pull_request_allowances: {
-                  users: ['bot-user'],
-                  teams: []
-                }
-              )
-            )
-          )
-        )
-      end
-    end
-
-    context 'when branch protection exists with mismatching checks' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:current_protection) do
-        {
-          required_status_checks: {
-            contexts: %w[Build Lint ExtraCheck],
-            checks: []
-          },
-          required_pull_request_reviews: {}
-        }
-      end
-
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 200, body: current_protection.to_json)
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
+    context 'when private repo security features patch returns error' do
+      include_context 'with a private repository'
 
       before do
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
+        stub_security_patch(422, '{"message":"Validation Failed"}')
       end
 
-      it 'raises an error when checks do not match' do
-        expect { configurator.configure }
-          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+      it 'does not print disabled confirmation messages when response is not 200' do
+        configurator.configure
+
+        expect(github_client).to(have_received(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil))
       end
     end
+  end
 
-    context 'when branch protection exists with missing checks' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:current_protection) do
-        {
-          required_status_checks: {
-            contexts: ['Build'],
-            checks: []
-          },
-          required_pull_request_reviews: {}
-        }
-      end
+  describe '#configure CodeQL' do
+    context 'when CodeQL default setup returns non-200 during branch protection' do
+      let(:api_responses) { super().merge(codeql_default_setup: http_response(403, '{"message":"Forbidden"}')) }
 
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 200, body: current_protection.to_json)
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      before do
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-      end
-
-      it 'raises an error when expected checks are missing from branch protection' do
-        expect { configurator.configure }
-          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
-      end
-
-      it 'does not prompt when stdin is not a terminal' do
-        allow($stdin).to(receive(:gets).and_raise('prompted without a terminal'))
-        expect { configurator.configure }
-          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
-      end
-
-      it 'asks on stderr before syncing' do
-        answer_sync_prompt('y')
-        stub_successful_writes
-        configurator.configure
-        expect($stderr).to(have_received(:print).with('        Sync required status checks on master? [y/N] '))
-      end
-
-      it 'syncs the expected checks when the prompt is accepted' do
-        answer_sync_prompt('y')
-        stub_successful_writes
-        configurator.configure
-        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: hash_including(required_status_checks: { strict: false, checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }] })))
-      end
-
-      it 'accepts yes in any case' do
-        answer_sync_prompt('YES')
-        stub_successful_writes
+      it 'completes without error, skipping CodeQL language detection' do
         expect { configurator.configure }
           .not_to(raise_error)
       end
+    end
 
-      it 'raises when the prompt is declined' do
-        answer_sync_prompt('n')
-        expect { configurator.configure }
-          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+    context 'when private repo CodeQL disable returns 202' do
+      include_context 'with a private repository'
+
+      before do
+        stub_codeql_disable(202, '{}')
       end
 
-      it 'raises when the prompt is left empty' do
-        answer_sync_prompt('')
-        expect { configurator.configure }
-          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+      it 'patches CodeQL default setup to not-configured for 202 response' do
+        configurator.configure
+
+        expect(github_client).to(have_received(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil))
       end
     end
 
-    context 'when branch protection has mismatching checks and sync_required_status_checks is true' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:mock_options) do
-        instance_double(GHB::Options, skip_repository_settings: false, organization: organization, sync_required_status_checks: true)
+    context 'when private repo CodeQL disable returns non-200/202' do
+      include_context 'with a private repository'
+
+      before do
+        stub_codeql_disable(404, '{"message":"Not Found"}')
       end
 
-      let(:current_protection) do
-        {
-          required_status_checks: {
-            contexts: %w[Build StaleCheck],
-            checks: [{ context: 'Build', app_id: 42 }, { context: 'StaleCheck', app_id: nil }]
-          },
-          required_pull_request_reviews: {}
-        }
-      end
+      it 'still patches CodeQL default setup for non-200/202 response' do
+        configurator.configure
 
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
+        expect(github_client).to(have_received(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil))
       end
+    end
 
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 200, body: current_protection.to_json)
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:empty_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:expected_checks_payload) do
-        hash_including(
-          required_status_checks: {
-            strict: false,
-            checks: [
-              { context: 'Build', app_id: 42 },
-              { context: 'Lint', app_id: nil }
-            ]
-          }
+    context 'when CodeQL configured state with languages is detected in branch protection' do
+      let(:api_responses) do
+        super().merge(
+          codeql_default_setup: http_response(200, { state: 'configured', languages: %w[ruby python] }.to_json),
+          codeql_get: http_response(200, { state: 'configured' }.to_json)
         )
       end
 
-      before do
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
-        allow(github_client).to(receive_messages(put: empty_response, post: empty_response, patch: empty_response))
-        configurator.configure
-      end
-
-      it 'rewrites branch protection with expected checks while preserving app_ids' do
-        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: expected_checks_payload))
+      it 'detects and logs CodeQL languages without redundant ones' do
+        expect { configurator.configure }
+          .not_to(raise_error)
       end
     end
 
-    context 'when package.json contains "next" (Vercel detection)' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
+    context 'when CodeQL default setup has configured state but languages is not an array' do
+      let(:api_responses) do
+        super().merge(
+          codeql_default_setup: http_response(200, { state: 'configured', languages: 'not-an-array' }.to_json),
+          codeql_get: http_response(200, { state: 'configured' }.to_json)
+        )
       end
 
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
+      it 'skips language logging when languages is not an array' do
+        expect { configurator.configure }
+          .not_to(raise_error)
       end
+    end
+  end
 
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-
+  describe '#configure repository detection' do
+    context 'when package.json contains "next" (Vercel detection)' do
       before do
         allow(File).to(receive(:exist?).with('package.json').and_return(true))
         allow(File).to(receive(:read).with('package.json').and_return('{"dependencies": {"next": "^14.0.0"}}'))
-
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
       end
 
       it 'adds Vercel to the expected checks' do # rubocop:disable RSpec/ExampleLength
@@ -804,46 +800,10 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       end
     end
 
-    context 'when package.json exists but does not contain "next"' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-
+    context 'when package.json exists but does not contain "next"' do
       before do
         allow(File).to(receive(:exist?).with('package.json').and_return(true))
         allow(File).to(receive(:read).with('package.json').and_return('{"dependencies": {"react": "^18.0.0"}}'))
-
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
       end
 
       it 'does not add Vercel to the expected checks' do # rubocop:disable RSpec/ExampleLength
@@ -869,32 +829,13 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       end
     end
 
-    context 'when .github/workflows/smoke.yml exists (smoke-test detection)' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
+    context 'when .github/workflows/smoke.yml exists (smoke-test detection)' do
+      before do
+        allow(File).to(receive(:exist?).with('.github/workflows/smoke.yml').and_return(true))
+        allow(File).to(receive(:read).with('.github/workflows/smoke.yml').and_return(smoke_yaml))
       end
 
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-
-      let(:smoke_yaml) do
+      def smoke_yaml
         <<~YAML
           ---
           name: Smoke
@@ -906,23 +847,6 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
               name: Linter actions (disabled path)
             variables-smoke:
         YAML
-      end
-
-      before do
-        allow(File).to(receive(:exist?).with('.github/workflows/smoke.yml').and_return(true))
-        allow(File).to(receive(:read).with('.github/workflows/smoke.yml').and_return(smoke_yaml))
-
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
       end
 
       it 'adds each smoke job (by name, falling back to job id) to the expected checks' do # rubocop:disable RSpec/ExampleLength
@@ -947,58 +871,21 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       end
     end
 
-    context 'when ci_scripts directory exists with no existing protection' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
+    context 'when ci_scripts directory exists with no existing protection' do
+      before do
+        allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(true))
+        allow(github_client).to(receive(:get).with("#{repo_url}/commits/#{default_branch}/status", expected_codes: [200]).and_return(xcode_status_response))
       end
 
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-
-      let(:xcode_status_response) do
-        instance_double(
-          HTTParty::Response,
-          code: 200,
-          body: {
+      def xcode_status_response
+        http_response(
+          200,
+          {
             statuses: [
               { context: 'MyApp | UnitTests', target_url: 'https://appstoreconnect.apple.com/teams/123/apps/456/ci/builds/789' }
             ]
           }.to_json
         )
-      end
-
-      before do
-        allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(true))
-
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/commits/#{default_branch}/status", expected_codes: [200]).and_return(xcode_status_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
       end
 
       it 'discovers Xcode Cloud checks from commit statuses' do # rubocop:disable RSpec/ExampleLength
@@ -1017,8 +904,10 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       end
     end
 
-    context 'when ci_scripts directory exists with existing protection' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:current_protection) do
+    context 'when ci_scripts directory exists with existing protection' do
+      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
+
+      def current_protection
         {
           required_status_checks: {
             contexts: ['Build', 'Lint', 'MyApp | Build + Unit Test'],
@@ -1032,44 +921,8 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         }
       end
 
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 200, body: current_protection.to_json)
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-
       before do
         allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(true))
-
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
       end
 
       it 'extracts Xcode Cloud checks from existing branch protection' do # rubocop:disable RSpec/ExampleLength
@@ -1088,254 +941,15 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       end
     end
 
-    context 'when CodeQL default setup returns non-200 during branch protection' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 403, body: '{"message":"Forbidden"}')
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-
-      include_context 'with a stubbed repository API'
-
-      before do
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
-      end
-
-      it 'completes without error, skipping CodeQL language detection' do
-        expect { configurator.configure }
-          .not_to(raise_error)
-      end
-    end
-
-    context 'when private repo security features patch returns error' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: true }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:security_error_response) do
-        instance_double(HTTParty::Response, code: 422, body: '{"message":"Validation Failed"}')
-      end
-
-      let(:codeql_disable_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      before do
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(has_wiki: false)).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil).and_return(security_error_response))
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(codeql_disable_response))
-      end
-
-      it 'does not print disabled confirmation messages when response is not 200' do
-        configurator.configure
-
-        # The security patch was called with expected_codes: nil (so it does not raise)
-        expect(github_client).to(have_received(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil))
-      end
-    end
-
-    context 'when private repo CodeQL disable returns 202' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: true }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:security_patch_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:codeql_disable_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-
-      before do
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(has_wiki: false)).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil).and_return(security_patch_response))
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(codeql_disable_response))
-      end
-
-      it 'patches CodeQL default setup to not-configured for 202 response' do
-        configurator.configure
-
-        expect(github_client).to(have_received(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil))
-      end
-    end
-
-    context 'when private repo CodeQL disable returns non-200/202' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: true }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:security_patch_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:codeql_disable_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      before do
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(has_wiki: false)).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil).and_return(security_patch_response))
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(codeql_disable_response))
-      end
-
-      it 'still patches CodeQL default setup for non-200/202 response' do
-        configurator.configure
-
-        expect(github_client).to(have_received(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil))
-      end
-    end
-
-    context 'when CodeQL configured state with languages is detected in branch protection' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'configured', languages: %w[ruby python] }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      include_context 'with a stubbed repository API'
-
-      it 'detects and logs CodeQL languages without redundant ones' do
-        expect { configurator.configure }
-          .not_to(raise_error)
-      end
-    end
-
-    context 'when using a custom default branch' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:custom_branch) { 'main' }
-
+    context 'when using a custom default branch' do
       let(:configurator_custom_branch) do
         described_class.new(options: mock_options, required_status_checks: required_status_checks.dup, default_branch: custom_branch)
       end
 
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
+      def custom_branch = 'main'
 
       before do
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{custom_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{custom_branch}/protection", body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{custom_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
+        stub_branch_protection(custom_branch)
       end
 
       it 'uses the custom branch name in protection URLs' do # rubocop:disable RSpec/MultipleExpectations
@@ -1346,269 +960,27 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
         expect(github_client).to(have_received(:post).with("#{repo_url}/branches/#{custom_branch}/protection/required_signatures", expected_codes: [200, 204]))
       end
     end
+  end
 
-    context 'when protection exists with empty dismissal_restrictions and bypass_allowances' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:current_protection) do
-        {
-          required_status_checks: {
-            contexts: %w[Build Lint],
-            checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }]
-          },
-          required_pull_request_reviews: {
-            dismissal_restrictions: {
-              users: [],
-              teams: []
-            },
-            bypass_pull_request_allowances: {
-              users: [],
-              teams: []
-            }
-          }
-        }
-      end
-
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 200, body: current_protection.to_json)
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-
-      include_context 'with a stubbed repository API'
-
+  # allow_force_pushes: false in the REST PUT is silently ignored while a force-push
+  # actor allowlist exists, so asserting only that the `false` was *sent* passes on a
+  # branch that is still force-pushable. These examples assert the GraphQL state instead.
+  describe '#configure force-push allowlist' do
+    context 'when the default branch has a force-push actor allowlist' do
       before do
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
+        allow(github_client).to(receive(:graphql).with(/\Aquery/, variables: anything).and_return(branch_protection_rule_data(allowed_actors)))
+        allow(github_client).to(receive(:graphql).with(/updateBranchProtectionRule/, variables: anything).and_return(cleared_mutation_data))
       end
 
-      it 'uses empty arrays for dismissal and bypass settings' do # rubocop:disable RSpec/ExampleLength
-        configurator.configure
-
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_pull_request_reviews: hash_including(
-                dismissal_restrictions: { users: [], teams: [] },
-                bypass_pull_request_allowances: { users: [], teams: [] }
-              )
-            )
-          )
-        )
-      end
-    end
-
-    context 'when protection exists without dismissal_restrictions or bypass keys' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:current_protection) do
-        {
-          required_status_checks: {
-            contexts: %w[Build Lint],
-            checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }]
-          },
-          required_pull_request_reviews: {}
-        }
-      end
-
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 200, body: current_protection.to_json)
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-
-      include_context 'with a stubbed repository API'
-
-      before do
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
-      end
-
-      it 'defaults to empty arrays when dismissal_restrictions and bypass keys are absent' do # rubocop:disable RSpec/ExampleLength
-        configurator.configure
-
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_pull_request_reviews: hash_including(
-                dismissal_restrictions: { users: [], teams: [] },
-                bypass_pull_request_allowances: { users: [], teams: [] }
-              )
-            )
-          )
-        )
-      end
-    end
-
-    context 'when CodeQL default setup has configured state but languages is not an array' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'configured', languages: 'not-an-array' }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      include_context 'with a stubbed repository API'
-
-      it 'skips language logging when languages is not an array' do
-        expect { configurator.configure }
-          .not_to(raise_error)
-      end
-    end
-
-    context 'when protection exists without required_status_checks.checks key' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:current_protection) do
-        {
-          required_status_checks: {
-            contexts: %w[Build Lint]
-          },
-          required_pull_request_reviews: {}
-        }
-      end
-
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 200, body: current_protection.to_json)
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-
-      include_context 'with a stubbed repository API'
-
-      before do
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
-      end
-
-      it 'defaults to empty array for checks when key is missing' do # rubocop:disable RSpec/ExampleLength
-        configurator.configure
-
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_status_checks: hash_including(checks: [])
-            )
-          )
-        )
-      end
-    end
-
-    # allow_force_pushes: false in the REST PUT is silently ignored while a force-push
-    # actor allowlist exists, so asserting only that the `false` was *sent* passes on a
-    # branch that is still force-pushable. These examples assert the GraphQL state instead.
-    context 'when the default branch has a force-push actor allowlist' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-
-      let(:allowed_actors) do
+      def allowed_actors
         [
           { __typename: 'User', login: 'force-pusher' },
           { __typename: 'Team', slug: 'release-team' }
         ]
       end
 
-      let(:cleared_mutation_data) do
+      def cleared_mutation_data
         JSON.parse({ updateBranchProtectionRule: { branchProtectionRule: branch_protection_rule([]) } }.to_json)
-      end
-
-      before do
-        allow(github_client).to(receive(:get).with(repo_url).and_return(repo_info_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]).and_return(protection_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(codeql_default_setup_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]).and_return(ok_response))
-        allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(ok_response))
-        allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(ok_response))
-        allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(codeql_get_response))
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
-
-        allow(github_client).to(receive(:graphql).with(/\Aquery/, variables: anything).and_return(branch_protection_rule_data(allowed_actors)))
-        allow(github_client).to(receive(:graphql).with(/updateBranchProtectionRule/, variables: anything).and_return(cleared_mutation_data))
       end
 
       it 'clears the allowlist with an empty bypassForcePushActorIds mutation' do
@@ -1645,38 +1017,9 @@ RSpec.describe(GHB::RepositoryConfigurator) do # rubocop:disable RSpec/MultipleM
       end
     end
 
-    context 'when the default branch has an empty force-push allowlist' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:repo_info_response) do
-        instance_double(HTTParty::Response, code: 200, body: { private: false }.to_json)
-      end
-
-      let(:protection_response) do
-        instance_double(HTTParty::Response, code: 404, body: '{"message":"Not Found"}')
-      end
-
-      let(:codeql_default_setup_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:codeql_get_response) do
-        instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)
-      end
-
-      let(:ok_response) do
-        instance_double(HTTParty::Response, code: 200, body: '{}')
-      end
-
-      let(:accepted_response) do
-        instance_double(HTTParty::Response, code: 202, body: '{}')
-      end
-      let(:expected_query_variables) do
+    context 'when the default branch has an empty force-push allowlist' do
+      def expected_query_variables
         { owner: organization, repository: repository, qualifiedName: "refs/heads/#{default_branch}" }
-      end
-
-      include_context 'with a stubbed repository API'
-
-      before do
-        allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(accepted_response))
       end
 
       it 'reads the allowlist for the default branch ref' do
