@@ -1,0 +1,559 @@
+#### fresh generation
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack --excluded_folders tmp
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+env:
+  RUBY-BUNDLER-CACHE: true
+  RUBY-VERSION: <ruby-version>
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  rubocop:
+    name: Ruby Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Rubocop
+      uses: cloud-officer/ci-actions/linters/rubocop@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  semgrep:
+    name: Semgrep Security Scanner
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Semgrep
+      uses: cloud-officer/ci-actions/linters/semgrep@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  yamllint:
+    name: YAML Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Yamllint
+      uses: cloud-officer/ci-actions/linters/yamllint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  licenses:
+    name: Licenses Check
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Licenses
+      uses: cloud-officer/ci-actions/soup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        parameters: "--no_prompt"
+  ruby_unit_tests:
+    name: Ruby Unit Tests
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        ruby-version: "${{env.RUBY-VERSION}}"
+        ruby-bundler-cache: "${{env.RUBY-BUNDLER-CACHE}}"
+    - name: Bundler
+      shell: bash
+      run: bundle install
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+    - name: RSpec
+      shell: bash
+      run: bundle exec rspec --format documentation
+#### files
+.github/workflows/auto-approve.yml
+.github/workflows/build.yml
+.gitmodules
+.rubocop.yml -> scripts/linters/.rubocop.yml
+.semgrepignore
+.yamllint.yml
+Gemfile
+app.rb
+scripts/linters/.rubocop.yml
+scripts/tool.rb
+tmp/ignored.py
+#### regeneration over a customized build.yml
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack --excluded_folders tmp
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+env:
+  CUSTOM_WORKFLOW_ENV: kept
+  RUBY-BUNDLER-CACHE: true
+  RUBY-VERSION: <ruby-version>
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  actionlint:
+    name: Github Actions Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Actionlint
+      uses: cloud-officer/ci-actions/linters/actionlint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  rubocop:
+    name: Ruby Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Rubocop
+      uses: cloud-officer/ci-actions/linters/rubocop@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  semgrep:
+    name: Semgrep Security Scanner
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Semgrep
+      uses: cloud-officer/ci-actions/linters/semgrep@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  yamllint:
+    name: YAML Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Yamllint
+      uses: cloud-officer/ci-actions/linters/yamllint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  licenses:
+    name: Licenses Check
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Licenses
+      uses: cloud-officer/ci-actions/soup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        parameters: "--no_prompt"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  ruby_unit_tests:
+    name: Ruby Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        ruby-version: "${{env.RUBY-VERSION}}"
+        ruby-bundler-cache: "${{env.RUBY-BUNDLER-CACHE}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Bundler
+      shell: bash
+      run: bundle install --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: RSpec
+      shell: bash
+      run: bundle exec rspec --format documentation --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+#### files
+.github/workflows/auto-approve.yml
+.github/workflows/build.yml
+.gitmodules
+.rubocop.yml -> scripts/linters/.rubocop.yml
+.semgrepignore
+.yamllint.yml
+Gemfile
+app.rb
+scripts/linters/.rubocop.yml
+scripts/tool.rb
+tmp/ignored.py
+#### idempotent regeneration
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack --excluded_folders tmp
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+env:
+  CUSTOM_WORKFLOW_ENV: kept
+  RUBY-BUNDLER-CACHE: true
+  RUBY-VERSION: <ruby-version>
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  actionlint:
+    name: Github Actions Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Actionlint
+      uses: cloud-officer/ci-actions/linters/actionlint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  rubocop:
+    name: Ruby Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Rubocop
+      uses: cloud-officer/ci-actions/linters/rubocop@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  semgrep:
+    name: Semgrep Security Scanner
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Semgrep
+      uses: cloud-officer/ci-actions/linters/semgrep@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  yamllint:
+    name: YAML Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Yamllint
+      uses: cloud-officer/ci-actions/linters/yamllint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  licenses:
+    name: Licenses Check
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Licenses
+      uses: cloud-officer/ci-actions/soup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        parameters: "--no_prompt"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  ruby_unit_tests:
+    name: Ruby Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        ruby-version: "${{env.RUBY-VERSION}}"
+        ruby-bundler-cache: "${{env.RUBY-BUNDLER-CACHE}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Bundler
+      shell: bash
+      run: bundle install --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: RSpec
+      shell: bash
+      run: bundle exec rspec --format documentation --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+#### files
+.github/workflows/auto-approve.yml
+.github/workflows/build.yml
+.gitmodules
+.rubocop.yml -> scripts/linters/.rubocop.yml
+.semgrepignore
+.yamllint.yml
+Gemfile
+app.rb
+scripts/linters/.rubocop.yml
+scripts/tool.rb
+tmp/ignored.py

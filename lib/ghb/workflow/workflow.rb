@@ -54,7 +54,13 @@ module GHB
 
     def do_job(id, &block)
       job = Job.new(id)
-      job.instance_eval(&block) if block
+
+      if block&.arity == 1
+        yield(job)
+      elsif block
+        job.instance_eval(&block)
+      end
+
       @jobs[id] = job
     end
 

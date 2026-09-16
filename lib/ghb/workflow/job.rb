@@ -87,7 +87,13 @@ module GHB
 
     def do_step(name, options = {}, &block)
       step = Step.new(name, options)
-      step.instance_eval(&block) if block
+
+      if block&.arity == 1
+        yield(step)
+      elsif block
+        step.instance_eval(&block)
+      end
+
       @steps << step
     end
 

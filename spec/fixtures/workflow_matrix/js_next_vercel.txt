@@ -1,0 +1,1022 @@
+#### fresh generation
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+env:
+  NODE-CACHE: npm
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  eslint:
+    name: JavaScript ES Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: ESLint
+      uses: cloud-officer/ci-actions/linters/eslint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  semgrep:
+    name: Semgrep Security Scanner
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Semgrep
+      uses: cloud-officer/ci-actions/linters/semgrep@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  trivy:
+    name: Container & IaC Vulnerability Scanner
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Trivy
+      uses: cloud-officer/ci-actions/linters/trivy@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  yamllint:
+    name: YAML Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Yamllint
+      uses: cloud-officer/ci-actions/linters/yamllint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  licenses:
+    name: Licenses Check
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Licenses
+      uses: cloud-officer/ci-actions/soup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        parameters: "--no_prompt"
+  js_unit_tests:
+    name: JavaScript Unit Tests
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        node-cache: "${{env.NODE-CACHE}}"
+        node-cache-dependency-path: package-lock.json
+    - name: NPM
+      shell: bash
+      run: npm install
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+    - name: Jest
+      shell: bash
+      run: npx jest
+  beta_deploy:
+    name: Beta Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - eslint
+    - semgrep
+    - trivy
+    - yamllint
+    - licenses
+    - js_unit_tests
+    if: "${{always() && needs.variables.outputs.DEPLOY_ON_BETA == '1' && needs.variables.result != 'failure' && needs.eslint.result != 'failure' && needs.semgrep.result != 'failure' && needs.trivy.result != 'failure' && needs.yamllint.result != 'failure' && needs.licenses.result != 'failure' && needs.js_unit_tests.result != 'failure'}}"
+    env:
+      VERCEL_ORG_ID: "${{secrets.VERCEL_ORG_ID}}"
+      VERCEL_PROJECT_ID: "${{secrets.VERCEL_PROJECT_ID}}"
+      VERCEL_TOKEN: "${{secrets.VERCEL_TOKEN}}"
+    timeout-minutes: 60
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+    - name: Install Vercel CLI
+      run: npm install --global vercel@latest
+    - name: Pull Vercel Environment Information
+      run: vercel pull --yes --environment=preview
+    - name: Deploy Project to Vercel
+      id: deploy
+      run: echo "url=$(vercel deploy)" >> "${GITHUB_OUTPUT}"
+  rc_deploy:
+    name: RC Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - eslint
+    - semgrep
+    - trivy
+    - yamllint
+    - licenses
+    - js_unit_tests
+    if: "${{always() && needs.variables.outputs.DEPLOY_ON_RC == '1' && needs.variables.result != 'failure' && needs.eslint.result != 'failure' && needs.semgrep.result != 'failure' && needs.trivy.result != 'failure' && needs.yamllint.result != 'failure' && needs.licenses.result != 'failure' && needs.js_unit_tests.result != 'failure'}}"
+    env:
+      VERCEL_ORG_ID: "${{secrets.VERCEL_ORG_ID}}"
+      VERCEL_PROJECT_ID: "${{secrets.VERCEL_PROJECT_ID}}"
+      VERCEL_TOKEN: "${{secrets.VERCEL_TOKEN}}"
+    timeout-minutes: 60
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+    - name: Install Vercel CLI
+      run: npm install --global vercel@latest
+    - name: Pull Vercel Environment Information
+      run: vercel pull --yes --environment=preview
+    - name: Deploy Project to Vercel
+      id: deploy
+      run: echo "url=$(vercel deploy)" >> "${GITHUB_OUTPUT}"
+  prod_deploy:
+    name: Prod Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - eslint
+    - semgrep
+    - trivy
+    - yamllint
+    - licenses
+    - js_unit_tests
+    if: "${{always() && needs.variables.outputs.DEPLOY_ON_PROD == '1' && needs.variables.result != 'failure' && needs.eslint.result != 'failure' && needs.semgrep.result != 'failure' && needs.trivy.result != 'failure' && needs.yamllint.result != 'failure' && needs.licenses.result != 'failure' && needs.js_unit_tests.result != 'failure'}}"
+    env:
+      VERCEL_ORG_ID: "${{secrets.VERCEL_ORG_ID}}"
+      VERCEL_PROJECT_ID: "${{secrets.VERCEL_PROJECT_ID}}"
+      VERCEL_TOKEN: "${{secrets.VERCEL_TOKEN}}"
+    timeout-minutes: 60
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+    - name: Install Vercel CLI
+      run: npm install --global vercel@latest
+    - name: Pull Vercel Environment Information
+      run: vercel pull --yes --environment=production
+    - name: Deploy Project to Vercel
+      run: vercel deploy --prod
+#### files
+.eslintrc.json
+.github/workflows/auto-approve.yml
+.github/workflows/build.yml
+.node-version
+.semgrepignore
+.trivyignore
+.yamllint.yml
+index.js
+package-lock.json
+package.json
+trivy.yaml
+#### regeneration over a customized build.yml
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+env:
+  CUSTOM_WORKFLOW_ENV: kept
+  NODE-CACHE: npm
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  actionlint:
+    name: Github Actions Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Actionlint
+      uses: cloud-officer/ci-actions/linters/actionlint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  eslint:
+    name: JavaScript ES Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: ESLint
+      uses: cloud-officer/ci-actions/linters/eslint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  semgrep:
+    name: Semgrep Security Scanner
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Semgrep
+      uses: cloud-officer/ci-actions/linters/semgrep@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  trivy:
+    name: Container & IaC Vulnerability Scanner
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Trivy
+      uses: cloud-officer/ci-actions/linters/trivy@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  yamllint:
+    name: YAML Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Yamllint
+      uses: cloud-officer/ci-actions/linters/yamllint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  licenses:
+    name: Licenses Check
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Licenses
+      uses: cloud-officer/ci-actions/soup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        parameters: "--no_prompt"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  js_unit_tests:
+    name: JavaScript Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        node-cache: "${{env.NODE-CACHE}}"
+        node-cache-dependency-path: package-lock.json
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: NPM
+      shell: bash
+      run: npm install --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Jest
+      shell: bash
+      run: npx jest --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  beta_deploy:
+    name: Beta Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - actionlint
+    - eslint
+    - semgrep
+    - trivy
+    - yamllint
+    - licenses
+    - js_unit_tests
+    if: "${{always() && needs.variables.outputs.DEPLOY_ON_BETA == '1' && needs.variables.result != 'failure' && needs.actionlint.result != 'failure' && needs.eslint.result != 'failure' && needs.semgrep.result != 'failure' && needs.trivy.result != 'failure' && needs.yamllint.result != 'failure' && needs.licenses.result != 'failure' && needs.js_unit_tests.result != 'failure'}}"
+    env:
+      VERCEL_ORG_ID: "${{secrets.VERCEL_ORG_ID}}"
+      VERCEL_PROJECT_ID: "${{secrets.VERCEL_PROJECT_ID}}"
+      VERCEL_TOKEN: "${{secrets.VERCEL_TOKEN}}"
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Install Vercel CLI
+      run: npm install --global vercel@latest --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Pull Vercel Environment Information
+      run: vercel pull --yes --environment=preview --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Deploy Project to Vercel
+      id: deploy
+      run: echo "url=$(vercel deploy)" >> "${GITHUB_OUTPUT}" --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Custom Step
+      run: echo custom
+  rc_deploy:
+    name: RC Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - actionlint
+    - eslint
+    - semgrep
+    - trivy
+    - yamllint
+    - licenses
+    - js_unit_tests
+    if: "${{always() && needs.variables.outputs.DEPLOY_ON_RC == '1' && needs.variables.result != 'failure' && needs.actionlint.result != 'failure' && needs.eslint.result != 'failure' && needs.semgrep.result != 'failure' && needs.trivy.result != 'failure' && needs.yamllint.result != 'failure' && needs.licenses.result != 'failure' && needs.js_unit_tests.result != 'failure'}}"
+    env:
+      VERCEL_ORG_ID: "${{secrets.VERCEL_ORG_ID}}"
+      VERCEL_PROJECT_ID: "${{secrets.VERCEL_PROJECT_ID}}"
+      VERCEL_TOKEN: "${{secrets.VERCEL_TOKEN}}"
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Install Vercel CLI
+      run: npm install --global vercel@latest --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Pull Vercel Environment Information
+      run: vercel pull --yes --environment=preview --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Deploy Project to Vercel
+      id: deploy
+      run: echo "url=$(vercel deploy)" >> "${GITHUB_OUTPUT}" --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Custom Step
+      run: echo custom
+  prod_deploy:
+    name: Prod Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - actionlint
+    - eslint
+    - semgrep
+    - trivy
+    - yamllint
+    - licenses
+    - js_unit_tests
+    if: "${{always() && needs.variables.outputs.DEPLOY_ON_PROD == '1' && needs.variables.result != 'failure' && needs.actionlint.result != 'failure' && needs.eslint.result != 'failure' && needs.semgrep.result != 'failure' && needs.trivy.result != 'failure' && needs.yamllint.result != 'failure' && needs.licenses.result != 'failure' && needs.js_unit_tests.result != 'failure'}}"
+    env:
+      VERCEL_ORG_ID: "${{secrets.VERCEL_ORG_ID}}"
+      VERCEL_PROJECT_ID: "${{secrets.VERCEL_PROJECT_ID}}"
+      VERCEL_TOKEN: "${{secrets.VERCEL_TOKEN}}"
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Install Vercel CLI
+      run: npm install --global vercel@latest --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Pull Vercel Environment Information
+      run: vercel pull --yes --environment=production --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Deploy Project to Vercel
+      run: vercel deploy --prod --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Custom Step
+      run: echo custom
+#### files
+.eslintrc.json
+.github/workflows/auto-approve.yml
+.github/workflows/build.yml
+.node-version
+.semgrepignore
+.trivyignore
+.yamllint.yml
+index.js
+package-lock.json
+package.json
+trivy.yaml
+#### idempotent regeneration
+# github-build --organization test-org --skip_repository_settings --skip_gitignore --skip_slack
+---
+name: Build
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - master
+    - "[0-9]*"
+    - dependabot/**
+    tags:
+    - "**"
+permissions:
+  contents: read
+env:
+  CUSTOM_WORKFLOW_ENV: kept
+  NODE-CACHE: npm
+concurrency:
+  group: build-${{github.ref}}
+  cancel-in-progress: true
+jobs:
+  variables:
+    name: Prepare Variables
+    runs-on: ubuntu-latest
+    outputs:
+      BUILD_NAME: "${{steps.variables.outputs.BUILD_NAME}}"
+      BUILD_VERSION: "${{steps.variables.outputs.BUILD_VERSION}}"
+      COMMIT_MESSAGE: "${{steps.variables.outputs.COMMIT_MESSAGE}}"
+      MODIFIED_GITHUB_RUN_NUMBER: "${{steps.variables.outputs.MODIFIED_GITHUB_RUN_NUMBER}}"
+      DEPLOY_ON_BETA: "${{steps.variables.outputs.DEPLOY_ON_BETA}}"
+      DEPLOY_ON_RC: "${{steps.variables.outputs.DEPLOY_ON_RC}}"
+      DEPLOY_ON_PROD: "${{steps.variables.outputs.DEPLOY_ON_PROD}}"
+      DEPLOY_MACOS: "${{steps.variables.outputs.DEPLOY_MACOS}}"
+      DEPLOY_TVOS: "${{steps.variables.outputs.DEPLOY_TVOS}}"
+      DEPLOY_OPTIONS: "${{steps.variables.outputs.DEPLOY_OPTIONS}}"
+      SKIP_LICENSES: "${{steps.variables.outputs.SKIP_LICENSES}}"
+      SKIP_LINTERS: "${{steps.variables.outputs.SKIP_LINTERS}}"
+      SKIP_TESTS: "${{steps.variables.outputs.SKIP_TESTS}}"
+      UPDATE_PACKAGES: "${{steps.variables.outputs.UPDATE_PACKAGES}}"
+      LINTERS: "${{steps.variables.outputs.LINTERS}}"
+    timeout-minutes: 30
+    steps:
+    - name: Prepare variables
+      id: variables
+      uses: cloud-officer/ci-actions/variables@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+  actionlint:
+    name: Github Actions Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    timeout-minutes: 30
+    steps:
+    - name: Actionlint
+      uses: cloud-officer/ci-actions/linters/actionlint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+  eslint:
+    name: JavaScript ES Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: ESLint
+      uses: cloud-officer/ci-actions/linters/eslint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  semgrep:
+    name: Semgrep Security Scanner
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Semgrep
+      uses: cloud-officer/ci-actions/linters/semgrep@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  trivy:
+    name: Container & IaC Vulnerability Scanner
+    permissions:
+      contents: read
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Trivy
+      uses: cloud-officer/ci-actions/linters/trivy@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  yamllint:
+    name: YAML Linter
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LINTERS != '1' && github.event_name == 'pull_request'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Yamllint
+      uses: cloud-officer/ci-actions/linters/yamllint@v3
+      with:
+        linters: "${{needs.variables.outputs.LINTERS}}"
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        reviewdog-token: "${{github.token}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  licenses:
+    name: Licenses Check
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_LICENSES != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Licenses
+      uses: cloud-officer/ci-actions/soup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        parameters: "--no_prompt"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+  js_unit_tests:
+    name: JavaScript Unit Tests
+    runs-on: custom-runner
+    needs:
+    - variables
+    if: "${{needs.variables.outputs.SKIP_TESTS != '1'}}"
+    env:
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        node-cache: "${{env.NODE-CACHE}}"
+        node-cache-dependency-path: package-lock.json
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: NPM
+      shell: bash
+      run: npm install --customized
+      env:
+        GITHUB_TOKEN: "${{github.token}}"
+        CUSTOM_STEP_ENV: kept
+    - name: Jest
+      shell: bash
+      run: npx jest --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+  beta_deploy:
+    name: Beta Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - actionlint
+    - eslint
+    - semgrep
+    - trivy
+    - yamllint
+    - licenses
+    - js_unit_tests
+    if: "${{always() && needs.variables.outputs.DEPLOY_ON_BETA == '1' && needs.variables.result != 'failure' && needs.actionlint.result != 'failure' && needs.eslint.result != 'failure' && needs.semgrep.result != 'failure' && needs.trivy.result != 'failure' && needs.yamllint.result != 'failure' && needs.licenses.result != 'failure' && needs.js_unit_tests.result != 'failure'}}"
+    env:
+      VERCEL_ORG_ID: "${{secrets.VERCEL_ORG_ID}}"
+      VERCEL_PROJECT_ID: "${{secrets.VERCEL_PROJECT_ID}}"
+      VERCEL_TOKEN: "${{secrets.VERCEL_TOKEN}}"
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Install Vercel CLI
+      run: npm install --global vercel@latest --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Pull Vercel Environment Information
+      run: vercel pull --yes --environment=preview --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Deploy Project to Vercel
+      id: deploy
+      run: echo "url=$(vercel deploy)" >> "${GITHUB_OUTPUT}" --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Custom Step
+      run: echo custom
+  rc_deploy:
+    name: RC Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - actionlint
+    - eslint
+    - semgrep
+    - trivy
+    - yamllint
+    - licenses
+    - js_unit_tests
+    if: "${{always() && needs.variables.outputs.DEPLOY_ON_RC == '1' && needs.variables.result != 'failure' && needs.actionlint.result != 'failure' && needs.eslint.result != 'failure' && needs.semgrep.result != 'failure' && needs.trivy.result != 'failure' && needs.yamllint.result != 'failure' && needs.licenses.result != 'failure' && needs.js_unit_tests.result != 'failure'}}"
+    env:
+      VERCEL_ORG_ID: "${{secrets.VERCEL_ORG_ID}}"
+      VERCEL_PROJECT_ID: "${{secrets.VERCEL_PROJECT_ID}}"
+      VERCEL_TOKEN: "${{secrets.VERCEL_TOKEN}}"
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Install Vercel CLI
+      run: npm install --global vercel@latest --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Pull Vercel Environment Information
+      run: vercel pull --yes --environment=preview --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Deploy Project to Vercel
+      id: deploy
+      run: echo "url=$(vercel deploy)" >> "${GITHUB_OUTPUT}" --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Custom Step
+      run: echo custom
+  prod_deploy:
+    name: Prod Deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs:
+    - variables
+    - actionlint
+    - eslint
+    - semgrep
+    - trivy
+    - yamllint
+    - licenses
+    - js_unit_tests
+    if: "${{always() && needs.variables.outputs.DEPLOY_ON_PROD == '1' && needs.variables.result != 'failure' && needs.actionlint.result != 'failure' && needs.eslint.result != 'failure' && needs.semgrep.result != 'failure' && needs.trivy.result != 'failure' && needs.yamllint.result != 'failure' && needs.licenses.result != 'failure' && needs.js_unit_tests.result != 'failure'}}"
+    env:
+      VERCEL_ORG_ID: "${{secrets.VERCEL_ORG_ID}}"
+      VERCEL_PROJECT_ID: "${{secrets.VERCEL_PROJECT_ID}}"
+      VERCEL_TOKEN: "${{secrets.VERCEL_TOKEN}}"
+      CUSTOM_JOB_ENV: kept
+    timeout-minutes: 42
+    steps:
+    - name: Setup
+      uses: cloud-officer/ci-actions/setup@v3
+      with:
+        ssh-key: "${{secrets.SSH_KEY}}"
+        github-token: "${{github.token}}"
+        aws-access-key-id: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}"
+        aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
+        aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
+        aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        custom-input: kept
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Install Vercel CLI
+      run: npm install --global vercel@latest --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Pull Vercel Environment Information
+      run: vercel pull --yes --environment=production --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Deploy Project to Vercel
+      run: vercel deploy --prod --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Custom Step
+      run: echo custom
+#### files
+.eslintrc.json
+.github/workflows/auto-approve.yml
+.github/workflows/build.yml
+.node-version
+.semgrepignore
+.trivyignore
+.yamllint.yml
+index.js
+package-lock.json
+package.json
+trivy.yaml

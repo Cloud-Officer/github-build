@@ -183,6 +183,30 @@ RSpec.describe(GHB::Job) do # rubocop:disable RSpec/SpecFilePathFormat
       expect(step.uses).to(eq('actions/setup-node@v4'))
       expect(step.with).to(eq({ node_version: '20' }))
     end
+
+    it 'yields the stored step to a block that declares a parameter' do
+      yielded = nil
+
+      job.do_step('Setup') { |step| yielded = step }
+
+      expect(yielded).to(equal(job.steps.first))
+    end
+
+    it 'keeps the caller as self inside a block that declares a parameter' do
+      self_inside = nil
+
+      job.do_step('Setup') { |_step| self_inside = self }
+
+      expect(self_inside).to(equal(self))
+    end
+
+    it 'evaluates a parameterless block with the step as self' do
+      self_inside = nil
+
+      job.do_step('Setup') { self_inside = self }
+
+      expect(self_inside).to(equal(job.steps.first))
+    end
   end
 
   describe '#to_h' do

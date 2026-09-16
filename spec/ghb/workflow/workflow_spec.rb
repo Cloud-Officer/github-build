@@ -111,6 +111,36 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
 
       expect(workflow.jobs.keys).to(eq(%i[lint test deploy]))
     end
+
+    it 'yields the stored job to a block that declares a parameter' do
+      yielded = nil
+
+      workflow.do_job(:build) { |job| yielded = job }
+
+      expect(yielded).to(equal(workflow.jobs[:build]))
+    end
+
+    it 'keeps the caller as self inside a block that declares a parameter' do
+      self_inside = nil
+
+      workflow.do_job(:build) { |_job| self_inside = self }
+
+      expect(self_inside).to(equal(self))
+    end
+
+    it 'evaluates a parameterless block with the job as self' do
+      self_inside = nil
+
+      workflow.do_job(:build) { self_inside = self }
+
+      expect(self_inside).to(equal(workflow.jobs[:build]))
+    end
+
+    it 'adds a job without a block' do
+      workflow.do_job(:build)
+
+      expect(workflow.jobs[:build].steps).to(eq([]))
+    end
   end
 
   describe '#read' do
