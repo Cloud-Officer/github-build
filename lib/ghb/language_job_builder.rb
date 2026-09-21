@@ -403,12 +403,35 @@ module GHB
       return unless recommended
 
       file_version = File.read(version_file).strip
-      return unless version_file_mismatch?(file_version, recommended.to_s)
-
       strict = @options.strict_version_check
-      resolution = strict ? "Updating #{version_file} to #{recommended}." : 'Using version file.'
-      warn_value_mismatch(option[:name], "Version file (#{version_file}): #{file_version}", recommended, resolution)
-      File.write(version_file, "#{recommended}\n") if strict
+
+      if version_file_mismatch?(file_version, recommended.to_s)
+        resolution = strict ? "Updating #{version_file} to #{recommended}." : 'Using version file.'
+        warn_value_mismatch(option[:name], "Version file (#{version_file}): #{file_version}", recommended, resolution)
+
+        if strict
+          File.write(version_file, "#{recommended}\n")
+          file_version = recommended.to_s
+        end
+      end
+
+      sync_gemfile_ruby_version(file_version) if strict && version_file == '.ruby-version'
+    end
+
+    def sync_gemfile_ruby_version(version)
+      sync_file_version('Gemfile', /^(\s*ruby\s+['"])\d[\w.]*(['"])/, version)
+      sync_file_version('Gemfile.lock', /^(RUBY VERSION\r?\n\s+ruby )\S+/, version)
+    end
+
+    def sync_file_version(file, pattern, version)
+      return unless File.exist?(file)
+
+      content = File.read(file)
+      updated = content.sub(pattern) { "#{::Regexp.last_match(1)}#{version}#{::Regexp.last_match(2)}" }
+      return if updated == content
+
+      puts("        Updating Ruby version in #{file} to #{version}...")
+      File.write(file, updated)
     end
 
     def merge_env_option(setup_options, option)
