@@ -46,7 +46,6 @@ module GHB
 
     def initialize(argv)
       @code_deploy_pre_steps = []
-      @default_branch = detect_default_branch
       @file_cache = {}
       @auto_approve_workflow = Workflow.new('Auto-approve for code owners')
       @dockerhub_workflow = Workflow.new('Publish Docker image')
@@ -66,6 +65,7 @@ module GHB
         return Status::SUCCESS_EXIT_CODE
       end
 
+      @default_branch = detect_default_branch
       puts('Generating build file...')
       workflow_read
       workflow_set_defaults

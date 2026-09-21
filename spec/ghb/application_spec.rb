@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+RSpec::Matchers.define_negated_matcher(:not_output, :output)
+
 RSpec.describe(GHB::Application) do
   describe '#validate_config!' do
     let(:config_test_class) do
@@ -229,6 +231,14 @@ RSpec.describe(GHB::Application) do
       expect(json['ignored_folders']).to(include('node_modules'))
       expect(json['ignored_folders']).to(include('vendor'))
       expect(json['ignored_folders']).to(include('.git'))
+    end
+
+    it 'does not warn about the default branch when get_ignored_folders runs outside a git repository' do
+      Dir.mktmpdir do |dir|
+        run = -> { Dir.chdir(dir) { described_class.new(['--get_ignored_folders']).execute } } # rubocop:disable ThreadSafety/DirChdir
+
+        expect(&run).to(output(/ignored_folders/).to_stdout.and(not_output(/default branch/).to_stderr))
+      end
     end
 
     it 'provides clear error message with file path' do # rubocop:disable RSpec/ExampleLength
