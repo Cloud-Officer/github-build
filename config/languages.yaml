@@ -112,7 +112,7 @@ js:
     - .nvmrc
   setup_options:
     - name: node-version
-      value: 26.8.2
+      value: 24.21.0
     - name: node-always-auth
       value:
     - name: node-version-file
@@ -479,7 +479,7 @@ ruby:
     - .ruby-version
   setup_options:
     - name: ruby-version
-      value: 4.0.6
+      value: 4.0.7
     - name: ruby-rubygems
       value:
     - name: ruby-bundler

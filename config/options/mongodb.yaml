@@ -11,7 +11,7 @@
 options:
   # MongoDB server version
   - name: mongodb-version
-    value: 8.0.1
+    value: 8.3.11
   # Replica set name (empty = standalone mode)
   - name: mongodb-replica-set
     value:
