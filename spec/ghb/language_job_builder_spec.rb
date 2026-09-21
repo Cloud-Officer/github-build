@@ -875,6 +875,58 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     end
   end
 
+  describe '#reconcile_version_file' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:ruby_option) { { name: 'ruby-version', value: '4.0.7' }                                         }
+    let(:gemfile)     { "source 'https://rubygems.org'\n\nruby '4.0.6'\ngem 'rails'\n"                   }
+    let(:lockfile)    { "DEPENDENCIES\n  rails\n\nRUBY VERSION\n  ruby 4.0.6\n\nBUNDLED WITH\n  2.7.0\n" }
+
+    before do
+      allow(File).to(receive(:exist?).and_call_original)
+      allow(File).to(receive(:exist?).with('Gemfile').and_return(true))
+      allow(File).to(receive(:exist?).with('Gemfile.lock').and_return(true))
+      allow(File).to(receive(:read).with('Gemfile').and_return(gemfile))
+      allow(File).to(receive(:read).with('Gemfile.lock').and_return(lockfile))
+      allow(File).to(receive(:write))
+      allow($stdout).to(receive(:puts))
+    end
+
+    it 'updates the pinned Ruby in Gemfile and Gemfile.lock along with .ruby-version' do # rubocop:disable RSpec/MultipleExpectations
+      allow(File).to(receive(:read).with('.ruby-version').and_return("4.0.6\n"))
+
+      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version')
+
+      expect(File).to(have_received(:write).with('.ruby-version', "4.0.7\n"))
+      expect(File).to(have_received(:write).with('Gemfile', gemfile.sub("ruby '4.0.6'", "ruby '4.0.7'")))
+      expect(File).to(have_received(:write).with('Gemfile.lock', lockfile.sub('ruby 4.0.6', 'ruby 4.0.7')))
+    end
+
+    it 'syncs a stale Gemfile even when .ruby-version already matches' do
+      allow(File).to(receive(:read).with('.ruby-version').and_return("4.0.7\n"))
+
+      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version')
+
+      expect(File).to(have_received(:write).with('Gemfile', gemfile.sub("ruby '4.0.6'", "ruby '4.0.7'")))
+    end
+
+    it 'leaves a Gemfile that reads the version file untouched' do
+      allow(File).to(receive(:read).with('.ruby-version').and_return("4.0.7\n"))
+      allow(File).to(receive(:read).with('Gemfile').and_return("ruby file: '.ruby-version'\n"))
+
+      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version')
+
+      expect(File).not_to(have_received(:write).with('Gemfile', anything))
+    end
+
+    it 'does not touch the Gemfile when strict_version_check is false' do
+      allow(mock_options).to(receive(:strict_version_check).and_return(false))
+      allow(File).to(receive(:read).with('.ruby-version').and_return("4.0.6\n"))
+
+      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version')
+
+      expect(File).not_to(have_received(:write))
+    end
+  end
+
   describe '#version_file_mismatch?' do # rubocop:disable RSpec/MultipleMemoizedHelpers
     it 'treats a recommendation that only adds a more specific patch as a match (.php-version 8.5 vs 8.5.6)' do
       expect(builder.__send__(:version_file_mismatch?, '8.5', '8.5.6')).to(be(false))
