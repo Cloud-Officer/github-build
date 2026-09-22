@@ -415,12 +415,15 @@ module GHB
         end
       end
 
-      sync_gemfile_ruby_version(file_version) if strict && version_file == '.ruby-version'
+      sync_ruby_version_files(file_version) if strict && version_file == '.ruby-version'
     end
 
-    def sync_gemfile_ruby_version(version)
+    # A Dockerfile that pins Ruby in an ARG drifts silently from .ruby-version
+    # and only fails when the image is built, which is usually a release.
+    def sync_ruby_version_files(version)
       sync_file_version('Gemfile', /^(\s*ruby\s+['"])\d[\w.]*(['"])/, version)
       sync_file_version('Gemfile.lock', /^(RUBY VERSION\r?\n\s+ruby )\S+/, version)
+      sync_file_version('Dockerfile', /^(ARG RUBY_VERSION=)\S+/, version)
     end
 
     def sync_file_version(file, pattern, version)

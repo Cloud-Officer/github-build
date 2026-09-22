@@ -879,13 +879,16 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     let(:ruby_option) { { name: 'ruby-version', value: '4.0.7' }                                         }
     let(:gemfile)     { "source 'https://rubygems.org'\n\nruby '4.0.6'\ngem 'rails'\n"                   }
     let(:lockfile)    { "DEPENDENCIES\n  rails\n\nRUBY VERSION\n  ruby 4.0.6\n\nBUNDLED WITH\n  2.7.0\n" }
+    let(:dockerfile)  { "ARG RUBY_VERSION=4.0.6\nFROM ruby:$RUBY_VERSION-slim AS base\n"                 }
 
     before do
       allow(File).to(receive(:exist?).and_call_original)
       allow(File).to(receive(:exist?).with('Gemfile').and_return(true))
       allow(File).to(receive(:exist?).with('Gemfile.lock').and_return(true))
+      allow(File).to(receive(:exist?).with('Dockerfile').and_return(true))
       allow(File).to(receive(:read).with('Gemfile').and_return(gemfile))
       allow(File).to(receive(:read).with('Gemfile.lock').and_return(lockfile))
+      allow(File).to(receive(:read).with('Dockerfile').and_return(dockerfile))
       allow(File).to(receive(:write))
       allow($stdout).to(receive(:puts))
     end
@@ -898,6 +901,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(File).to(have_received(:write).with('.ruby-version', "4.0.7\n"))
       expect(File).to(have_received(:write).with('Gemfile', gemfile.sub("ruby '4.0.6'", "ruby '4.0.7'")))
       expect(File).to(have_received(:write).with('Gemfile.lock', lockfile.sub('ruby 4.0.6', 'ruby 4.0.7')))
+    end
+
+    it 'updates the Ruby pinned in the Dockerfile ARG' do
+      allow(File).to(receive(:read).with('.ruby-version').and_return("4.0.6\n"))
+
+      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version')
+
+      expect(File).to(have_received(:write).with('Dockerfile', dockerfile.sub('4.0.6', '4.0.7')))
     end
 
     it 'syncs a stale Gemfile even when .ruby-version already matches' do
