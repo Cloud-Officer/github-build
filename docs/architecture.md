@@ -118,6 +118,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `validate_config!`: Validates all YAML configuration files exist and have valid syntax
 - `validate_config_schema(name, relative_path, data)`: Validates YAML schema structure
 - `validate_language_dependencies(data, relative_path)`: Validates the `dependencies` entries of `languages.yaml`
+- `validate_language_failure_artifacts(data, relative_path)`: Rejects a `failure_artifacts` value in `languages.yaml` that is not a list of entries with a non-empty `marker` string and a non-empty list of `paths` strings
 - `validate_entries(data, relative_path, entry_type, required_keys)`: Validates config entries have required keys
 - `validate_option_entries(data, relative_path)`: Validates option config entries
 - `workflow_read`: Reads existing workflow YAML file
@@ -373,7 +374,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `initialize(context:, unit_tests_conditions:)`: Accepts a `GHB::BuildContext` plus the unit-test `if:` conditions collected by `LicensesJobBuilder`
-- `build`: Detects languages, checks for database dependencies (MongoDB, MySQL, Redis, OpenSearch), validates versions, and creates test jobs. For Swift projects with Xcode Cloud (`ci_scripts` directory), builds the unit test job so its dependency steps are still collected (CodeDeploy pre-steps, `Podfile.lock` licenses step) and then deletes the job from the workflow
+- `build`: Detects languages, checks for database dependencies (MongoDB, MySQL, Redis, OpenSearch), validates versions, and creates test jobs. When one of the language's `failure_artifacts` markers matches at the repo root (`failure_artifact_paths`), adds an `Upload Failure Artifacts` step (`build_failure_artifacts_step`: `if: failure()`, `actions/upload-artifact`, the union of the matched entries' `paths`, artifact name suffixed with `${{strategy.job-index}}`) after the test step, so each leg of a hand-added matrix (e.g. Rails `test` / `test:system`) uploads its own screenshots or reports; its `if:` and `with:` are kept from the previous workflow and its action version is refreshed from `config/actions.yaml`. For Swift projects with Xcode Cloud (`ci_scripts` directory), builds the unit test job so its dependency steps are still collected (CodeDeploy pre-steps, `Podfile.lock` licenses step) and then deletes the job from the workflow
 - `self.drop_injected_pat(env)`: Deletes a step's `GITHUB_TOKEN` entry only when its value is exactly the PAT reference this tool used to inject, so workflows generated before the fix self-heal on regeneration while a token the user set deliberately is left alone
 
 **Private Methods:**

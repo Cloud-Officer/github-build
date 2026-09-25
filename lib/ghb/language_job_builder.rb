@@ -43,7 +43,8 @@ module GHB
     # The PAT reference this tool used to inject, kept so regeneration can recognise and strip
     # it from workflows generated before SEC-001 was fixed.
     INJECTED_PAT = '${{secrets.GH_PAT}}'
-    private_constant :SWIFT_DEPLOY_CHECK_FLAGS, :CODEDEPLOY_SETUP_LANGUAGES, :SUBDIR_DEPENDENCY_SCAN_DEPTH, :DEPENDENCY_STEP_TOKEN, :INJECTED_PAT
+    FAILURE_ARTIFACTS_STEP_NAME = 'Upload Failure Artifacts'
+    private_constant :SWIFT_DEPLOY_CHECK_FLAGS, :CODEDEPLOY_SETUP_LANGUAGES, :SUBDIR_DEPENDENCY_SCAN_DEPTH, :DEPENDENCY_STEP_TOKEN, :INJECTED_PAT, :FAILURE_ARTIFACTS_STEP_NAME
 
     attr_reader :code_deploy_pre_steps
 
@@ -263,6 +264,7 @@ module GHB
 
         next unless dependency_detected || mono_dependency_locations.any?
 
+        build_failure_artifacts_step(job, language) if dependency_detected
         build_licenses_step(job, language) if File.exist?('Podfile.lock') && @options.skip_license_check == false
       end
 
@@ -367,6 +369,30 @@ module GHB
           step.do_run("cd #{subdir} && #{language[:unit_test_framework_default]}") if step.run.nil?
           LanguageJobBuilder.drop_injected_pat(step.env)
         end
+      end
+    end
+
+    def failure_artifact_paths(language)
+      entries = (language[:failure_artifacts] || []).select { |entry| Dir.glob(entry[:marker]).any? }
+      paths = entries.flat_map { |entry| entry[:paths] }
+      paths.uniq
+    end
+
+    # The artifact name carries the matrix leg index so legs of a hand-added matrix do not collide on upload.
+    def build_failure_artifacts_step(job, language)
+      paths = failure_artifact_paths(language)
+      return if paths.empty?
+
+      job.do_step(FAILURE_ARTIFACTS_STEP_NAME) do |step|
+        step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
+        step.do_if('failure()') if step.if.nil?
+        step.do_uses(GHB.external_action('actions/upload-artifact'))
+
+        step.default_with(
+          name: 'failure-artifacts-${{strategy.job-index}}',
+          path: paths.join("\n"),
+          'if-no-files-found': 'ignore'
+        )
       end
     end
 

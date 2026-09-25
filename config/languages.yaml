@@ -57,6 +57,13 @@
 #                                                                       Omit to leave this lockfile out of
 #                                                                       the cache
 #   unit_test_framework_name    (string, optional) - Display name for the test step
+#   failure_artifacts           (array, optional)  - Files a failing test run leaves behind (browser
+#                                                    screenshots, test reports). Each entry:
+#                                                      marker: glob relative to the repo root whose
+#                                                              match means the tool is in use
+#                                                      paths:  paths uploaded as one artifact when the
+#                                                              unit test job fails
+#                                                    The upload step is added only when a marker matches
 #   unit_test_framework_default (string, optional) - Default test command
 #   runs-on                     (string, optional) - runner family (ubuntu, macos) or an
 #                                                    explicit image; defaults to ubuntu
@@ -175,6 +182,15 @@ js:
       package_manager_update: pnpm update
   unit_test_framework_name: Jest
   unit_test_framework_default: npx jest
+  failure_artifacts:
+    - marker: playwright.config.{js,ts,mjs,cjs,mts,cts}
+      paths:
+        - playwright-report
+        - test-results
+    - marker: cypress.config.{js,ts,mjs,cjs,mts,cts}
+      paths:
+        - cypress/screenshots
+        - cypress/videos
 kotlin:
   short_name: kotlin
   long_name: Kotlin
@@ -290,6 +306,13 @@ kotlin:
       package_manager_update: mvn versions:use-latest-releases
   unit_test_framework_name: JUnit
   unit_test_framework_default: gradle test
+  failure_artifacts:
+    - marker: build.gradle{,.kts}
+      paths:
+        - build/reports/tests
+    - marker: pom.xml
+      paths:
+        - target/surefire-reports
 php:
   short_name: php
   long_name: PHP
@@ -336,6 +359,11 @@ php:
       package_manager_update: yarn upgrade
   unit_test_framework_name: PHPUnit
   unit_test_framework_default: vendor/bin/phpunit
+  failure_artifacts:
+    - marker: tests/Browser
+      paths:
+        - tests/Browser/screenshots
+        - tests/Browser/console
 proto:
   short_name: proto
   long_name: Protocol Buffer
@@ -507,6 +535,10 @@ ruby:
       package_manager_update: bundle config set frozen false ; bundle update
   unit_test_framework_name: RSpec
   unit_test_framework_default: bundle exec rspec --format documentation
+  failure_artifacts:
+    - marker: test/system
+      paths:
+        - tmp/screenshots
 # Directories to exclude from file scanning that are NOT package manager install dirs.
 # Combined with install_dirs values from dependency entries to form the complete exclusion list.
 # This combined set is also the single source of truth rendered into each linter

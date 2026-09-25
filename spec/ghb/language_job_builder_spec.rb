@@ -875,6 +875,111 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     end
   end
 
+  describe 'failure artifacts' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:js_artifacts_yaml) do
+      config = js_language_config.deep_dup
+      config[:js][:failure_artifacts] = [
+        { marker: 'playwright.config.{js,ts}', paths: %w[playwright-report test-results] },
+        { marker: 'cypress.config.{js,ts}', paths: ['cypress/screenshots', 'test-results'] }
+      ]
+      Psych.dump(config.deep_stringify_keys)
+    end
+
+    let(:present_markers) { ['playwright.config.{js,ts}']                                    }
+    let(:js_steps)        { new_workflow.jobs[:js_unit_tests].steps                          }
+    let(:artifacts_step)  { js_steps.find { |step| step.name == 'Upload Failure Artifacts' } }
+
+    before do
+      allow(File).to(receive(:exist?).and_call_original)
+      stub_config_file_reads(js_artifacts_yaml)
+      stub_js_language_detection
+      allow(Dir).to(receive(:glob).and_call_original)
+      allow(Dir).to(receive(:glob).with(/config\./)) { |marker| present_markers.include?(marker) ? [marker] : [] }
+      allow($stdout).to(receive(:puts))
+    end
+
+    it 'uploads the matched marker paths right after the test step when a test fails', :aggregate_failures do
+      builder.build
+
+      expect(js_steps.map(&:name).last(2)).to(eq(['Jest', 'Upload Failure Artifacts']))
+      expect(artifacts_step.if).to(eq('failure()'))
+      expect(artifacts_step.uses).to(eq(GHB.external_action('actions/upload-artifact')))
+      expect(artifacts_step.with).to(eq(name: 'failure-artifacts-${{strategy.job-index}}', path: "playwright-report\ntest-results", 'if-no-files-found': 'ignore'))
+    end
+
+    context 'when several markers match' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:present_markers) { ['playwright.config.{js,ts}', 'cypress.config.{js,ts}'] }
+
+      it 'uploads the union of their paths once each' do
+        builder.build
+
+        expect(artifacts_step.with[:path]).to(eq("playwright-report\ntest-results\ncypress/screenshots"))
+      end
+    end
+
+    context 'when no marker matches' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:present_markers) { [] }
+
+      it 'adds no upload step' do
+        builder.build
+
+        expect(artifacts_step).to(be_nil)
+      end
+    end
+
+    it 'adds no upload step for a language that declares no failure artifacts' do
+      stub_config_file_reads(go_language_yaml)
+      stub_go_language_detection
+
+      builder.build
+
+      expect(new_workflow.jobs[:go_unit_tests].steps.map(&:name)).not_to(include('Upload Failure Artifacts'))
+    end
+
+    context 'when regenerating a job the user turned into a matrix' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:matrix) { { 'fail-fast': false, matrix: { suite: %w[unit e2e] } } }
+
+      before do
+        job_matrix = matrix
+
+        old_workflow.do_job(:js_unit_tests) do
+          do_name('JavaScript Unit Tests')
+          do_strategy(job_matrix)
+          do_step('Jest') { do_run('npm run test:${{matrix.suite}}') }
+          do_step('Upload Failure Artifacts') do
+            do_if("failure() && matrix.suite == 'e2e'")
+            do_uses('actions/upload-artifact@v4')
+            do_with({ name: 'e2e-${{matrix.suite}}', path: 'test-results' })
+          end
+        end
+      end
+
+      it 'keeps the matrix and the leg-aware test command', :aggregate_failures do
+        builder.build
+
+        test_step = js_steps.find { |step| step.name == 'Jest' }
+
+        expect(new_workflow.jobs[:js_unit_tests].strategy).to(eq(matrix))
+        expect(test_step.run).to(eq('npm run test:${{matrix.suite}}'))
+      end
+
+      it 'keeps the customised condition and inputs but refreshes the action version', :aggregate_failures do
+        builder.build
+
+        expect(artifacts_step.if).to(eq("failure() && matrix.suite == 'e2e'"))
+        expect(artifacts_step.with).to(eq(name: 'e2e-${{matrix.suite}}', path: 'test-results'))
+        expect(artifacts_step.uses).to(eq(GHB.external_action('actions/upload-artifact')))
+      end
+    end
+
+    it 'ships failure artifacts for the languages whose test tools leave them behind' do
+      languages = Psych.safe_load_file("#{__dir__}/../../config/languages.yaml", symbolize_names: true)
+      declaring = languages.select { |_name, language| language.is_a?(Hash) && language[:failure_artifacts] }
+
+      expect(declaring.keys).to(contain_exactly(:js, :kotlin, :php, :ruby))
+    end
+  end
+
   describe '#reconcile_version_file' do # rubocop:disable RSpec/MultipleMemoizedHelpers
     let(:ruby_option) { { name: 'ruby-version', value: '4.0.7' }                                         }
     let(:gemfile)     { "source 'https://rubygems.org'\n\nruby '4.0.6'\ngem 'rails'\n"                   }

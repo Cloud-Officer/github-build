@@ -227,6 +227,13 @@ jobs:
     - name: JUnit
       shell: bash
       run: gradle test
+    - name: Upload Failure Artifacts
+      uses: actions/upload-artifact@v7
+      if: failure()
+      with:
+        name: failure-artifacts-${{strategy.job-index}}
+        path: build/reports/tests
+        if-no-files-found: ignore
   php_unit_tests:
     name: PHP Unit Tests
     runs-on: ubuntu-latest
@@ -648,6 +655,16 @@ jobs:
     - name: JUnit
       shell: bash
       run: gradle test --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Upload Failure Artifacts
+      uses: actions/upload-artifact@v7
+      if: failure()
+      with:
+        name: failure-artifacts-${{strategy.job-index}}
+        path: build/reports/tests
+        if-no-files-found: ignore
+        custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
   php_unit_tests:
@@ -1105,6 +1122,16 @@ jobs:
     - name: JUnit
       shell: bash
       run: gradle test --customized
+      env:
+        CUSTOM_STEP_ENV: kept
+    - name: Upload Failure Artifacts
+      uses: actions/upload-artifact@v7
+      if: failure()
+      with:
+        name: failure-artifacts-${{strategy.job-index}}
+        path: build/reports/tests
+        if-no-files-found: ignore
+        custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
   php_unit_tests:
