@@ -171,6 +171,7 @@ module GHB
       when :languages_config
         validate_entries(data, relative_path, 'language', %w[short_name long_name])
         validate_language_dependencies(data, relative_path)
+        validate_language_failure_artifacts(data, relative_path)
       when :external_actions
         GHB.validate_external_actions!(data)
       end
@@ -189,6 +190,27 @@ module GHB
 
         raise(ConfigError, "Language '#{entry_name}' in #{relative_path} declares file_extension so it must also declare dependencies as a list")
       end
+    end
+
+    def validate_language_failure_artifacts(data, relative_path)
+      return unless data.is_a?(Hash)
+
+      data.each do |entry_name, entry|
+        next unless entry.is_a?(Hash)
+
+        artifacts = entry['failure_artifacts'] || entry[:failure_artifacts]
+        next if artifacts.nil? || (artifacts.is_a?(Array) && artifacts.all? { |artifact| valid_failure_artifact?(artifact) })
+
+        raise(ConfigError, "Language '#{entry_name}' in #{relative_path} must declare failure_artifacts as a list of entries with a marker string and a non-empty list of path strings")
+      end
+    end
+
+    def valid_failure_artifact?(artifact)
+      return false unless artifact.is_a?(Hash)
+
+      marker = artifact['marker'] || artifact[:marker]
+      paths = artifact['paths'] || artifact[:paths]
+      marker.is_a?(String) && !marker.empty? && paths.is_a?(Array) && paths.any? && paths.all? { |path| path.is_a?(String) && !path.empty? }
     end
 
     def validate_entries(data, relative_path, entry_type, required_keys)

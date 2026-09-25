@@ -176,7 +176,8 @@ together), `dependencies[]` (each with at least `dependency_file`, plus
 `package_manager_name`/`package_manager_default`/`package_manager_update`, optional `package_manager_once` for a
 command that installs a tool system-wide rather than a directory's dependencies, `cache_name` feeding
 `cache_option`, `install_dirs[]` and `*_dependency` service markers), `unit_test_framework_name`,
-`unit_test_framework_default`.
+`unit_test_framework_default`, `failure_artifacts[]` (each `{ marker, paths[] }`: when the `marker` glob matches at the
+repo root, the unit test job uploads `paths` as an artifact on failure; a malformed entry is rejected).
 
 A top-level `excluded_dirs[]` is the single source of truth for directories skipped everywhere: file scanning
 (combined with every dependency entry's `install_dirs`), `.gitignore` template detection, and the
@@ -264,7 +265,7 @@ repository. No CLI flags are needed for these; they are detected on every run.
 | `vercel.json` (or a `"vercel"`/`"next"` dependency in `package.json`) | Adds Vercel deployment jobs (`beta_deploy`, `rc_deploy`, `prod_deploy`) driving the Vercel CLI. Ignored when `appspec.yml` is present (CodeDeploy wins). Custom steps such as `vercel alias` are preserved across regenerations | Remove `vercel.json` and the `vercel`/`next` dependency |
 | `.dockerhub` | Generates a separate Docker Hub workflow (`.github/workflows/docker.yml`) that pushes images on tag events, refusing to publish a tag whose commit is not already on the default branch, and adds `Docker Build (amd64)` and `Docker Build (arm64)` jobs to `build.yml` that build the image without pushing on native `ubuntu-latest` and `ubuntu-24.04-arm` runners. Both become required status checks; they rely on the build-only mode (`push: 'false'`, `platforms`) of `cloud-officer/ci-actions/docker@v3` and need no secrets | Remove the `.dockerhub` file |
 | `ci_scripts/` | Adds `Xcode` to the expected branch protection status checks and, for Swift projects, drops the `Swift Unit Tests` job since Xcode Cloud runs the tests (dependency information is still collected) | Remove the `ci_scripts/` directory |
-| `test/system/` (Ruby projects) | Adds an `Upload Failure Screenshots` step after the test step of `Ruby Unit Tests` that uploads `tmp/screenshots` when the job fails. The artifact name carries `strategy.job-index`, so a hand-added `strategy.matrix` on the job (for example `test` / `test:system` legs run through `${{matrix.task}}` in the test step) uploads each leg separately; the matrix, the test command and the step's customised `if:`/`with:` are preserved across regenerations | Remove the `test/system/` directory |
+| A language's `failure_artifacts` marker (Rails `test/system/`, `playwright.config.*`, `cypress.config.*`, Laravel Dusk `tests/Browser/`, `build.gradle*`, `pom.xml`) | Adds an `Upload Failure Artifacts` step after the test step of that language's unit test job, uploading the marker's `paths` (e.g. `tmp/screenshots`, `test-results`, `build/reports/tests`) when the job fails. The artifact name carries `strategy.job-index`, so a hand-added `strategy.matrix` on the job (for example Rails `test` / `test:system` legs run through `${{matrix.task}}` in the test step) uploads each leg separately; the matrix, the test command and the step's customised `if:`/`with:` are preserved across regenerations | Remove the marker, or the `failure_artifacts` entry from `config/languages.yaml` |
 | `.github/workflows/smoke.yml` | Adds that hand-maintained workflow's job names to the expected branch protection status checks so they stay required across regenerations. The workflow itself is never generated or modified | Remove `.github/workflows/smoke.yml` |
 
 ### Required Secrets

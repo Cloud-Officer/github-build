@@ -114,6 +114,27 @@ RSpec.describe(GHB::Application) do
         .to(raise_error(GHB::ConfigError, %r{Language 'lonely_lang' in config/languages.yaml declares file_extension so it must also declare dependencies as a list}))
     end
 
+    it 'raises ConfigError when a language declares malformed failure_artifacts' do # rubocop:disable RSpec/ExampleLength
+      linters_yaml = File.read("#{__dir__}/../../config/linters.yaml")
+      languages_yaml = <<~YAML
+        shot_lang:
+          short_name: shot
+          long_name: Shot Language
+          failure_artifacts:
+            - marker: e2e
+              paths: []
+      YAML
+
+      allow(File).to(receive(:exist?).and_return(true))
+      allow(File).to(receive(:read).with(/linters\.yaml/).and_return(linters_yaml))
+      allow(File).to(receive(:read).with(/languages\.yaml/).and_return(languages_yaml))
+
+      config_app = config_test_class.new(mock_options)
+
+      expect { config_app.validate_config! }
+        .to(raise_error(GHB::ConfigError, %r{Language 'shot_lang' in config/languages.yaml must declare failure_artifacts as a list}))
+    end
+
     it 'raises ConfigError when a service option entry is missing name' do # rubocop:disable RSpec/ExampleLength
       valid_yaml = "valid: yaml\n"
       options_yaml = <<~YAML

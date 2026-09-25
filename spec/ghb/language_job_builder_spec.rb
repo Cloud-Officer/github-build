@@ -875,82 +875,81 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     end
   end
 
-  describe 'system test failure screenshots' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-    let(:ruby_language_yaml) do
-      Psych.dump(
-        {
-          ruby: {
-            short_name: 'ruby',
-            long_name: 'Ruby',
-            file_extension: 'rb',
-            version_files: ['.ruby-version'],
-            setup_options: [],
-            dependencies: [{ dependency_file: 'Gemfile', package_manager_name: 'Bundler', package_manager_default: 'bundle install' }],
-            unit_test_framework_name: 'RSpec',
-            unit_test_framework_default: 'bundle exec rspec'
-          }
-        }.deep_stringify_keys
-      )
+  describe 'failure artifacts' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:js_artifacts_yaml) do
+      config = js_language_config.deep_dup
+      config[:js][:failure_artifacts] = [
+        { marker: 'playwright.config.{js,ts}', paths: %w[playwright-report test-results] },
+        { marker: 'cypress.config.{js,ts}', paths: ['cypress/screenshots', 'test-results'] }
+      ]
+      Psych.dump(config.deep_stringify_keys)
     end
 
-    let(:system_tests_present) { true                                                                 }
-    let(:ruby_steps)           { new_workflow.jobs[:ruby_unit_tests].steps                            }
-    let(:screenshots_step)     { ruby_steps.find { |step| step.name == 'Upload Failure Screenshots' } }
+    let(:present_markers) { ['playwright.config.{js,ts}']                                    }
+    let(:js_steps)        { new_workflow.jobs[:js_unit_tests].steps                          }
+    let(:artifacts_step)  { js_steps.find { |step| step.name == 'Upload Failure Artifacts' } }
 
     before do
-      stub_config_file_reads(ruby_language_yaml)
       allow(File).to(receive(:exist?).and_call_original)
-      allow(builder).to(receive_messages(find_files_matching: ['./app.rb'], file_contains?: false))
-      allow(File).to(receive(:file?).with('Gemfile').and_return(true))
-      allow(File).to(receive(:exist?).with('.ruby-version').and_return(false))
-      allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
-      allow(Dir).to(receive(:exist?).and_call_original)
-      allow(Dir).to(receive(:exist?).with('test/system').and_return(system_tests_present))
+      stub_config_file_reads(js_artifacts_yaml)
+      stub_js_language_detection
+      allow(Dir).to(receive(:glob).and_call_original)
+      allow(Dir).to(receive(:glob).with(/config\./)) { |marker| present_markers.include?(marker) ? [marker] : [] }
       allow($stdout).to(receive(:puts))
     end
 
-    it 'uploads the screenshots right after the test step when a test fails', :aggregate_failures do
+    it 'uploads the matched marker paths right after the test step when a test fails', :aggregate_failures do
       builder.build
 
-      expect(ruby_steps.map(&:name).last(2)).to(eq(['RSpec', 'Upload Failure Screenshots']))
-      expect(screenshots_step.if).to(eq('failure()'))
-      expect(screenshots_step.uses).to(eq(GHB.external_action('actions/upload-artifact')))
-      expect(screenshots_step.with).to(eq(name: 'system-test-screenshots-${{strategy.job-index}}', path: 'tmp/screenshots', 'if-no-files-found': 'ignore'))
+      expect(js_steps.map(&:name).last(2)).to(eq(['Jest', 'Upload Failure Artifacts']))
+      expect(artifacts_step.if).to(eq('failure()'))
+      expect(artifacts_step.uses).to(eq(GHB.external_action('actions/upload-artifact')))
+      expect(artifacts_step.with).to(eq(name: 'failure-artifacts-${{strategy.job-index}}', path: "playwright-report\ntest-results", 'if-no-files-found': 'ignore'))
     end
 
-    context 'without a test/system directory' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:system_tests_present) { false }
+    context 'when several markers match' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:present_markers) { ['playwright.config.{js,ts}', 'cypress.config.{js,ts}'] }
+
+      it 'uploads the union of their paths once each' do
+        builder.build
+
+        expect(artifacts_step.with[:path]).to(eq("playwright-report\ntest-results\ncypress/screenshots"))
+      end
+    end
+
+    context 'when no marker matches' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:present_markers) { [] }
 
       it 'adds no upload step' do
         builder.build
 
-        expect(screenshots_step).to(be_nil)
+        expect(artifacts_step).to(be_nil)
       end
     end
 
-    it 'adds no upload step for a language other than Ruby' do
+    it 'adds no upload step for a language that declares no failure artifacts' do
       stub_config_file_reads(go_language_yaml)
       stub_go_language_detection
 
       builder.build
 
-      expect(new_workflow.jobs[:go_unit_tests].steps.map(&:name)).not_to(include('Upload Failure Screenshots'))
+      expect(new_workflow.jobs[:go_unit_tests].steps.map(&:name)).not_to(include('Upload Failure Artifacts'))
     end
 
-    context 'when regenerating a job the user turned into a test / test:system matrix' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:matrix) { { 'fail-fast': false, matrix: { task: ['test', 'test:system'] } } }
+    context 'when regenerating a job the user turned into a matrix' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:matrix) { { 'fail-fast': false, matrix: { suite: %w[unit e2e] } } }
 
       before do
         job_matrix = matrix
 
-        old_workflow.do_job(:ruby_unit_tests) do
-          do_name('Ruby Unit Tests')
+        old_workflow.do_job(:js_unit_tests) do
+          do_name('JavaScript Unit Tests')
           do_strategy(job_matrix)
-          do_step('RSpec') { do_run('bin/rails db:test:prepare ${{matrix.task}}') }
-          do_step('Upload Failure Screenshots') do
-            do_if('failure() && matrix.task == \'test:system\'')
+          do_step('Jest') { do_run('npm run test:${{matrix.suite}}') }
+          do_step('Upload Failure Artifacts') do
+            do_if("failure() && matrix.suite == 'e2e'")
             do_uses('actions/upload-artifact@v4')
-            do_with({ name: 'screenshots-${{matrix.task}}', path: 'tmp/screenshots' })
+            do_with({ name: 'e2e-${{matrix.suite}}', path: 'test-results' })
           end
         end
       end
@@ -958,19 +957,26 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       it 'keeps the matrix and the leg-aware test command', :aggregate_failures do
         builder.build
 
-        expect(new_workflow.jobs[:ruby_unit_tests].strategy).to(eq(matrix))
-        test_step = ruby_steps.find { |step| step.name == 'RSpec' }
+        test_step = js_steps.find { |step| step.name == 'Jest' }
 
-        expect(test_step.run).to(eq('bin/rails db:test:prepare ${{matrix.task}}'))
+        expect(new_workflow.jobs[:js_unit_tests].strategy).to(eq(matrix))
+        expect(test_step.run).to(eq('npm run test:${{matrix.suite}}'))
       end
 
       it 'keeps the customised condition and inputs but refreshes the action version', :aggregate_failures do
         builder.build
 
-        expect(screenshots_step.if).to(eq('failure() && matrix.task == \'test:system\''))
-        expect(screenshots_step.with).to(eq(name: 'screenshots-${{matrix.task}}', path: 'tmp/screenshots'))
-        expect(screenshots_step.uses).to(eq(GHB.external_action('actions/upload-artifact')))
+        expect(artifacts_step.if).to(eq("failure() && matrix.suite == 'e2e'"))
+        expect(artifacts_step.with).to(eq(name: 'e2e-${{matrix.suite}}', path: 'test-results'))
+        expect(artifacts_step.uses).to(eq(GHB.external_action('actions/upload-artifact')))
       end
+    end
+
+    it 'ships failure artifacts for the languages whose test tools leave them behind' do
+      languages = Psych.safe_load_file("#{__dir__}/../../config/languages.yaml", symbolize_names: true)
+      declaring = languages.select { |_name, language| language.is_a?(Hash) && language[:failure_artifacts] }
+
+      expect(declaring.keys).to(contain_exactly(:js, :kotlin, :php, :ruby))
     end
   end
 
