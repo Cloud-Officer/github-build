@@ -875,6 +875,105 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     end
   end
 
+  describe 'system test failure screenshots' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:ruby_language_yaml) do
+      Psych.dump(
+        {
+          ruby: {
+            short_name: 'ruby',
+            long_name: 'Ruby',
+            file_extension: 'rb',
+            version_files: ['.ruby-version'],
+            setup_options: [],
+            dependencies: [{ dependency_file: 'Gemfile', package_manager_name: 'Bundler', package_manager_default: 'bundle install' }],
+            unit_test_framework_name: 'RSpec',
+            unit_test_framework_default: 'bundle exec rspec'
+          }
+        }.deep_stringify_keys
+      )
+    end
+
+    let(:system_tests_present) { true                                                                 }
+    let(:ruby_steps)           { new_workflow.jobs[:ruby_unit_tests].steps                            }
+    let(:screenshots_step)     { ruby_steps.find { |step| step.name == 'Upload Failure Screenshots' } }
+
+    before do
+      stub_config_file_reads(ruby_language_yaml)
+      allow(File).to(receive(:exist?).and_call_original)
+      allow(builder).to(receive_messages(find_files_matching: ['./app.rb'], file_contains?: false))
+      allow(File).to(receive(:file?).with('Gemfile').and_return(true))
+      allow(File).to(receive(:exist?).with('.ruby-version').and_return(false))
+      allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
+      allow(Dir).to(receive(:exist?).and_call_original)
+      allow(Dir).to(receive(:exist?).with('test/system').and_return(system_tests_present))
+      allow($stdout).to(receive(:puts))
+    end
+
+    it 'uploads the screenshots right after the test step when a test fails', :aggregate_failures do
+      builder.build
+
+      expect(ruby_steps.map(&:name).last(2)).to(eq(['RSpec', 'Upload Failure Screenshots']))
+      expect(screenshots_step.if).to(eq('failure()'))
+      expect(screenshots_step.uses).to(eq(GHB.external_action('actions/upload-artifact')))
+      expect(screenshots_step.with).to(eq(name: 'system-test-screenshots-${{strategy.job-index}}', path: 'tmp/screenshots', 'if-no-files-found': 'ignore'))
+    end
+
+    context 'without a test/system directory' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:system_tests_present) { false }
+
+      it 'adds no upload step' do
+        builder.build
+
+        expect(screenshots_step).to(be_nil)
+      end
+    end
+
+    it 'adds no upload step for a language other than Ruby' do
+      stub_config_file_reads(go_language_yaml)
+      stub_go_language_detection
+
+      builder.build
+
+      expect(new_workflow.jobs[:go_unit_tests].steps.map(&:name)).not_to(include('Upload Failure Screenshots'))
+    end
+
+    context 'when regenerating a job the user turned into a test / test:system matrix' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:matrix) { { 'fail-fast': false, matrix: { task: ['test', 'test:system'] } } }
+
+      before do
+        job_matrix = matrix
+
+        old_workflow.do_job(:ruby_unit_tests) do
+          do_name('Ruby Unit Tests')
+          do_strategy(job_matrix)
+          do_step('RSpec') { do_run('bin/rails db:test:prepare ${{matrix.task}}') }
+          do_step('Upload Failure Screenshots') do
+            do_if('failure() && matrix.task == \'test:system\'')
+            do_uses('actions/upload-artifact@v4')
+            do_with({ name: 'screenshots-${{matrix.task}}', path: 'tmp/screenshots' })
+          end
+        end
+      end
+
+      it 'keeps the matrix and the leg-aware test command', :aggregate_failures do
+        builder.build
+
+        expect(new_workflow.jobs[:ruby_unit_tests].strategy).to(eq(matrix))
+        test_step = ruby_steps.find { |step| step.name == 'RSpec' }
+
+        expect(test_step.run).to(eq('bin/rails db:test:prepare ${{matrix.task}}'))
+      end
+
+      it 'keeps the customised condition and inputs but refreshes the action version', :aggregate_failures do
+        builder.build
+
+        expect(screenshots_step.if).to(eq('failure() && matrix.task == \'test:system\''))
+        expect(screenshots_step.with).to(eq(name: 'screenshots-${{matrix.task}}', path: 'tmp/screenshots'))
+        expect(screenshots_step.uses).to(eq(GHB.external_action('actions/upload-artifact')))
+      end
+    end
+  end
+
   describe '#reconcile_version_file' do # rubocop:disable RSpec/MultipleMemoizedHelpers
     let(:ruby_option) { { name: 'ruby-version', value: '4.0.7' }                                         }
     let(:gemfile)     { "source 'https://rubygems.org'\n\nruby '4.0.6'\ngem 'rails'\n"                   }

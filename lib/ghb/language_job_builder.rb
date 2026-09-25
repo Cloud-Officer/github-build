@@ -43,7 +43,11 @@ module GHB
     # The PAT reference this tool used to inject, kept so regeneration can recognise and strip
     # it from workflows generated before SEC-001 was fixed.
     INJECTED_PAT = '${{secrets.GH_PAT}}'
-    private_constant :SWIFT_DEPLOY_CHECK_FLAGS, :CODEDEPLOY_SETUP_LANGUAGES, :SUBDIR_DEPENDENCY_SCAN_DEPTH, :DEPENDENCY_STEP_TOKEN, :INJECTED_PAT
+    # Rails system tests (Capybara) save a screenshot of every failing test here.
+    SYSTEM_TESTS_DIRECTORY = 'test/system'
+    SYSTEM_TESTS_SCREENSHOTS_DIRECTORY = 'tmp/screenshots'
+    SYSTEM_TESTS_SCREENSHOTS_STEP_NAME = 'Upload Failure Screenshots'
+    private_constant :SWIFT_DEPLOY_CHECK_FLAGS, :CODEDEPLOY_SETUP_LANGUAGES, :SUBDIR_DEPENDENCY_SCAN_DEPTH, :DEPENDENCY_STEP_TOKEN, :INJECTED_PAT, :SYSTEM_TESTS_DIRECTORY, :SYSTEM_TESTS_SCREENSHOTS_DIRECTORY, :SYSTEM_TESTS_SCREENSHOTS_STEP_NAME
 
     attr_reader :code_deploy_pre_steps
 
@@ -263,6 +267,7 @@ module GHB
 
         next unless dependency_detected || mono_dependency_locations.any?
 
+        build_system_tests_screenshots_step(job, language) if dependency_detected && system_tests?(language)
         build_licenses_step(job, language) if File.exist?('Podfile.lock') && @options.skip_license_check == false
       end
 
@@ -367,6 +372,25 @@ module GHB
           step.do_run("cd #{subdir} && #{language[:unit_test_framework_default]}") if step.run.nil?
           LanguageJobBuilder.drop_injected_pat(step.env)
         end
+      end
+    end
+
+    def system_tests?(language)
+      language[:short_name] == 'ruby' && Dir.exist?(SYSTEM_TESTS_DIRECTORY)
+    end
+
+    # The artifact name carries the matrix leg index so a `test` / `test:system` matrix does not collide on upload.
+    def build_system_tests_screenshots_step(job, language)
+      job.do_step(SYSTEM_TESTS_SCREENSHOTS_STEP_NAME) do |step|
+        step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
+        step.do_if('failure()') if step.if.nil?
+        step.do_uses(GHB.external_action('actions/upload-artifact'))
+
+        step.default_with(
+          name: 'system-test-screenshots-${{strategy.job-index}}',
+          path: SYSTEM_TESTS_SCREENSHOTS_DIRECTORY,
+          'if-no-files-found': 'ignore'
+        )
       end
     end
 
