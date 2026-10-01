@@ -158,11 +158,11 @@
   "Ruby:httparty": {
     "language": "Ruby",
     "package": "httparty",
-    "version": "0.24.2",
+    "version": "0.24.3",
     "license": "MIT",
     "description": "Makes http fun! Also, makes consuming restful web services dead easy.",
     "website": "https://github.com/jnunemaker/httparty",
-    "last_verified_at": "2026-05-22",
+    "last_verified_at": "2026-09-30",
     "risk_level": "High",
     "requirements": "HTTP client for GitHub REST API communication",
     "verification_reasoning": "Industry-standard Ruby HTTP client with active maintenance and security updates"
@@ -362,11 +362,11 @@
   "Ruby:regexp_parser": {
     "language": "Ruby",
     "package": "regexp_parser",
-    "version": "2.13.0",
+    "version": "2.13.1",
     "license": "MIT",
     "description": "A library for tokenizing, lexing, and parsing Ruby regular expressions.",
     "website": "https://github.com/ammar/regexp_parser",
-    "last_verified_at": "2026-09-22",
+    "last_verified_at": "2026-09-30",
     "risk_level": "Low",
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
@@ -566,11 +566,11 @@
   "Ruby:simplecov": {
     "language": "Ruby",
     "package": "simplecov",
-    "version": "1.3.1",
+    "version": "1.3.2",
     "license": "MIT",
     "description": "Code coverage for Ruby with a powerful configuration library and automatic merging of coverage across test suites",
     "website": "https://github.com/simplecov-ruby/simplecov",
-    "last_verified_at": "2026-09-28",
+    "last_verified_at": "2026-09-30",
     "risk_level": "Low",
     "requirements": "Code coverage reporting with branch coverage support and minimum threshold enforcement",
     "verification_reasoning": "Most popular Ruby code coverage gem, widely adopted across the Ruby ecosystem"
