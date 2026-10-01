@@ -15,7 +15,7 @@
 | Ruby | diff-lcs | 1.6.2 | MIT | Diff::LCS computes the difference between two Enumerable sequences using the | <https://github.com/halostatue/diff-lcs> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | drb | 2.2.3 | Ruby | Distributed object system for Ruby | <https://github.com/ruby/drb> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | hashdiff | 1.2.1 | MIT | Hashdiff is a diff lib to compute the smallest difference between two hashes | <https://github.com/liufengyun/hashdiff> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | httparty | 0.24.2 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2026-05-22 | High | HTTP client for GitHub REST API communication | Industry-standard Ruby HTTP client with active maintenance and security updates |
+| Ruby | httparty | 0.24.3 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2026-09-30 | High | HTTP client for GitHub REST API communication | Industry-standard Ruby HTTP client with active maintenance and security updates |
 | Ruby | i18n | 1.15.2 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | json | 3.0.2 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | language_server-protocol | 3.17.0.6 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2026-05-22 | Low | Dependency | Dependency |
@@ -32,7 +32,7 @@
 | Ruby | public_suffix | 7.0.5 | MIT | PublicSuffix can parse and decompose a domain name into top level domain, domain and subdomains. | <https://simonecarletti.com/code/publicsuffix-ruby> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | racc | 1.8.1 | Ruby | Racc is an LALR(1) parser generator. | <https://github.com/ruby/racc> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | rainbow | 3.1.1 | MIT | Colorize printed text on ANSI terminals | <https://github.com/sickill/rainbow> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | regexp_parser | 2.13.0 | MIT | A library for tokenizing, lexing, and parsing Ruby regular expressions. | <https://github.com/ammar/regexp_parser> | 2026-09-22 | Low | Dependency | Dependency |
+| Ruby | regexp_parser | 2.13.1 | MIT | A library for tokenizing, lexing, and parsing Ruby regular expressions. | <https://github.com/ammar/regexp_parser> | 2026-09-30 | Low | Dependency | Dependency |
 | Ruby | rexml | 3.4.4 | BSD-2-Clause | An XML toolkit for Ruby | <https://github.com/ruby/rexml> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | rspec | 3.13.2 | MIT | BDD for Ruby | <https://rspec.info> | 2026-05-22 | Low | Unit and integration test framework for the CLI and its workflow builders | De facto standard Ruby test framework; the spec/ suite and .rspec configuration are written against its DSL |
 | Ruby | rspec-core | 3.13.6 | MIT | BDD for Ruby | <https://rspec.info> | 2026-05-22 | Low | Dependency | Dependency |
@@ -49,7 +49,7 @@
 | Ruby | rubocop-thread_safety | 0.8.0 | MIT | Thread-safety checks via static analysis. | <https://github.com/rubocop/rubocop-thread_safety> | 2026-09-14 | Low | RuboCop plugin adding thread-safety cops, enabled in .rubocop.yml plugins | Only maintained RuboCop plugin flagging mutable class-level state and other thread-safety hazards |
 | Ruby | ruby-progressbar | 1.13.0 | MIT | Ruby/ProgressBar is an extremely flexible text progress bar library for Ruby | <https://github.com/jfelchner/ruby-progressbar> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | securerandom | 0.4.1 | Ruby | Interface for secure random number generator. | <https://github.com/ruby/securerandom> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | simplecov | 1.3.1 | MIT | Code coverage for Ruby with a powerful configuration library and automatic merging of coverage across test suites | <https://github.com/simplecov-ruby/simplecov> | 2026-09-28 | Low | Code coverage reporting with branch coverage support and minimum threshold enforcement | Most popular Ruby code coverage gem, widely adopted across the Ruby ecosystem |
+| Ruby | simplecov | 1.3.2 | MIT | Code coverage for Ruby with a powerful configuration library and automatic merging of coverage across test suites | <https://github.com/simplecov-ruby/simplecov> | 2026-09-30 | Low | Code coverage reporting with branch coverage support and minimum threshold enforcement | Most popular Ruby code coverage gem, widely adopted across the Ruby ecosystem |
 | Ruby | stringio | 3.2.0 | Ruby | Pseudo `IO` class from/to `String`. | <https://github.com/ruby/stringio> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | tzinfo | 2.0.6 | MIT | TZInfo provides access to time zone data and allows times to be converted using time zone rules. | <https://tzinfo.github.io> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | unicode-display_width | 3.3.0 | MIT | [Unicode 18.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, Emoji specification, and other data. | <https://github.com/janlelis/unicode-display_width> | 2026-09-21 | Low | Dependency | Dependency |
