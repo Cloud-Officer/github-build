@@ -12,6 +12,7 @@
   <!-- ghb:excluded-dirs:start - managed by github-build from config/languages.yaml; do not edit by hand -->
   <exclude-pattern>.*/.build/.*</exclude-pattern>
   <exclude-pattern>.*/.bundle/.*</exclude-pattern>
+  <exclude-pattern>.*/.claude/worktrees/.*</exclude-pattern>
   <exclude-pattern>.*/.git/.*</exclude-pattern>
   <exclude-pattern>.*/.gradle/.*</exclude-pattern>
   <exclude-pattern>.*/.hg/.*</exclude-pattern>

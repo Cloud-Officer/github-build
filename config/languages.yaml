@@ -544,6 +544,7 @@ ruby:
 # This combined set is also the single source of truth rendered into each linter
 # config's own ignore list (see lib/ghb/linter_ignore_renderer.rb).
 excluded_dirs:
+  - .claude/worktrees # Claude Code agent worktrees: stale copies of the repo
   - .git # Git repository metadata
   - .hg # Mercurial repository metadata
   - .svn # Subversion repository metadata
