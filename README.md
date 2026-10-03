@@ -197,7 +197,7 @@ ruby:
     - dependency_file: Gemfile
       package_manager_name: Bundler
       package_manager_default: bundle install
-      package_manager_update: bundle update
+      package_manager_update: bundle update --all
   unit_test_framework_name: RSpec
   unit_test_framework_default: bundle exec rspec
 ```

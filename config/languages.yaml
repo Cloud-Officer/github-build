@@ -107,7 +107,7 @@ go:
       opensearch_dependency: opensearch
       package_manager_name: Go Modules
       package_manager_default: go mod vendor
-      package_manager_update: go mod tidy
+      package_manager_update: go get -u -t ./... && go mod tidy
   unit_test_framework_name: Testing
   unit_test_framework_default: go test
 js:
@@ -292,7 +292,7 @@ kotlin:
       opensearch_dependency: opensearch
       package_manager_name: Gradle
       package_manager_default: gradle build
-      package_manager_update: gradle dependencies --refresh-dependencies --write-locks
+      package_manager_update: f="$(mktemp -d)/resolve-all-dependencies.gradle" && echo "allprojects { tasks.register('resolveAllDependencies', org.gradle.api.tasks.diagnostics.DependencyReportTask) }" > "$f" && gradle --init-script "$f" resolveAllDependencies --refresh-dependencies --write-locks
     - dependency_file: pom.xml
       install_dirs:
         - .m2
@@ -303,7 +303,7 @@ kotlin:
       opensearch_dependency: opensearch
       package_manager_name: Maven
       package_manager_default: mvn install
-      package_manager_update: mvn versions:use-latest-releases
+      package_manager_update: mvn versions:update-properties versions:use-latest-releases -DgenerateBackupPoms=false
   unit_test_framework_name: JUnit
   unit_test_framework_default: gradle test
   failure_artifacts:
@@ -397,7 +397,7 @@ proto:
       opensearch_dependency: opensearch
       package_manager_name: Go Modules
       package_manager_default: go mod vendor
-      package_manager_update: go mod tidy
+      package_manager_update: go get -u -t ./... && go mod tidy
   unit_test_framework_name: Protoc
   unit_test_framework_default: protoc
   runs-on: macos
@@ -409,7 +409,7 @@ python:
     - .python-version
   setup_options:
     - name: python-version
-      value: 3.14.7
+      value: 3.14.8
     - name: python-version-file
       value:
     - name: python-cache
@@ -453,7 +453,7 @@ swift:
         - DerivedData
       package_manager_name: Bundler
       package_manager_default: bundle install
-      package_manager_update: bundle config set frozen false ; bundle update
+      package_manager_update: bundle config set frozen false ; bundle update --all
     - dependency_file: Cartfile
       install_dirs:
         - Carthage
@@ -532,7 +532,7 @@ ruby:
       opensearch_dependency: opensearch
       package_manager_name: Bundler
       package_manager_default: bundle install
-      package_manager_update: bundle config set frozen false ; bundle update
+      package_manager_update: bundle config set frozen false ; bundle update --all
   unit_test_framework_name: RSpec
   unit_test_framework_default: bundle exec rspec --format documentation
   failure_artifacts:
