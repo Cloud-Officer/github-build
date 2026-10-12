@@ -94,7 +94,7 @@ module GHB
   public_constant :RETIRED_SECRETS
 
   def self.secrets(*groups)
-    groups.reduce({}) { |acc, elem| acc.merge(SECRET_BUNDLES.fetch(elem)) } # rubocop:disable Style/HashLookupMethod -- fetch raises on an unknown bundle name
+    SECRET_BUNDLES.fetch_values(*groups).reduce({}, :merge)
   end
 
   # An unrecognised value is passed through as an explicit runner image.
