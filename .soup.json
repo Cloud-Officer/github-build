@@ -8,7 +8,7 @@
     "website": "https://rubyonrails.org",
     "last_verified_at": "2026-09-28",
     "risk_level": "Low",
-    "requirements": "Provide the deep symbolize and stringify methods on hash",
+    "requirements": "Deep symbolize and stringify of hash keys for parsed YAML, and deep_dup for cloning workflow steps",
     "verification_reasoning": "Official Rails ecosystem library maintained by the Rails core team"
   },
   "Ruby:addressable": {
@@ -110,11 +110,11 @@
   "Ruby:date": {
     "language": "Ruby",
     "package": "date",
-    "version": "3.5.1",
+    "version": "3.6.0",
     "license": "Ruby",
     "description": "The official date library for Ruby.",
     "website": "https://github.com/ruby/date",
-    "last_verified_at": "2026-05-22",
+    "last_verified_at": "2026-10-12",
     "risk_level": "Low",
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
@@ -164,7 +164,7 @@
     "website": "https://github.com/jnunemaker/httparty",
     "last_verified_at": "2026-09-30",
     "risk_level": "High",
-    "requirements": "HTTP client for GitHub REST API communication",
+    "requirements": "HTTP client for the GitHub REST and GraphQL API calls and the gitignore.io template fetch",
     "verification_reasoning": "Industry-standard Ruby HTTP client with active maintenance and security updates"
   },
   "Ruby:i18n": {
@@ -188,8 +188,8 @@
     "website": "https://github.com/ruby/json",
     "last_verified_at": "2026-05-22",
     "risk_level": "Low",
-    "requirements": "Dependency",
-    "verification_reasoning": "Dependency"
+    "requirements": "Parse GitHub API responses, encode request bodies and print the ignored-folders output",
+    "verification_reasoning": "Ruby default gem maintained by the Ruby core team"
   },
   "Ruby:language_server-protocol": {
     "language": "Ruby",
@@ -320,7 +320,7 @@
     "website": "https://github.com/ruby/psych",
     "last_verified_at": "2026-05-22",
     "risk_level": "Low",
-    "requirements": "Yaml parser",
+    "requirements": "YAML parser for the config files and existing workflows, and emitter for the generated workflows",
     "verification_reasoning": "Ruby standard library gem maintained by the Ruby core team"
   },
   "Ruby:public_suffix": {
@@ -446,11 +446,11 @@
   "Ruby:rubocop": {
     "language": "Ruby",
     "package": "rubocop",
-    "version": "1.91.0",
+    "version": "1.92.0",
     "license": "MIT",
     "description": "RuboCop is a Ruby code style checking and code formatting tool.",
     "website": "https://rubocop.org/",
-    "last_verified_at": "2026-05-22",
+    "last_verified_at": "2026-10-12",
     "risk_level": "Low",
     "requirements": "Ruby linter enforcing the shared .rubocop.yml style and lint rules",
     "verification_reasoning": "Reference Ruby static analyzer; the bundled config/linters/.rubocop.yml this tool distributes targets its cop set"
@@ -573,7 +573,7 @@
     "last_verified_at": "2026-09-30",
     "risk_level": "Low",
     "requirements": "Code coverage reporting with branch coverage support and minimum threshold enforcement",
-    "verification_reasoning": "Most popular Ruby code coverage gem, widely adopted across the Ruby ecosystem"
+    "verification_reasoning": "Provides the branch coverage and minimum_coverage threshold that spec/spec_helper.rb enforces on the RSpec run"
   },
   "Ruby:stringio": {
     "language": "Ruby",
@@ -626,23 +626,23 @@
   "Ruby:uri": {
     "language": "Ruby",
     "package": "uri",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "license": "Ruby",
     "description": "URI is a module providing classes to handle Uniform Resource Identifiers",
     "website": "https://github.com/ruby/uri",
-    "last_verified_at": "2026-05-22",
+    "last_verified_at": "2026-10-12",
     "risk_level": "Low",
-    "requirements": "Dependency",
-    "verification_reasoning": "Dependency"
+    "requirements": "Parse commit status target URLs when discovering Xcode Cloud checks",
+    "verification_reasoning": "Ruby default gem maintained by the Ruby core team"
   },
   "Ruby:webmock": {
     "language": "Ruby",
     "package": "webmock",
-    "version": "3.26.4",
+    "version": "3.30.0",
     "license": "MIT",
     "description": "WebMock allows stubbing HTTP requests and setting expectations on HTTP requests.",
     "website": "https://github.com/bblimke/webmock",
-    "last_verified_at": "2026-05-22",
+    "last_verified_at": "2026-10-12",
     "risk_level": "Low",
     "requirements": "HTTP request stubbing for tests",
     "verification_reasoning": "Stubs at the Net::HTTP layer, so GitHub REST and GraphQL calls made through httparty are intercepted without changing production code"
