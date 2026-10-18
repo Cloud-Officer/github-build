@@ -33,6 +33,8 @@ setup() {
   make_fakes
   cp -R "${BATS_TEST_DIRNAME}/../config" "${WORK}/config"
   cd "${WORK}" || exit 1
+  # The MongoDB major floor reads the committed version, so pin it below the fixture tags.
+  yq e --indent=2 '(.options[] | select(.name == "mongodb-version").value) = "8.0.0"' -i config/options/mongodb.yaml
 }
 
 teardown() {
