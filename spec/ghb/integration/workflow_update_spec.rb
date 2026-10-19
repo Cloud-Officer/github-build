@@ -97,6 +97,20 @@ RSpec.describe('workflow update (golden file)') do # rubocop:disable RSpec/Descr
     end
   end
 
+  it 'regenerates over scalar permissions and concurrency, preserving them' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+    scalar = File.read(existing_path)
+                 .sub("permissions:\n  contents: write\n  pull-requests: write\n  id-token: write\n", "permissions: read-all\n")
+                 .sub("concurrency:\n  group: custom-group-${{github.head_ref}}\n  cancel-in-progress: false\n", "concurrency: build-${{github.ref}}\n")
+    expect(scalar).to(include("permissions: read-all\nenv:").and(include("concurrency: build-${{github.ref}}\njobs:")))
+
+    exit_code, generated = generate_over(scalar)
+    workflow = Psych.safe_load(generated)
+
+    expect(exit_code).to(eq(GHB::Status::SUCCESS_EXIT_CODE))
+    expect(workflow['permissions']).to(eq('read-all'))
+    expect(workflow['concurrency']).to(eq('build-${{github.ref}}'))
+  end
+
   it 'upgrades the ci-actions pin on the preserved step rather than keeping the old one' do # rubocop:disable RSpec/MultipleExpectations
     licenses_step = regenerated_workflow.dig('jobs', 'licenses', 'steps', 0)
 
