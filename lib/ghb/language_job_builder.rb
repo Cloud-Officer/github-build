@@ -250,21 +250,20 @@ module GHB
       # Swift with Xcode Cloud (ci_scripts): build the job to collect dependency info, then delete it below.
       skip_unit_test_job = xcode_cloud_unit_tests?(language)
 
-      @new_workflow.do_job(:"#{language[:short_name]}_unit_tests") do |job|
-        job.copy_properties(@old_workflow.jobs[job.id])
+      @new_workflow.carry_job(:"#{language[:short_name]}_unit_tests", from: @old_workflow) do |job|
         job.do_name("#{language[:long_name]} Unit Tests")
-        job.do_runs_on(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.runs_on || GHB.runner_image(language[:'runs-on']))
+        job.do_runs_on(job.carried_from&.runs_on || GHB.runner_image(language[:'runs-on']))
         job.do_needs(%w[variables])
         job.do_if("${{#{@unit_tests_conditions}#{additional_checks}}}")
 
-        build_setup_step(job, language, version_file, setup_options, needs_codedeploy_setup, cache_options)
+        build_setup_step(job, version_file, setup_options, needs_codedeploy_setup, cache_options)
         dependency_detected = build_dependency_steps(job, language, needs_codedeploy_setup)
         build_mono_dependency_steps(job, language, mono_dependency_locations)
 
         next unless dependency_detected || mono_dependency_locations.any?
 
         build_failure_artifacts_step(job, language) if dependency_detected
-        build_licenses_step(job, language) if File.exist?('Podfile.lock') && @options.skip_license_check == false
+        build_licenses_step(job) if File.exist?('Podfile.lock') && @options.skip_license_check == false
       end
 
       # Remove the unit test job from the workflow when Xcode Cloud handles tests.
@@ -274,11 +273,10 @@ module GHB
       puts("        Skipping #{language[:long_name]} Unit Tests job (Xcode Cloud handles tests via ci_scripts)")
     end
 
-    def build_setup_step(job, language, version_file, setup_options, needs_codedeploy_setup, cache_options = {})
+    def build_setup_step(job, version_file, setup_options, needs_codedeploy_setup, cache_options = {})
       version_option_key = version_file && version_option_name(version_file).to_sym
 
-      job.do_step('Setup') do |step|
-        step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
+      job.carry_step('Setup') do |step|
         step.do_uses("cloud-officer/ci-actions/setup@#{CI_ACTIONS_VERSION}")
 
         # Remove version parameter from with if version file exists (version file takes precedence)
@@ -308,23 +306,11 @@ module GHB
         dependency_detected = true
         @installed_once << dependency[:package_manager_name] if dependency[:package_manager_once]
 
-        job.do_step(dependency[:package_manager_name]) do |step|
-          step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
-          step.do_shell('bash')
-          step.do_run(dependency[:package_manager_default]) if step.run.nil?
-          step.env[:GITHUB_TOKEN] = DEPENDENCY_STEP_TOKEN
-          @code_deploy_pre_steps << step.deep_dup if needs_codedeploy_setup
-        end
+        step = shell_step(job, dependency[:package_manager_name], dependency[:package_manager_default], token: true)
+        @code_deploy_pre_steps << step.deep_dup if needs_codedeploy_setup
       end
 
-      if dependency_detected
-        job.do_step(language[:unit_test_framework_name]) do |step|
-          step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
-          step.do_shell('bash')
-          step.do_run(language[:unit_test_framework_default]) if step.run.nil?
-          LanguageJobBuilder.drop_injected_pat(step.env)
-        end
-      end
+      shell_step(job, language[:unit_test_framework_name], language[:unit_test_framework_default], token: false) if dependency_detected
 
       dependency_detected
     end
@@ -346,26 +332,24 @@ module GHB
           unless @installed_once.include?(dep[:package_manager_name])
             @installed_once << dep[:package_manager_name]
 
-            job.do_step(dep[:package_manager_name]) do |step|
-              step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
-              step.do_shell('bash')
-              step.do_run(dep[:package_manager_default]) if step.run.nil?
-              step.env[:GITHUB_TOKEN] = DEPENDENCY_STEP_TOKEN
-            end
+            shell_step(job, dep[:package_manager_name], dep[:package_manager_default], token: true)
           end
         else
-          job.do_step("#{dep[:package_manager_name]} (#{subdir})") do |step|
-            step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
-            step.do_shell('bash')
-            step.do_run("cd #{subdir} && #{dep[:package_manager_default]}") if step.run.nil?
-            step.env[:GITHUB_TOKEN] = DEPENDENCY_STEP_TOKEN
-          end
+          shell_step(job, "#{dep[:package_manager_name]} (#{subdir})", "cd #{subdir} && #{dep[:package_manager_default]}", token: true)
         end
 
-        job.do_step("#{language[:unit_test_framework_name]} (#{subdir})") do |step|
-          step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
-          step.do_shell('bash')
-          step.do_run("cd #{subdir} && #{language[:unit_test_framework_default]}") if step.run.nil?
+        shell_step(job, "#{language[:unit_test_framework_name]} (#{subdir})", "cd #{subdir} && #{language[:unit_test_framework_default]}", token: false)
+      end
+    end
+
+    def shell_step(job, name, default_run, token:)
+      job.carry_step(name) do |step|
+        step.do_shell('bash')
+        step.do_run(default_run) if step.run.nil?
+
+        if token
+          step.env[:GITHUB_TOKEN] = DEPENDENCY_STEP_TOKEN
+        else
           LanguageJobBuilder.drop_injected_pat(step.env)
         end
       end
@@ -382,8 +366,7 @@ module GHB
       paths = failure_artifact_paths(language)
       return if paths.empty?
 
-      job.do_step(FAILURE_ARTIFACTS_STEP_NAME) do |step|
-        step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
+      job.carry_step(FAILURE_ARTIFACTS_STEP_NAME) do |step|
         step.do_if('failure()') if step.if.nil?
         step.do_uses(GHB.external_action('actions/upload-artifact'))
 
@@ -395,9 +378,8 @@ module GHB
       end
     end
 
-    def build_licenses_step(job, language)
-      job.do_step('Licenses') do |step|
-        step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
+    def build_licenses_step(job)
+      job.carry_step('Licenses') do |step|
         step.do_uses("cloud-officer/ci-actions/soup@#{CI_ACTIONS_VERSION}")
 
         step.default_with(GHB.secrets(:ssh, :github_token).merge(parameters: '--no_prompt'))

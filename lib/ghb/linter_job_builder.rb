@@ -206,10 +206,9 @@ module GHB
     end
 
     def add_linter_job(short_name, linter)
-      @new_workflow.do_job(short_name) do |job|
-        job.copy_properties(@old_workflow.jobs[job.id])
+      @new_workflow.carry_job(short_name, from: @old_workflow) do |job|
         job.do_name(linter[:long_name])
-        job.do_runs_on(@old_workflow.jobs[short_name]&.runs_on || DEFAULT_UBUNTU_VERSION)
+        job.do_runs_on(job.carried_from&.runs_on || DEFAULT_UBUNTU_VERSION)
         job.do_needs(%w[variables])
         job.do_permissions(linter[:permissions] || LinterJobBuilder.default_permissions(linter)) if job.permissions.empty?
 
@@ -219,8 +218,7 @@ module GHB
           job.do_if("${{needs.variables.outputs.SKIP_LINTERS != '1'}}")
         end
 
-        job.do_step(linter[:short_name]) do |step|
-          step.copy_properties(step.find_step(@old_workflow.jobs[short_name]&.steps, step.name))
+        job.carry_step(linter[:short_name]) do |step|
           step.do_uses("#{linter[:uses]}@#{CI_ACTIONS_VERSION}")
 
           defaults = { linters: '${{needs.variables.outputs.LINTERS}}' }.merge(GHB.secrets(:ssh, :github_token))

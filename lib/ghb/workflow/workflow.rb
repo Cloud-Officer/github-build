@@ -60,14 +60,15 @@ module GHB
 
     def do_job(id, &block)
       job = Job.new(id)
-
-      if block&.arity == 1
-        yield(job)
-      elsif block
-        job.instance_eval(&block)
-      end
-
+      Job.evaluate(job, block)
       @jobs[id] = job
+    end
+
+    def carry_job(id, from:, &block)
+      do_job(id) do |job|
+        job.carry_over(from.jobs[id])
+        Job.evaluate(job, block)
+      end
     end
 
     # Job names this workflow's deploy jobs must wait on (all current jobs).

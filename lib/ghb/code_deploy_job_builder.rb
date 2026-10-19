@@ -26,16 +26,14 @@ module GHB
       needs = @new_workflow.deploy_needs
       if_statement = @new_workflow.deploy_if_statement
 
-      @new_workflow.do_job(:codedeploy) do |job|
-        job.copy_properties(@old_workflow.jobs[job.id])
+      @new_workflow.carry_job(:codedeploy, from: @old_workflow) do |job|
         job.do_name('Code Deploy')
         job.do_runs_on(DEFAULT_UBUNTU_VERSION)
         job.do_needs(needs)
         job.do_if(if_statement)
 
         if @code_deploy_pre_steps.empty?
-          job.do_step('Checkout') do |step|
-            step.copy_properties(step.find_step(@old_workflow.jobs[:codedeploy]&.steps, step.name))
+          job.carry_step('Checkout') do |step|
             step.do_uses("cloud-officer/ci-actions/codedeploy/checkout@#{CI_ACTIONS_VERSION}")
             step.default_with(GHB.secrets(:ssh, :github_token))
           end
@@ -47,21 +45,18 @@ module GHB
           job.steps = @code_deploy_pre_steps.clone
         end
 
-        job.do_step('Update Packages') do |step|
-          step.copy_properties(step.find_step(@old_workflow.jobs[:codedeploy]&.steps, step.name))
+        job.carry_step('Update Packages') do |step|
           step.do_if("${{needs.variables.outputs.UPDATE_PACKAGES == '1'}}")
           step.do_shell('bash')
           step.do_run('touch update-packages')
         end
 
-        job.do_step('Zip') do |step|
-          step.copy_properties(step.find_step(@old_workflow.jobs[:codedeploy]&.steps, step.name))
+        job.carry_step('Zip') do |step|
           step.do_shell('bash')
           step.do_run('zip --quiet --recurse-paths "${{needs.variables.outputs.BUILD_NAME}}.zip" ./*') if step.run.nil?
         end
 
-        job.do_step('S3Copy') do |step|
-          step.copy_properties(step.find_step(@old_workflow.jobs[:codedeploy]&.steps, step.name))
+        job.carry_step('S3Copy') do |step|
           step.do_uses("cloud-officer/ci-actions/codedeploy/s3copy@#{CI_ACTIONS_VERSION}")
 
           step.default_with(GHB.secrets(:aws).merge(source: 'deployment', target: 's3://${{secrets.CODEDEPLOY_BUCKET}}/${{github.repository}}'))
@@ -71,15 +66,13 @@ module GHB
 
     def build_environment_jobs
       %w[beta rc prod].each do |environment|
-        @new_workflow.do_job(:"#{environment}_deploy") do |job|
-          job.copy_properties(@old_workflow.jobs[job.id])
+        @new_workflow.carry_job(:"#{environment}_deploy", from: @old_workflow) do |job|
           job.do_name("#{environment.capitalize} Deploy")
           job.do_runs_on(DEFAULT_UBUNTU_VERSION)
           job.do_needs(%w[variables codedeploy])
           job.do_if("${{always() && needs.codedeploy.result == 'success' && needs.variables.outputs.DEPLOY_ON_#{environment.upcase} == '1'}}")
 
-          job.do_step("#{environment.capitalize} Deploy") do |step|
-            step.copy_properties(step.find_step(@old_workflow.jobs[:"#{environment}_deploy"]&.steps, step.name))
+          job.carry_step("#{environment.capitalize} Deploy") do |step|
             step.do_uses("cloud-officer/ci-actions/codedeploy/deploy@#{CI_ACTIONS_VERSION}")
 
             step.default_with(

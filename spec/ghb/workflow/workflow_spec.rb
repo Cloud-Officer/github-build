@@ -84,6 +84,31 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
     end
   end
 
+  describe '#carry_job' do
+    let(:old_workflow) do
+      described_class.new('Old').tap do |old|
+        old.do_job(:build) { do_runs_on('macos-15') }
+      end
+    end
+    let(:workflow) { described_class.new('Test') }
+
+    it 'carries the same-id job over from the old workflow before the block runs' do # rubocop:disable RSpec/MultipleExpectations
+      runs_on_seen = nil
+
+      workflow.carry_job(:build, from: old_workflow) { |job| runs_on_seen = job.runs_on }
+
+      expect(runs_on_seen).to(eq('macos-15'))
+      expect(workflow.jobs[:build].carried_from).to(equal(old_workflow.jobs[:build]))
+    end
+
+    it 'builds a fresh job when the old workflow has no job with that id' do # rubocop:disable RSpec/MultipleExpectations
+      workflow.carry_job(:lint, from: old_workflow) { do_name('Lint') }
+
+      expect(workflow.jobs[:lint].name).to(eq('Lint'))
+      expect(workflow.jobs[:lint].carried_from).to(be_nil)
+    end
+  end
+
   describe '#do_job' do
     let(:workflow) { described_class.new('Test') }
 
@@ -329,8 +354,8 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
   end
 
   describe '#write' do
-    let(:workflow) { described_class.new('CI') }
-    let(:temp_file) { '/tmp/test_workflow.yml' }
+    let(:workflow)  { described_class.new('CI') }
+    let(:temp_file) { '/tmp/test_workflow.yml'  }
 
     before do
       allow(FileUtils).to(receive(:mkdir_p))

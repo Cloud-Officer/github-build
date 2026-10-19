@@ -27,18 +27,14 @@ module GHB
     private
 
     def build_job(architecture, runner)
-      old_job = @old_workflow.jobs[:"docker_build_#{architecture}"]
-
-      @new_workflow.do_job(:"docker_build_#{architecture}") do
-        copy_properties(old_job)
+      @new_workflow.carry_job(:"docker_build_#{architecture}", from: @old_workflow) do
         do_name("Docker Build (#{architecture})")
         do_permissions({ contents: 'read' })
-        do_runs_on(old_job&.runs_on || runner)
+        do_runs_on(carried_from&.runs_on || runner)
         do_needs(%w[variables])
         do_if("${{needs.variables.outputs.SKIP_TESTS != '1'}}")
 
-        do_step('Docker Build') do
-          copy_properties(find_step(old_job&.steps, name))
+        carry_step('Docker Build') do
           do_uses("cloud-officer/ci-actions/docker@#{CI_ACTIONS_VERSION}")
           with[:push] = 'false'
           with[:platforms] = "linux/#{architecture}"

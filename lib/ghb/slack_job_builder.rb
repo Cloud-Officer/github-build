@@ -17,15 +17,13 @@ module GHB
       puts('    Adding slack...')
       needs = @new_workflow.jobs.keys.map(&:to_s)
 
-      @new_workflow.do_job(:slack) do |job|
-        job.copy_properties(@old_workflow.jobs[job.id])
+      @new_workflow.carry_job(:slack, from: @old_workflow) do |job|
         job.do_name('Publish Statuses')
         job.do_runs_on(DEFAULT_UBUNTU_VERSION)
         job.do_needs(needs)
         job.do_if('always()')
 
-        job.do_step('Publish Statuses') do |step|
-          step.copy_properties(step.find_step(@old_workflow.jobs[:slack]&.steps, step.name))
+        job.carry_step('Publish Statuses') do |step|
           step.do_uses("cloud-officer/ci-actions/slack@#{CI_ACTIONS_VERSION}")
 
           step.default_with('webhook-url': '${{secrets.SLACK_WEBHOOK_URL}}', jobs: '${{toJSON(needs)}}')
