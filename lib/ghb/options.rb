@@ -14,7 +14,7 @@ module GHB
     # Flags removed from the CLI that may still linger in a downstream repo's persisted build.yml header.
     # They are stripped (with a warning) during persisted-args replay so old headers self-heal on the next
     # regeneration instead of aborting on OptionParser::InvalidOption.
-    REMOVED_FLAGS = %w[--mono_repo --options-elasticsearch].freeze
+    REMOVED_FLAGS = %w[--mono_repo --options-elasticsearch --skip_dependabot --only_dependabot --skip_codeql].freeze
     REMOVED_VALUE_FLAGS = %w[--options-elasticsearch].freeze
     private_constant :ARGS_COMMENT_PREFIX
     private_constant :EPHEMERAL_FLAGS

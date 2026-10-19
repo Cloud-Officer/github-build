@@ -420,6 +420,22 @@ RSpec.describe(GHB::Options) do
         .to(output(/ignoring removed option '--options-elasticsearch'/).to_stderr)
     end
 
+    %w[--skip_codeql --skip_dependabot --only_dependabot].each do |flag|
+      it "replays a header containing #{flag} with a warning instead of aborting" do
+        allow(File).to(receive_messages(exist?: true, foreach: ["# github-build #{flag} --skip_slack\n"].each))
+
+        expect { described_class.new([]).parse }
+          .to(output(/ignoring removed option '#{flag}'/).to_stderr)
+      end
+
+      it "drops #{flag} from the regenerated header" do
+        allow(File).to(receive_messages(exist?: true, foreach: ["# github-build #{flag} --skip_slack\n"].each))
+        allow($stderr).to(receive(:write))
+
+        expect(described_class.new([]).parse.args_comment).to(eq("# github-build --skip_slack\n"))
+      end
+    end
+
     it 'still aborts when a removed flag is passed explicitly on the command line' do
       allow(File).to(receive(:exist?).and_return(false))
 
