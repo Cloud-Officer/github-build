@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../ghb'
+
 module GHB
   # Builds the "AWS Commands" job in the workflow.
   class AwsJobBuilder

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../ghb'
+
 module GHB
   # Manages DockerHub workflow configuration.
   class DockerhubManager

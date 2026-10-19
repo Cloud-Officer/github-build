@@ -2,6 +2,8 @@
 
 require 'fileutils'
 
+require_relative '../ghb'
+
 module GHB
   # Manages the auto-approve workflow for code owners. The workflow only
   # approves code-owner PRs; it never merges, so it is named "Auto-approve".

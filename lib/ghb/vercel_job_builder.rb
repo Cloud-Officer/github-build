@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../ghb'
+
 module GHB
   # Builds the Vercel deploy jobs (beta_deploy / rc_deploy / prod_deploy).
   #

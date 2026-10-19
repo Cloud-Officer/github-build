@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../ghb'
+
 module GHB
   # Builds the "Docker Build" jobs that check the image builds on each architecture without publishing it.
   class DockerBuildJobBuilder
