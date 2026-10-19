@@ -123,8 +123,26 @@ module GHB
       branch = `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null`.strip.sub(%r{^refs/remotes/origin/}, '')
       return branch unless branch.empty?
 
-      warn("WARNING: could not detect the default branch from origin/HEAD, falling back to 'master'")
+      branch = remote_default_branch || api_default_branch
+      return branch if branch
+
+      warn("WARNING: could not detect the default branch from origin/HEAD, the origin remote or the GitHub API, falling back to 'master'")
       'master'
+    end
+
+    def remote_default_branch
+      `GIT_TERMINAL_PROMPT=0 git ls-remote --symref origin HEAD 2>/dev/null`[%r{^ref: refs/heads/(\S+)\tHEAD$}, 1]
+    end
+
+    def api_default_branch
+      github_token = ENV.fetch('GITHUB_TOKEN', nil)
+      return if github_token.nil? || github_token.empty? || `git remote get-url origin 2>/dev/null`.strip.empty?
+
+      repo_url = "https://api.github.com/repos/#{@options.organization}/#{Dir.pwd.split('/').last}"
+      branch = JSON.parse(GitHubAPIClient.new(github_token).get(repo_url).body)['default_branch']
+      branch unless branch.to_s.empty?
+    rescue StandardError
+      nil
     end
 
     def configure_options(argv)
