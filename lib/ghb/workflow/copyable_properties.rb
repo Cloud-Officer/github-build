@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 module GHB
-  # Shared copy_properties for the workflow data models. Each including class
-  # declares its own COPYABLE_PROPERTIES.
   module CopyableProperties
     def copy_properties(object, properties = self.class::COPYABLE_PROPERTIES)
       return if object.nil?

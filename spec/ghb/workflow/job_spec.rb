@@ -209,6 +209,81 @@ RSpec.describe(GHB::Job) do # rubocop:disable RSpec/SpecFilePathFormat
     end
   end
 
+  describe '#carry_over' do
+    it 'copies the old job properties and remembers the old job' do # rubocop:disable RSpec/MultipleExpectations
+      old_job = described_class.new(:build).tap { |old| old.runs_on = 'macos-15' }
+      job = described_class.new(:build)
+      job.carry_over(old_job)
+
+      expect(job.runs_on).to(eq('macos-15'))
+      expect(job.carried_from).to(equal(old_job))
+    end
+
+    it 'leaves defaults in place when there is no old job' do
+      job = described_class.new(:build)
+
+      job.carry_over(nil)
+
+      expect(job.runs_on).to(be_nil)
+    end
+  end
+
+  describe '#carry_step' do
+    let(:old_job) do
+      described_class.new(:build).tap do |old|
+        old.do_step('Install') do
+          do_run('custom install')
+          do_env({ FOO: 'bar' })
+        end
+      end
+    end
+
+    it 'copies the matching step from the carried-over job before the block runs' do # rubocop:disable RSpec/MultipleExpectations
+      job = described_class.new(:build).tap { |carried| carried.carry_over(old_job) }
+      run_seen = nil
+
+      job.carry_step('Install') { |step| run_seen = step.run }
+
+      expect(run_seen).to(eq('custom install'))
+      expect(job.steps.first.env).to(eq({ FOO: 'bar' }))
+    end
+
+    it 'copies from an explicit source job over the carried-over one' do
+      job = described_class.new(:build)
+      job.carry_over(described_class.new(:build))
+
+      job.carry_step('Install', from: old_job)
+
+      expect(job.steps.first.run).to(eq('custom install'))
+    end
+
+    it 'leaves the step untouched when the old job has no step of that name' do
+      job = described_class.new(:build)
+      job.carry_over(old_job)
+
+      job.carry_step('Test') { do_run('default test') }
+
+      expect(job.steps.first.run).to(eq('default test'))
+    end
+
+    it 'builds a fresh step when nothing was carried over' do
+      job = described_class.new(:build)
+
+      job.carry_step('Install') { |step| step.do_run('default install') if step.run.nil? }
+
+      expect(job.steps.first.run).to(eq('default install'))
+    end
+
+    it 'evaluates a parameterless block with the step as self and returns the step' do
+      job = described_class.new(:build)
+      self_inside = nil
+
+      returned = job.carry_step('Install') { self_inside = self }
+
+      expect(self_inside).to(equal(returned).and(equal(job.steps.first)))
+    end
+  end
+
   describe '#to_h' do
     it 'converts job to hash with all properties' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       job = described_class.new(:build)

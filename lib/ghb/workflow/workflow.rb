@@ -60,14 +60,15 @@ module GHB
 
     def do_job(id, &block)
       job = Job.new(id)
-
-      if block&.arity == 1
-        yield(job)
-      elsif block
-        job.instance_eval(&block)
-      end
-
+      Job.evaluate(job, block)
       @jobs[id] = job
+    end
+
+    def carry_job(id, from:, &block)
+      do_job(id) do |job|
+        job.carry_over(from.jobs[id])
+        Job.evaluate(job, block)
+      end
     end
 
     # Job names this workflow's deploy jobs must wait on (all current jobs).
@@ -75,9 +76,6 @@ module GHB
       @jobs.keys.map(&:to_s)
     end
 
-    # The shared `if:` expression gating deploy jobs (aws / codedeploy):
-    # run on a deploy trigger, only if no prior job failed. Returns the
-    # ${{ }}-wrapped expression ready to pass to do_if.
     def deploy_if_statement
       base_condition = "always() && (needs.variables.outputs.DEPLOY_ON_BETA == '1' || needs.variables.outputs.DEPLOY_ON_RC == '1' || needs.variables.outputs.DEPLOY_ON_PROD == '1')"
       job_conditions = @jobs.keys.map { |job_name| "needs.#{job_name}.result != 'failure'" }
@@ -163,21 +161,10 @@ module GHB
       data = rewrite_retired_secrets(rewrite_github_refs(to_h.deep_stringify_keys))
       content = header + data.to_yaml({ line_width: -1 })
 
-      # NOTE: secrets.GITHUB_TOKEN is deliberately NOT rewritten to secrets.GH_PAT here (SEC-001).
-      # The blanket rewrite put a long-lived, org-scoped PAT into the environment of every step
-      # that runs third-party code, and it silently overrode a GITHUB_TOKEN a user wrote on
-      # purpose in a preserved job. The rewrite that does run goes the other way: GH_PAT is
-      # retired and rewrite_retired_secrets replaces what is left of it with the run's own
-      # ${{github.token}}. A step needing more than that takes an explicit, still-live secret.
       File.write(file, content)
     end
 
-    # Moves steps still carrying the generated access-key references onto the OIDC
-    # role bundle (see GHB::LEGACY_AWS_CREDENTIALS), then grants `id-token: write` to
-    # every job with a step that can assume the role: without it the runner issues
-    # no OIDC token. A job with no permissions of its own inherits the workflow's
-    # (or `contents: read`) first, since any job-level block replaces them entirely.
-    # Customised credentials are left alone.
+    # Without `id-token: write` the runner issues no OIDC token, and a job-level permissions block replaces inherited ones.
     def adopt_aws_role
       @jobs.each_value do |job|
         next if job.nil?
@@ -222,13 +209,7 @@ module GHB
       end
     end
 
-    # Replace every reference to a retired secret, `run:` bodies included.
-    #
-    # Unlike rewrite_github_refs, which leaves `run:` alone because ${GITHUB_*}
-    # is the runner's shell form there, a retired secret is dead in every
-    # position it can appear: the secret does not exist, so ${{secrets.NAME}}
-    # expands to empty wherever it sits. Rewriting at write time is what makes
-    # the retirement reach workflows generated before it - see GHB::RETIRED_SECRETS.
+    # Unlike rewrite_github_refs this covers `run:` bodies: a retired secret expands to empty everywhere.
     def rewrite_retired_secrets(node)
       case node
       when Hash
@@ -242,9 +223,7 @@ module GHB
       end
     end
 
-    # Rewrite ${GITHUB_*} -> ${{github.*}} in YAML values, but skip shell `run:`
-    # bodies - there ${GITHUB_*} is the runner-exported env-var form and
-    # ${{github.*}} is opaque to shellcheck (SC2193).
+    # Skips `run:` bodies, where ${GITHUB_*} is the shell env form and ${{github.*}} is opaque to shellcheck.
     def rewrite_github_refs(node)
       case node
       when Hash

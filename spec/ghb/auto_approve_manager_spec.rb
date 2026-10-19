@@ -195,11 +195,8 @@ RSpec.describe(GHB::AutoApproveManager) do
     end
   end
 
-  # Runs the actual generated "Check if PR author is a code owner" bash script against a
-  # sandbox CODEOWNERS file and returns [exit_status, github_output_contents, combined_stdout].
-  # The sandbox is set up via bash (not stubbed Ruby File methods) so the global File.write /
-  # FileUtils stubs above do not interfere.
-  describe 'generated CODEOWNERS check script (BUG-001)' do
+  # The sandbox is built in bash so the File.write / FileUtils stubs above do not interfere.
+  describe 'generated CODEOWNERS check script' do
     def run_check_script(codeowners:, author:)
       manager = described_class.new(auto_approve_workflow: auto_approve_workflow)
       manager.save

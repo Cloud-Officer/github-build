@@ -25,11 +25,7 @@ RSpec.describe(GHB::LinterJobBuilder) do
 
   before do
     allow($stdout).to(receive(:puts))
-    # Filesystem safety net. LinterJobBuilder#delete_linter_config /
-    # #copy_linter_config operate on relative paths in the CWD. Without these
-    # default stubs, contexts that let File.exist? call_original delete this
-    # repo's own root linter configs (.rubocop.yml, .yamllint.yml, etc.) when
-    # the suite is run from the repo root. Inner allow/have_received still work.
+    # Without these stubs, the suite run from the repo root deletes this repo's own linter configs.
     allow(File).to(receive(:delete))
     allow(FileUtils).to(receive(:ln_s))
   end
@@ -208,9 +204,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(builder).to(receive(:find_files_matching).and_return([]))
         allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(kt|kts)')), anything).and_return(['Main.kt']))
 
-        # KTLint config is .editorconfig with preserve_config: true
-        # No script_path (no .gitmodules), so script_path is nil
-        # File.exist?("#{nil}/linters/.editorconfig") should be false
         allow(File).to(receive(:exist?).with('/linters/.editorconfig').and_return(false))
         # The config file exists and is NOT a symlink -> preserve
         allow(File).to(receive(:exist?).with('.editorconfig').and_return(true))
@@ -322,8 +315,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
         allow(File).to(receive(:read).and_call_original)
         allow(File).to(receive(:read).with('Gemfile').and_return("gem 'rails'\n"))
 
-        # Prose comment lines (no key:, or a URL whose colon isn't a YAML key)
-        # must survive; commented config keys/list items must be uncommented.
         rubocop_content = <<~RUBOCOP
           # Autocorrect for this cop collapses signatures. See:
           # https://docs.rubocop.org/rubocop/latest/cops_style.html#stylemultilinemethodsignature
@@ -369,14 +360,10 @@ RSpec.describe(GHB::LinterJobBuilder) do
           )
         )
 
-        # Enable only eslint. Match its full alternation group `(js|mjs|cjs)`,
-        # which is unique to eslint -- Semgrep's catch-all pattern contains the
-        # bare tokens (js, mjs, cjs) but never that exact grouping.
+        # `(js|mjs|cjs)` is unique to eslint; Semgrep's catch-all has the bare tokens only.
         allow(builder).to(receive(:find_files_matching).and_return([]))
         allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(js|mjs|cjs)')), anything).and_return(['app.js']))
 
-        # No script_path / no preserve_config -> falls through to atomic_copy_config,
-        # which reads the real template (with sentinels) and writes the rendered copy.
         allow(File).to(receive(:exist?).with('/linters/.eslintrc.json').and_return(false))
         allow(File).to(receive(:exist?).with('.eslintrc.json').and_return(false))
         allow(File).to(receive(:symlink?).and_return(false))
@@ -532,13 +519,10 @@ RSpec.describe(GHB::LinterJobBuilder) do
           )
         )
 
-        # Only match golangci pattern. Match `(go)` -- unique to golangci's
-        # `.*\.(go)$`; Semgrep's catch-all has the bare token `go` but never `(go)`.
+        # `(go)` is unique to golangci; Semgrep's catch-all has the bare token only.
         allow(builder).to(receive(:find_files_matching).and_return([]))
         allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(go)')), anything).and_return(['main.go']))
 
-        # script_path will be 'scripts-repo' (contains 'scripts')
-        # Config file is .golangci.yml
         allow(File).to(receive(:exist?).with('scripts-repo/linters/.golangci.yml').and_return(true))
         allow(FileUtils).to(receive(:ln_s))
 
@@ -557,8 +541,7 @@ RSpec.describe(GHB::LinterJobBuilder) do
 
         builder = build_linter_job_builder
 
-        # Only match eslint pattern. Match `(js|mjs|cjs)` -- unique to eslint;
-        # Semgrep's catch-all has the bare tokens but never that exact grouping.
+        # `(js|mjs|cjs)` is unique to eslint; Semgrep's catch-all has the bare tokens only.
         allow(builder).to(receive(:find_files_matching).and_return([]))
         allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(js|mjs|cjs)')), anything).and_return(['app.js']))
 
@@ -668,10 +651,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
         end
       end
 
-      # A project whose shared configs come from a scripts submodule normally gets
-      # trivy.yaml re-symlinked on every run. Turning it into a real file is how a
-      # project carries an exclusion that must not leak into the other repos
-      # sharing that submodule, so the symlink must not be restored over it.
       it 'keeps a project-owned trivy.yaml instead of re-symlinking it to the scripts submodule' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         allow(File).to(receive(:delete).and_call_original)
         Dir.mktmpdir do |dir|
@@ -691,8 +670,7 @@ RSpec.describe(GHB::LinterJobBuilder) do
           Dir.chdir(dir) { build_trivy_only.build } # rubocop:disable ThreadSafety/DirChdir
           result = File.read(File.join(dir, 'trivy.yaml'))
 
-          # ln_s is stubbed suite-wide, so assert the call was never made rather
-          # than inspecting the file type, which cannot change under the stub.
+          # ln_s is stubbed suite-wide, so the file type cannot change; assert the call instead.
           expect(FileUtils).not_to(have_received(:ln_s).with('scripts/linters/trivy.yaml', 'trivy.yaml', force: true))
           expect(result).to(include('- "**/config/ssl/jwt/*.pem"')) # repo-local exclusion kept
           expect(result).to(include('- "**/node_modules"')) # still tracks the shared block
@@ -750,8 +728,6 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
   end
 
-  # Workflow DSL scripts (*.workflow.js) must not trigger the JS-based linters:
-  # they are validated by the Workflow runtime, not eslint/semgrep.
   describe 'workflow DSL detection patterns' do # rubocop:disable RSpec/MultipleMemoizedHelpers
     let(:linters) { Psych.safe_load(File.read('config/linters.yaml')) }
 

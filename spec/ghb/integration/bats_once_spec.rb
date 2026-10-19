@@ -3,12 +3,7 @@
 require 'fileutils'
 require 'tmpdir'
 
-# CI-005. `shell_script` is the only ecosystem whose package_manager command
-# installs a tool system-wide (the bats runner) rather than the dependencies of
-# the directory it was detected in -- `.bats` is a zero-byte marker, not a
-# manifest. Without `package_manager_once` the generic sub-project detection
-# emits one install per detected directory, repeating `apt-get update` on the
-# same runner and multiplying the chance of a transient apt failure.
+# `.bats` is a zero-byte marker and the bats runner installs system-wide, so one install serves the whole job.
 RSpec.describe('shell_script package_manager_once') do # rubocop:disable RSpec/DescribeClass
   let(:argv) do
     %w[--organization test-org --skip_repository_settings --skip_gitignore --skip_slack]
@@ -36,8 +31,6 @@ RSpec.describe('shell_script package_manager_once') do # rubocop:disable RSpec/D
 
     workflow = File.read('.github/workflows/build.yml')
 
-    # One un-scoped install, no `(subdir)` suffix and no `cd` into a sub-project:
-    # the tool is installed for the whole job.
     expect(workflow.scan(/- name: Bats Install[^\n]*/)).to(eq(['- name: Bats Install']))
 
     # The suites still run once per detected directory.

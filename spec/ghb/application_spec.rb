@@ -49,10 +49,6 @@ RSpec.describe(GHB::Application) do
     it 'raises ConfigError when a config file has invalid YAML' do # rubocop:disable RSpec/ExampleLength
       config_app = config_test_class.new(mock_options)
 
-      # Drive the real #validate_config! and exercise its real
-      # Psych::SyntaxError rescue: return malformed YAML only for the
-      # languages config (parsed after the valid linters config), letting
-      # every other file read through to the real on-disk config.
       allow(config_app).to(
         receive(:cached_file_read).and_wrap_original do |original, path|
           path.end_with?('languages.yaml') ? 'invalid: yaml: syntax: [' : original.call(path)
@@ -151,8 +147,6 @@ RSpec.describe(GHB::Application) do
         .to(raise_error(GHB::ConfigError, %r{Option entry 0 in config/options/apt.yaml is missing required key: name}))
     end
 
-    # Validation entries are derived from the SERVICES registry, so each service's
-    # options file must be checked for existence and schema.
     GHB::SERVICES.each do |service|
       it "validates the #{service} options file" do # rubocop:disable RSpec/ExampleLength
         missing_options = instance_double(

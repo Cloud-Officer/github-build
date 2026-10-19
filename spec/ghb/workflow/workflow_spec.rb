@@ -84,6 +84,31 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
     end
   end
 
+  describe '#carry_job' do
+    let(:old_workflow) do
+      described_class.new('Old').tap do |old|
+        old.do_job(:build) { do_runs_on('macos-15') }
+      end
+    end
+    let(:workflow) { described_class.new('Test') }
+
+    it 'carries the same-id job over from the old workflow before the block runs' do # rubocop:disable RSpec/MultipleExpectations
+      runs_on_seen = nil
+
+      workflow.carry_job(:build, from: old_workflow) { |job| runs_on_seen = job.runs_on }
+
+      expect(runs_on_seen).to(eq('macos-15'))
+      expect(workflow.jobs[:build].carried_from).to(equal(old_workflow.jobs[:build]))
+    end
+
+    it 'builds a fresh job when the old workflow has no job with that id' do # rubocop:disable RSpec/MultipleExpectations
+      workflow.carry_job(:lint, from: old_workflow) { do_name('Lint') }
+
+      expect(workflow.jobs[:lint].name).to(eq('Lint'))
+      expect(workflow.jobs[:lint].carried_from).to(be_nil)
+    end
+  end
+
   describe '#do_job' do
     let(:workflow) { described_class.new('Test') }
 
@@ -329,8 +354,8 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
   end
 
   describe '#write' do
-    let(:workflow) { described_class.new('CI') }
-    let(:temp_file) { '/tmp/test_workflow.yml' }
+    let(:workflow)  { described_class.new('CI') }
+    let(:temp_file) { '/tmp/test_workflow.yml'  }
 
     before do
       allow(FileUtils).to(receive(:mkdir_p))
@@ -391,10 +416,6 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       end
     end
 
-    # SEC-001 regression guard: the writer used to blanket-rewrite every
-    # secrets.GITHUB_TOKEN into secrets.GH_PAT, silently swapping an ephemeral
-    # repo-scoped token for a long-lived org-scoped PAT -- including in jobs the
-    # user wrote by hand. The token a caller asks for is the token that ships.
     it 'preserves secrets.GITHUB_TOKEN instead of rewriting it to secrets.GH_PAT' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       workflow.do_env({ TOKEN: '${{secrets.GITHUB_TOKEN}}' })
       workflow.write(temp_file)
@@ -405,11 +426,6 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       end
     end
 
-    # GH_PAT is retired: the org secret is gone, so a surviving reference expands
-    # to empty and fails the step. It cannot be left alone the way a live secret
-    # is -- a job builder copies the old `with:`/`env:` forward and Step#default_with
-    # declines to overwrite it, so without this rewrite the dead reference is
-    # regenerated verbatim forever.
     it 'rewrites a retired secrets.GH_PAT to the run token' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       workflow.do_env({ TOKEN: '${{secrets.GH_PAT}}' })
       workflow.write(temp_file)
@@ -449,9 +465,6 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       end
     end
 
-    # GH_BOT_PAT is still live -- auto-approve.yml authenticates with it. Only the
-    # exact retired reference is rewritten, never a secret whose name merely shares
-    # a substring with it.
     it 'leaves the live secrets.GH_BOT_PAT untouched' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       workflow.do_env({ GH_TOKEN: '${{secrets.GH_BOT_PAT}}' })
       workflow.write(temp_file)
@@ -462,8 +475,6 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       end
     end
 
-    # The old rewrite exempted auto-merge/auto-approve by filename; with the rewrite gone
-    # the filename must no longer influence the token that is written.
     it 'writes the same token regardless of the workflow filename' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       workflow.do_env({ TOKEN: '${{secrets.GITHUB_TOKEN}}' })
       workflow.write('.github/workflows/auto-approve.yml')
@@ -574,8 +585,7 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       workflow.jobs[:beta_deploy]
     end
 
-    # configure-aws-credentials given both would sign AssumeRole with the keys, so
-    # the keys must expand to empty whenever the role variable is set.
+    # configure-aws-credentials signs AssumeRole with the keys when both are set.
     it 'uses the role variable and blanks the access keys while it is set' do # rubocop:disable RSpec/ExampleLength
       expect(GHB.secrets(:aws)).to(
         include(

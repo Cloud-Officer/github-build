@@ -333,7 +333,7 @@ RSpec.describe(GHB::Options) do
   end
 
   describe 'removed flags in persisted header' do
-    it 'strips a removed flag from replayed args instead of aborting (BC-001)' do
+    it 'strips a removed flag from replayed args instead of aborting' do
       allow(File).to(receive_messages(exist?: true, foreach: ["# github-build --organization TestOrg --mono_repo --skip_slack\n"].each))
       allow($stderr).to(receive(:write))
 

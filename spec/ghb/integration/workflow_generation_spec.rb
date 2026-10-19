@@ -1,14 +1,6 @@
 # frozen_string_literal: true
 
-# Golden-file (snapshot) test for the end-to-end workflow generation.
-#
-# Feeds a minimal Ruby project tree to Application#execute inside an isolated
-# tmpdir and diffs the generated .github/workflows/build.yml against a
-# checked-in expected file. This catches structural drift (wrong needs: graph,
-# missing permissions:, mis-ordered jobs/steps) that substring assertions miss.
-#
-# Regenerate the golden file after an intentional change with:
-#   UPDATE_SNAPSHOTS=1 bundle exec rspec spec/ghb/integration/workflow_generation_spec.rb
+# Regenerate the golden file with: UPDATE_SNAPSHOTS=1 bundle exec rspec spec/ghb/integration/workflow_generation_spec.rb
 RSpec.describe('workflow generation (golden file)') do # rubocop:disable RSpec/DescribeClass
   let(:golden_path) { "#{__dir__}/../../fixtures/workflow_generation/build.yml" }
   let(:ruby_version) do
@@ -26,8 +18,6 @@ RSpec.describe('workflow generation (golden file)') do # rubocop:disable RSpec/D
   end
 
   before do
-    # .ruby-version is read from config/languages.yaml rather than hardcoded so
-    # the fixture cannot fall behind it and silently take the mismatch branch.
     File.write('app.rb', "puts 'hello'\n")
     File.write('Gemfile', "source 'https://rubygems.org'\n")
     File.write('.ruby-version', "#{ruby_version}\n")

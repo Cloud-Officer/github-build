@@ -2,28 +2,35 @@
 
 require 'open3'
 
-# Expression evaluated in the child process => the output it must print once the
-# library is required by the file under test.
+# library => [expression evaluated in the child process, output it must print]
 LIBRARY_PROBES = {
   active_support: ['({}.respond_to?(:deep_symbolize_keys) && {}.respond_to?(:deep_stringify_keys)).to_s', 'true'],
   deep_dup: ['Object.new.respond_to?(:deep_dup).to_s', 'true'],
   fileutils: ['defined?(FileUtils).to_s', 'constant'],
+  ghb_root: ['defined?(GHB.secrets).to_s', 'method'],
   psych: ['defined?(Psych).to_s', 'constant']
 }.freeze
 
-# Every lib file that calls FileUtils, Psych or the ActiveSupport hash core
-# extensions, mapped to the libraries it must require itself.
 GUARDED_FILES = {
-  application: %i[psych],
-  auto_approve_manager: %i[fileutils],
+  application: %i[ghb_root psych],
+  auto_approve_manager: %i[fileutils ghb_root],
+  aws_job_builder: %i[ghb_root],
+  code_deploy_job_builder: %i[ghb_root],
   dependabot_manager: %i[fileutils],
+  docker_build_job_builder: %i[ghb_root],
+  dockerhub_manager: %i[ghb_root],
   file_scanner: %i[active_support fileutils psych],
   gitignore_manager: %i[active_support psych],
-  language_job_builder: %i[active_support deep_dup psych],
-  linter_job_builder: %i[active_support fileutils psych],
-  repository_configurator: %i[psych],
+  language_job_builder: %i[active_support deep_dup ghb_root psych],
+  licenses_job_builder: %i[ghb_root],
+  linter_job_builder: %i[active_support fileutils ghb_root psych],
+  options: %i[ghb_root],
+  repository_configurator: %i[ghb_root psych],
+  slack_job_builder: %i[ghb_root],
+  variables_job_builder: %i[ghb_root],
+  vercel_job_builder: %i[ghb_root],
   'workflow/step': %i[deep_dup],
-  'workflow/workflow': %i[active_support fileutils psych]
+  'workflow/workflow': %i[active_support fileutils ghb_root psych]
 }.freeze
 
 # Source markers that mean a file uses each guarded library.
@@ -31,19 +38,11 @@ LIBRARY_USAGE = {
   active_support: /deep_symbolize_keys|deep_stringify_keys|deep_merge/,
   deep_dup: /deep_dup/,
   fileutils: /FileUtils\./,
+  ghb_root: /DEFAULT_UBUNTU_VERSION|CI_ACTIONS_VERSION|GHB\./,
   psych: /Psych\./
 }.freeze
 
-# Regression guard for BUG-009 (FileUtils) and CON-004 (Psych / ActiveSupport):
-# files that use a library must require it themselves rather than relying on a
-# transitive require from application.rb or workflow.rb.
-#
-# Each file is loaded in a fresh Ruby process (no spec_helper, no transitive
-# requires) and asserted to provide every library it calls. Without the explicit
-# require a standalone load raises NameError on the first FileUtils/Psych call
-# and NoMethodError on the first deep_symbolize_keys call; with it the library is
-# present as soon as the file is loaded.
-RSpec.describe('explicit library requires (BUG-009, CON-004)') do # rubocop:disable RSpec/DescribeClass
+RSpec.describe('explicit library requires') do # rubocop:disable RSpec/DescribeClass
   # Runs `preamble` then prints one probe result per library, comma separated.
   def capture_probes(libraries, preamble = '')
     expressions = libraries.map { |library| LIBRARY_PROBES[library].first }
@@ -66,8 +65,6 @@ RSpec.describe('explicit library requires (BUG-009, CON-004)') do # rubocop:disa
     end
   end
 
-  # Without this, a new lib file using FileUtils/Psych/ActiveSupport is simply
-  # absent from GUARDED_FILES and silently unguarded.
   it 'lists every lib file that uses a guarded library' do # rubocop:disable RSpec/ExampleLength
     lib_root = File.expand_path('../../lib/ghb', __dir__)
     actual =
@@ -86,12 +83,10 @@ RSpec.describe('explicit library requires (BUG-009, CON-004)') do # rubocop:disa
     expect(actual).to(eq(expected))
   end
 
-  # Control: proves the probes above actually detect a missing require, i.e. the
-  # child process does not get these libraries for free from Ruby or Bundler.
   it 'reports every library as missing when nothing is required' do # rubocop:disable RSpec/MultipleExpectations
     stdout, stderr, status = capture_probes(LIBRARY_PROBES.keys)
 
     expect(status).to(be_success, "probe failed: #{stderr}")
-    expect(stdout).to(eq('false,false,,'))
+    expect(stdout).to(eq('false,false,,,'))
   end
 end

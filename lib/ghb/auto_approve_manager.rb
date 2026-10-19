@@ -2,16 +2,13 @@
 
 require 'fileutils'
 
+require_relative '../ghb'
+
 module GHB
-  # Manages the auto-approve workflow for code owners. The workflow only
-  # approves code-owner PRs; it never merges, so it is named "Auto-approve".
   class AutoApproveManager
     OLD_WORKFLOW_FILE = '.github/workflows/auto-merge.yml'
     WORKFLOW_FILE = '.github/workflows/auto-approve.yml'
 
-    # Bash run by the "Check if PR author is a code owner" step. Resolves the
-    # CODEOWNERS file, collects @handles from the catch-all (*) line, and sets
-    # step output is_owner=true when the PR author matches a user or team.
     CODEOWNERS_CHECK_SCRIPT = <<~BASH
       set -euo pipefail
 
@@ -57,12 +54,7 @@ module GHB
       echo "PR author ${AUTHOR} is_owner=${is_owner}"
     BASH
 
-    # Bash run by the "Approve PR" step. GitHub rejects approving your own PR, so
-    # when GH_BOT_PAT resolves to the same account that opened the PR (e.g. the
-    # dependency-update bot approving its own PRs) we skip instead of failing the
-    # job. Human code-owner PRs (author != bot) are still approved as before.
-    # The head-commit lookup uses the run token: GH_BOT_PAT has no contents read
-    # on the target repository, so that call would be refused with HTTP 403.
+    # GitHub rejects self-approval and GH_BOT_PAT lacks contents read, hence the skip and the run-token commit lookup.
     APPROVE_SCRIPT = <<~BASH
       set -euo pipefail
 
@@ -101,9 +93,7 @@ module GHB
             }
         }
 
-      # Least privilege: the run token only checks out the base SHA and reads the PR
-      # head commit, both contents: read. Membership checks and the approval itself
-      # authenticate via GH_BOT_PAT, so the workflow token needs no write scopes.
+      # Membership checks and the approval authenticate via GH_BOT_PAT, so the run token needs only contents: read.
       @auto_approve_workflow.permissions =
         {
           contents: 'read'
@@ -118,8 +108,7 @@ module GHB
 
       @auto_approve_workflow.do_job(:auto_approve) do
         do_name('Auto-approve')
-        # Skip drafts, and never run the privileged pull_request_target token
-        # against code checked out from a fork.
+        # Never run the privileged pull_request_target token against code checked out from a fork.
         do_if('github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository')
         do_runs_on(DEFAULT_UBUNTU_VERSION)
 
@@ -161,8 +150,6 @@ module GHB
         end
       end
 
-      # Remove the legacy auto-merge.yml so regenerated repos do not end up
-      # running both the old and the renamed workflow.
       FileUtils.rm_f(OLD_WORKFLOW_FILE)
 
       @auto_approve_workflow.write(

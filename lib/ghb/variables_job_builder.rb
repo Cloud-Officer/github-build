@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../ghb'
+
 module GHB
   # Builds the "Prepare Variables" job in the workflow.
   class VariablesJobBuilder

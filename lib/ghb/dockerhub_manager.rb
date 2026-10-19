@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../ghb'
+
 module GHB
   # Manages DockerHub workflow configuration.
   class DockerhubManager
@@ -33,10 +35,6 @@ module GHB
             }
         }
 
-      # Workflow-level least-privilege default. The single job below opts into the
-      # write scopes it needs; declaring contents: read here forces any job added
-      # later to request write scopes deliberately rather than inheriting the
-      # repository's (often broader) default GITHUB_TOKEN permissions.
       @dockerhub_workflow.permissions =
         {
           contents: 'read'
@@ -45,12 +43,7 @@ module GHB
       @dockerhub_workflow.do_job(:push_to_registry) do
         do_name('Push Docker Image to Docker Hub')
         do_runs_on(DEFAULT_UBUNTU_VERSION)
-        # Permission scopes are the minimum required by cloud-officer/ci-actions/docker@v3:
-        # - contents:read     for actions/checkout
-        # - id-token:write    for actions/attest-build-provenance OIDC signing via Sigstore
-        # - attestations:write for publishing the build provenance attestation to GitHub
-        # Docker Hub push itself authenticates via DOCKER_USERNAME / DOCKER_PASSWORD,
-        # so packages:write (which is for GHCR) is intentionally NOT requested here.
+        # Docker Hub push authenticates via DOCKER_USERNAME/DOCKER_PASSWORD, so no packages:write (that scope is for GHCR).
         do_permissions(
           {
             contents: 'read',

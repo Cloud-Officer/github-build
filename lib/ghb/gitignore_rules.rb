@@ -3,10 +3,6 @@
 require_relative 'file_scanner'
 
 module GHB
-  # Pure rule logic for .gitignore generation: template detection, excluded-path
-  # building, and content transforms. Extracted from GitignoreManager so the
-  # logic has a public, directly-testable API while GitignoreManager retains the
-  # I/O orchestration (HTTP fetch + file writes).
   class GitignoreRules
     include FileScanner
 
@@ -46,7 +42,6 @@ module GHB
       templates.to_a.sort
     end
 
-    # Build excluded paths from languages.yaml config + submodules + --excluded_folders (SEC-002)
     def build_gitignore_excluded_paths
       excluded_dirs_from_config + @submodules + @options.excluded_folders
     end
@@ -92,10 +87,7 @@ module GHB
         # Skip managed patterns inside an old-style section that has no END marker
         next if in_managed_section && custom_patterns.any? { |pattern| line.start_with?(pattern) }
 
-        # Drop a hand-added copy of a now-managed pattern sitting outside the section:
-        # the regenerated block is the single source of truth, so preserving the stray
-        # line would emit it twice. Exact match only, so docs/migration/keep.md survives
-        # even though docs/migration/ is managed.
+        # Exact match only, so docs/migration/keep.md survives although docs/migration/ is managed.
         next if found && !in_managed_section && custom_patterns.include?(line.strip)
 
         custom_lines << line if found && !in_managed_section
@@ -104,13 +96,9 @@ module GHB
       custom_lines
     end
 
-    # Patterns kept grouped per tool, so a tool contributing several ignore rules
-    # renders as one commented block instead of being split into arbitrary pairs.
     def detect_custom_pattern_groups(config)
       groups = []
 
-      # Always include all custom patterns to prevent accidental commits
-      # even if the tool isn't detected (developer may start using it later)
       config[:custom_patterns]&.each_value do |tool_config|
         patterns = tool_config[:patterns]
 
@@ -170,7 +158,6 @@ module GHB
         package_detected?(detection_config[:packages])
     end
 
-    # Check for file extensions - pure Ruby (SEC-002)
     def extension_detected?(extensions, excluded_paths)
       return false if extensions.nil?
 
@@ -186,7 +173,6 @@ module GHB
       files.any? { |file| File.exist?(file) }
     end
 
-    # Check for packages in package manager files - pure Ruby regex (SEC-002)
     def package_detected?(packages)
       return false if packages.nil?
 

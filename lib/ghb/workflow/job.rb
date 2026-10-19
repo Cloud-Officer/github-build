@@ -5,14 +5,21 @@ require_relative 'copyable_properties'
 require_relative 'step'
 
 module GHB
-  # Data model for GitHub Actions job - instance variables map to YAML schema.
-  # Any new copyable ivar must be added to COPYABLE_PROPERTIES.
+  # Instance variables map to the YAML schema; new copyable ivars go in COPYABLE_PROPERTIES.
   class Job
     include CopyableProperties
 
     # Properties carried over from a previously-generated job by copy_properties.
     COPYABLE_PROPERTIES = %i[name permissions needs if runs_on environment concurrency outputs env defaults timeout_minutes strategy continue_on_error container services uses with secrets].freeze
     public_constant :COPYABLE_PROPERTIES
+
+    def self.evaluate(target, block)
+      if block&.arity == 1
+        block.call(target)
+      elsif block
+        target.instance_eval(&block)
+      end
+    end
 
     def initialize(id)
       @id = id
@@ -35,9 +42,16 @@ module GHB
       @uses = nil
       @with = {}
       @secrets = {}
+      @carried_from = nil
     end
 
     attr_accessor :id, :name, :permissions, :needs, :if, :runs_on, :environment, :concurrency, :outputs, :env, :defaults, :steps, :timeout_minutes, :strategy, :continue_on_error, :container, :services, :uses, :with, :secrets
+    attr_reader :carried_from
+
+    def carry_over(old_job)
+      copy_properties(old_job)
+      @carried_from = old_job
+    end
 
     def do_name(name)
       @name = name
@@ -87,14 +101,16 @@ module GHB
 
     def do_step(name, options = {}, &block)
       step = Step.new(name, options)
-
-      if block&.arity == 1
-        yield(step)
-      elsif block
-        step.instance_eval(&block)
-      end
-
+      Job.evaluate(step, block)
       @steps << step
+      step
+    end
+
+    def carry_step(name, from: carried_from, &block)
+      do_step(name) do |step|
+        step.copy_properties(step.find_step(from&.steps, name))
+        Job.evaluate(step, block)
+      end
     end
 
     def do_timeout_minutes(timeout_minutes)

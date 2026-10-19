@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
-# Golden-file test for the update path; workflow_generation_spec.rb covers
-# greenfield generation.
-#
-# Regenerate the golden file after an intentional change with:
-#   UPDATE_SNAPSHOTS=1 bundle exec rspec spec/ghb/integration/workflow_update_spec.rb
+# Regenerate the golden file with: UPDATE_SNAPSHOTS=1 bundle exec rspec spec/ghb/integration/workflow_update_spec.rb
 RSpec.describe('workflow update (golden file)') do # rubocop:disable RSpec/DescribeClass
   let(:fixture_dir)   { "#{__dir__}/../../fixtures/workflow_generation" }
   let(:existing_path) { "#{fixture_dir}/build_existing.yml"             }

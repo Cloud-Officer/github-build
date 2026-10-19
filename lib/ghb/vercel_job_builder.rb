@@ -1,29 +1,11 @@
 # frozen_string_literal: true
 
+require_relative '../ghb'
+
 module GHB
-  # Builds the Vercel deploy jobs (beta_deploy / rc_deploy / prod_deploy).
-  #
-  # This is the Vercel counterpart to CodeDeployJobBuilder: where an appspec.yml
-  # repo gets AWS CodeDeploy *_deploy jobs, a Vercel repo gets *_deploy jobs that
-  # drive the Vercel CLI. A repo is treated as Vercel when a vercel.json marker
-  # file is present, or its package.json declares a "vercel" or "next"
-  # dependency.
-  #
-  # CodeDeploy takes precedence: when appspec.yml exists these jobs are left to
-  # CodeDeployJobBuilder so the *_deploy job names do not collide.
-  #
-  # Each job emits four generated steps (Setup, Install Vercel CLI, Pull Vercel
-  # Environment Information, Deploy Project to Vercel). Any other step found on an
-  # existing *_deploy job - typically project-specific `vercel alias ...` steps,
-  # whose domains the generator cannot know - is preserved and appended, so
-  # regeneration stops stripping them (the bug the pnp-web-next hotfix worked
-  # around).
+  # CodeDeployJobBuilder owns the *_deploy jobs when appspec.yml exists, so these are skipped then.
   class VercelJobBuilder
-    # Generated deploy jobs: environment key => display name + Vercel CLI target.
-    # prod publishes with `--prod`; beta and rc deploy a preview build and
-    # capture the resulting URL so preserved alias steps can reference it via
-    # steps.deploy.outputs.url. "RC" is upper-cased to match the hand-written
-    # Vercel template (CodeDeploy's equivalent reads "Rc Deploy").
+    # "RC" is upper-cased to match the hand-written Vercel template.
     DEPLOYS = {
       beta: { name: 'Beta Deploy', target: 'preview' },
       rc: { name: 'RC Deploy', target: 'preview' },
@@ -31,14 +13,10 @@ module GHB
     }.freeze
     private_constant :DEPLOYS
 
-    # Names of the steps this builder generates; every other step on an existing
-    # *_deploy job is treated as a custom step to preserve.
     GENERATED_STEP_NAMES = ['Setup', 'Install Vercel CLI', 'Pull Vercel Environment Information', 'Deploy Project to Vercel'].freeze
     private_constant :GENERATED_STEP_NAMES
 
-    # JavaScript version files; when one is present the ci-actions setup reads the
-    # Node version from it, so a node-version carried over from a previous Setup
-    # step is dropped (mirrors LanguageJobBuilder#build_setup_step).
+    # When one is present the ci-actions setup reads the Node version from it.
     NODE_VERSION_FILES = %w[.node-version .nvmrc].freeze
     private_constant :NODE_VERSION_FILES
 
@@ -62,8 +40,7 @@ module GHB
 
       puts('    Adding Vercel deploys...')
 
-      # Capture needs once, before any deploy job is added, so every deploy job
-      # depends on the build/test/lint jobs only - not on each other.
+      # Captured before any deploy job is added so deploy jobs never depend on each other.
       needs = @new_workflow.deploy_needs
 
       DEPLOYS.each do |environment, config|
@@ -78,10 +55,8 @@ module GHB
       job_name = config[:name]
       target = config[:target]
       if_statement = build_if_statement(environment, needs)
-      old_job = @old_workflow.jobs[job_id]
 
-      @new_workflow.do_job(job_id) do |job|
-        job.copy_properties(old_job)
+      @new_workflow.carry_job(job_id, from: @old_workflow) do |job|
         job.do_name(job_name)
         job.do_runs_on(DEFAULT_UBUNTU_VERSION)
         job.do_needs(needs)
@@ -99,18 +74,14 @@ module GHB
 
         job.do_env(job.env.merge(VERCEL_TOKEN: VERCEL_TOKEN_ENV)) unless job.env.key?(:VERCEL_TOKEN)
 
-        build_setup_step(job, old_job)
-        build_install_step(job, old_job)
-        build_pull_step(job, old_job, target)
-        build_deploy_step(job, old_job, target)
-        append_custom_steps(job, old_job)
+        build_setup_step(job)
+        build_install_step(job)
+        build_pull_step(job, target)
+        build_deploy_step(job, target)
+        append_custom_steps(job)
       end
     end
 
-    # The per-environment `if:` gating a single deploy job: run on its deploy
-    # trigger only if none of the build/test/lint jobs failed. Built from the
-    # captured needs list (not live @jobs.keys) so the three jobs never reference
-    # one another.
     def build_if_statement(environment, needs)
       base_condition = "always() && needs.variables.outputs.DEPLOY_ON_#{environment.to_s.upcase} == '1'"
       job_conditions = needs.map { |job| "needs.#{job}.result != 'failure'" }
@@ -118,12 +89,11 @@ module GHB
       "${{#{([base_condition] + job_conditions).join(' && ')}}}"
     end
 
-    def build_setup_step(job, old_job)
+    def build_setup_step(job)
       # A version file pins the Node version, so drop a carried-over node-version.
       drop_node_version = NODE_VERSION_FILES.any? { |file| File.exist?(file) }
 
-      job.do_step('Setup') do
-        copy_properties(find_step(old_job&.steps, name))
+      job.carry_step('Setup') do
         do_uses("cloud-officer/ci-actions/setup@#{CI_ACTIONS_VERSION}")
 
         with.delete(:'node-version') if drop_node_version
@@ -134,41 +104,36 @@ module GHB
       end
     end
 
-    def build_install_step(job, old_job)
-      job.do_step('Install Vercel CLI') do
-        copy_properties(find_step(old_job&.steps, name))
+    def build_install_step(job)
+      job.carry_step('Install Vercel CLI') do
         do_run('npm install --global vercel@latest') if run.nil?
       end
     end
 
-    def build_pull_step(job, old_job, target)
+    def build_pull_step(job, target)
       command = "vercel pull --yes --environment=#{target}"
       legacy_command = "#{command}#{LEGACY_TOKEN_FLAG}"
 
-      job.do_step('Pull Vercel Environment Information') do
-        copy_properties(find_step(old_job&.steps, name))
+      job.carry_step('Pull Vercel Environment Information') do
         do_run(command) if run.nil? || run == legacy_command
       end
     end
 
-    def build_deploy_step(job, old_job, target)
+    def build_deploy_step(job, target)
       preview = target != 'production'
       command = preview ? 'echo "url=$(vercel deploy)" >> "${GITHUB_OUTPUT}"' : 'vercel deploy --prod'
       legacy_command = preview ? %(echo "url=$(vercel deploy#{LEGACY_TOKEN_FLAG})" >> "${GITHUB_OUTPUT}") : "vercel deploy --prod#{LEGACY_TOKEN_FLAG}"
 
-      job.do_step('Deploy Project to Vercel') do
-        copy_properties(find_step(old_job&.steps, name))
+      job.carry_step('Deploy Project to Vercel') do
         do_id('deploy') if preview
         do_run(command) if run.nil? || run == legacy_command
       end
     end
 
-    # Re-append any non-generated steps (e.g. project-specific `vercel alias`
-    # steps) from the existing job so regeneration preserves them.
-    def append_custom_steps(job, old_job)
-      return if old_job.nil?
+    def append_custom_steps(job)
+      return if job.carried_from.nil?
 
-      old_job.steps.each do |step|
+      job.carried_from.steps.each do |step|
         job.steps << step unless GENERATED_STEP_NAMES.include?(step.name)
       end
     end

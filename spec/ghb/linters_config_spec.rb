@@ -1,11 +1,5 @@
 # frozen_string_literal: true
 
-# Guards the per-linter `condition` in config/linters.yaml against catalog drift
-# (the root cause of CI-010): a linter job should carry the
-# `github.event_name == 'pull_request'` guard ONLY when it needs a pull request
-# to be meaningful, i.e. it reports through reviewdog's github-pr-review reporter.
-# Linters that fail the job by exit code work on pushes too and must run
-# unconditionally so regressions on master/tags/dependabot are still caught.
 RSpec.describe('config/linters.yaml conditions') do # rubocop:disable RSpec/DescribeClass
   let(:linters) do
     Psych.safe_load(File.read("#{__dir__}/../../config/linters.yaml")).transform_keys(&:to_sym)
@@ -31,10 +25,6 @@ RSpec.describe('config/linters.yaml conditions') do # rubocop:disable RSpec/Desc
     expect(conditions).to(all(be_nil))
   end
 
-  # ShellCheck is the one linter whose files are routinely extensionless: shell
-  # tools install onto PATH without a suffix, so an extension-only pattern left
-  # it disabled for repositories made entirely of them (and deleted their
-  # .shellcheckrc on every run).
   describe 'shellcheck extensionless detection' do
     let(:entry) { linters[:shellcheck] }
 

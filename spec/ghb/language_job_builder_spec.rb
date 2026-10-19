@@ -61,8 +61,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
 
   let(:go_language_yaml) { Psych.dump(go_language_config.deep_stringify_keys) }
 
-  # Mirrors the js entry in config/languages.yaml: opted into dependency caching, with a
-  # cache_name per package manager so the value follows the lockfile actually found.
+  # Mirrors the js entry in config/languages.yaml.
   let(:js_language_config) do
     {
       js: {
@@ -580,8 +579,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(step_names).to(include('Testing (apps/web)'))
     end
 
-    # Every registry service must be detected from a sub-project lockfile too: the root and
-    # sub-project detection used to be copy-pasted quartets that could silently diverge.
     GHB::DETECTABLE_SERVICES.each do |service|
       it "detects #{service} in sub-project dependency files", :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         marker = go_language_config[:go][:dependencies].first[GHB.service_dependency_key(service)]
@@ -613,9 +610,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(new_workflow.env).not_to(have_key(:'MYSQL-VERSION'))
     end
 
-    # SEC-001: dependency-install steps run arbitrary third-party code, so they must never see
-    # the long-lived org-scoped PAT. They keep an ephemeral repo-scoped token because Tuist's
-    # SwiftPM resolution reads GITHUB_TOKEN; unit-test steps get no token at all.
     describe 'token exposure in generated steps' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       def go_steps
         stub_config_file_reads(go_language_yaml)
@@ -627,14 +621,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       it 'gives the dependency-install step the ephemeral token, never the PAT', :aggregate_failures do
         install_step = go_steps.find { |step| step.name == 'Go Modules' }
 
-        expect(install_step.env['GITHUB_TOKEN']).to(eq('${{github.token}}'))
+        expect(install_step.env[:GITHUB_TOKEN]).to(eq('${{github.token}}'))
         expect(install_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
       end
 
       it 'gives the unit-test step no token at all', :aggregate_failures do
         test_step = go_steps.find { |step| step.name == 'Testing' }
 
-        expect(test_step.env).not_to(have_key('GITHUB_TOKEN'))
+        expect(test_step.env).not_to(have_key(:GITHUB_TOKEN))
         expect(test_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
       end
 
@@ -644,37 +638,38 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         expect(run_steps.flat_map { |step| step.env.values }).not_to(include('${{secrets.GH_PAT}}'))
       end
 
-      # The setup action fetches the private ci-actions repo through secrets.SSH_KEY; its
-      # github-token input carries the run token, which is the boundary of the SEC-001 change.
       it 'passes the run token to the setup action that needs cross-repo rights' do
         setup_step = go_steps.find { |step| step.name == 'Setup' }
 
         expect(setup_step.with[:'github-token']).to(eq('${{github.token}}'))
       end
 
-      # Migration path: steps inherit env from the previously generated workflow via
-      # copy_properties, so a repo generated before this fix carries the PAT on its test step.
-      # Regeneration must strip it, or the exposure survives the upgrade indefinitely.
       context 'when regenerating a workflow that already carries the injected PAT' do # rubocop:disable RSpec/NestedGroups,RSpec/MultipleMemoizedHelpers
         before do
           old_workflow.do_job(:go_unit_tests) do
             do_name('Go Unit Tests')
-            do_step('Testing') { do_env({ 'GITHUB_TOKEN' => '${{secrets.GH_PAT}}' }) } # rubocop:disable Style/StringHashKeys
-            do_step('Go Modules') { do_env({ 'GITHUB_TOKEN' => '${{secrets.GH_PAT}}' }) } # rubocop:disable Style/StringHashKeys
+            do_step('Testing') { do_env({ GITHUB_TOKEN: '${{secrets.GH_PAT}}' }) }
+            do_step('Go Modules') { do_env({ GITHUB_TOKEN: '${{secrets.GH_PAT}}' }) }
           end
         end
 
         it 'strips the inherited PAT from the unit-test step', :aggregate_failures do
           test_step = go_steps.find { |step| step.name == 'Testing' }
 
-          expect(test_step.env).not_to(have_key('GITHUB_TOKEN'))
+          expect(test_step.env).not_to(have_key(:GITHUB_TOKEN))
           expect(test_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
         end
 
         it 'downgrades the inherited PAT on the dependency-install step' do
           install_step = go_steps.find { |step| step.name == 'Go Modules' }
 
-          expect(install_step.env['GITHUB_TOKEN']).to(eq('${{github.token}}'))
+          expect(install_step.env[:GITHUB_TOKEN]).to(eq('${{github.token}}'))
+        end
+
+        it 'keeps a single Symbol GITHUB_TOKEN key on the dependency-install step' do
+          install_step = go_steps.find { |step| step.name == 'Go Modules' }
+
+          expect(install_step.env).to(eq({ GITHUB_TOKEN: '${{github.token}}' }))
         end
       end
 
@@ -683,14 +678,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         before do
           old_workflow.do_job(:go_unit_tests) do
             do_name('Go Unit Tests')
-            do_step('Testing') { do_env({ 'GITHUB_TOKEN' => '${{secrets.MY_OWN_TOKEN}}' }) } # rubocop:disable Style/StringHashKeys
+            do_step('Testing') { do_env({ GITHUB_TOKEN: '${{secrets.MY_OWN_TOKEN}}' }) }
           end
         end
 
         it 'leaves a user-chosen token untouched' do
           test_step = go_steps.find { |step| step.name == 'Testing' }
 
-          expect(test_step.env['GITHUB_TOKEN']).to(eq('${{secrets.MY_OWN_TOKEN}}'))
+          expect(test_step.env[:GITHUB_TOKEN]).to(eq('${{secrets.MY_OWN_TOKEN}}'))
         end
       end
     end
@@ -751,11 +746,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     end
   end
 
-  # Issue #263: NODE-CACHE was declared as a workflow env var but never reached the Setup
-  # step, so npm caching was silently off. Wiring the cache without the lockfile path is
-  # worse than leaving it off -- the setup action then fails with "Dependencies lock file
-  # is not found" on any repo whose lockfile lives in a sub-project -- so the two options
-  # are asserted as a pair throughout.
   describe 'dependency cache wiring' do # rubocop:disable RSpec/MultipleMemoizedHelpers
     it 'passes the cache and the root lockfile path to the setup step', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       stub_config_file_reads(js_language_yaml)
@@ -789,8 +779,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(setup.with[:'node-cache-dependency-path']).to(eq("package-lock.json\nslack/package-lock.json"))
     end
 
-    # The regression itself: a workflow generated before the cache was wired already has a
-    # populated `with`, and setup options were only merged when `with` was empty.
     it 'adds the cache to a Setup step inherited from a previously generated workflow', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       stub_config_file_reads(js_language_yaml)
       stub_js_language_detection
@@ -850,8 +838,6 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(setup.with[:'node-cache-dependency-path']).to(eq('yarn.lock'))
     end
 
-    # The setup actions take one package manager, so a repo running npm and yarn side by
-    # side cannot be expressed. Caching the wrong tree is worse than not caching.
     it 'leaves the cache off when two package managers are detected', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       stub_config_file_reads(js_language_yaml)
       stub_js_language_detection(root_lockfiles: %w[package-lock.json yarn.lock])
@@ -1079,9 +1065,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
   end
 
-  # root_lockfiles sit at the repo root (File.file? finds them); subdir_lockfiles sit in a
-  # sub-project and are only reachable through find_subdir_dependencies' depth-limited scan,
-  # which is the case issue #263 turns on -- ci-actions' own lockfile is slack/package-lock.json.
+  # subdir_lockfiles are only reachable through find_subdir_dependencies' depth-limited scan.
   def stub_js_language_detection(root_lockfiles: ['package-lock.json'], subdir_lockfiles: [])
     allow(builder).to(receive(:file_contains?).and_return(false))
     subdir_paths = subdir_lockfiles.map { |path| "./#{path}" }

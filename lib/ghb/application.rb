@@ -151,9 +151,6 @@ module GHB
       raise(ConfigError, e.message)
     end
 
-    # Validates that all required config files exist, have valid YAML syntax,
-    # and contain required keys (CFG-001, CFG-005)
-    # @raise [ConfigError] if any config file is missing, malformed, or missing required keys
     def validate_config!
       service_config_files = SERVICES.to_h { |service| [GHB.service_config_key(service), @options.options_config_files[service]] }
       config_files = {
@@ -330,12 +327,7 @@ module GHB
       end
     end
 
-    # Expands a job matrix into the combinations GitHub actually creates, in the
-    # same order, so the generated check names match the real check-run contexts
-    # (`Job (ubuntu-latest, 3.3)` rather than one name per axis value). `exclude:`
-    # combinations are dropped first, then `include:` rows are merged, mirroring
-    # GitHub's documented expansion (BUG-001, #474).
-    # @return [Array<Hash>, nil] the combinations, or nil when the matrix cannot be expanded statically
+    # Mirrors GitHub's matrix expansion order so generated check names match real check-run contexts.
     def matrix_combinations(matrix)
       return unless matrix.is_a?(Hash)
 
@@ -387,7 +379,6 @@ module GHB
       !value.nil? && !value.is_a?(Hash) && !value.is_a?(Array)
     end
 
-    # Cartesian product with the first axis varying slowest, matching GitHub's job order.
     # An include-only matrix has no base combination: every include row is its own job.
     def expand_axes(axes)
       return [] if axes.empty?
@@ -403,8 +394,6 @@ module GHB
       end
     end
 
-    # An include row is merged into every combination it does not contradict on an
-    # axis key; rows that match nothing become their own combination.
     def apply_includes(combinations, includes, axis_keys)
       added = []
 

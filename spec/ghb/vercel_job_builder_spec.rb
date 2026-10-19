@@ -5,8 +5,6 @@ RSpec.describe(GHB::VercelJobBuilder) do
   let(:old_workflow) { GHB::Workflow.new('Old')      }
   let(:new_workflow) { GHB::Workflow.new('Test')     }
 
-  # The build/test/lint jobs a real workflow has by the time deploy jobs are
-  # built; deploy needs/conditions are derived from these.
   def populate_base_jobs
     %i[variables actionlint markdownlint semgrep trivy yamllint licenses js_unit_tests].each do |id|
       new_workflow.do_job(id) { do_name(id.to_s) }

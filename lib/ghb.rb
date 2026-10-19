@@ -18,18 +18,11 @@ module GHB
   DEFAULT_GITIGNORE_CONFIG_FILE = 'config/gitignore.yaml'
   DEFAULT_LANGUAGES_CONFIG_FILE = 'config/languages.yaml'
   DEFAULT_LINTERS_CONFIG_FILE = 'config/linters.yaml'
-  # Single source of truth for the services whose setup options can be merged into a
-  # language's Setup step. Everything per-service (default config file path, CLI flag,
-  # config validation entry, YAML loading and dependency detection) is derived from this
-  # list, so adding a service means adding one symbol here plus its config/options file.
   SERVICES = %i[apt mongodb mysql redis opensearch].freeze
   # Services applied to every detected language, without any dependency-file detection.
   ALWAYS_ENABLED_SERVICES = %i[apt].freeze
-  # Services enabled only when a language dependency file mentions their marker string
-  # (the `<service>_dependency` key in config/languages.yaml).
+  # Enabled when a dependency file mentions the `<service>_dependency` marker from config/languages.yaml.
   DETECTABLE_SERVICES = (SERVICES - ALWAYS_ENABLED_SERVICES).freeze
-  # Display names used in the `--options-<service>` help text; anything absent falls
-  # back to a capitalized service name (e.g. redis -> Redis).
   SERVICE_DISPLAY_NAMES = { apt: 'APT', mongodb: 'MongoDB', mysql: 'MySQL', opensearch: 'OpenSearch' }.freeze
   DEFAULT_UBUNTU_VERSION = 'ubuntu-latest'
   DEFAULT_MACOS_VERSION = 'macos-latest'
@@ -52,10 +45,7 @@ module GHB
   SECRET_BUNDLES = {
     ssh: { 'ssh-key': '${{secrets.SSH_KEY}}' },
     github_token: { 'github-token': '${{github.token}}' },
-    # The GitHub OIDC role wins when the AWS_ROLE_TO_ASSUME variable is set (repository or
-    # organization); the access keys are blanked then, because configure-aws-credentials
-    # given both would sign the AssumeRole call with the keys instead of the OIDC token.
-    # Without the variable the step keeps authenticating with the access keys.
+    # configure-aws-credentials given both keys and a role signs AssumeRole with the keys, so keys are blanked.
     aws: {
       'aws-access-key-id': "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_ACCESS_KEY_ID || ''}}",
       'aws-secret-access-key': "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}",
@@ -65,31 +55,13 @@ module GHB
   }.freeze
   private_constant :SECRET_BUNDLES
 
-  # The key-only `with:` entries SECRET_BUNDLES[:aws] generated before the OIDC role.
-  # Workflow#adopt_aws_role moves steps still carrying exactly these onto the current
-  # bundle, since default_with would otherwise copy them forward forever.
   LEGACY_AWS_CREDENTIALS = {
     'aws-access-key-id': '${{secrets.AWS_ACCESS_KEY_ID}}',
     'aws-secret-access-key': '${{secrets.AWS_SECRET_ACCESS_KEY}}'
   }.freeze
   public_constant :LEGACY_AWS_CREDENTIALS
 
-  # Secret references that no longer resolve, and what replaces them.
-  #
-  # Retiring a secret in SECRET_BUNDLES is not enough on its own. A job builder
-  # copies the previous workflow's `with:`/`env:` forward and only fills in its
-  # defaults when the step carries none (Step#default_with is a no-op once
-  # `with:` is non-empty, so hand edits survive), which means a reference
-  # generated before the retirement is copied forward on every regeneration -
-  # nothing downstream can tell it apart from a hand edit worth keeping.
-  # Workflow#write rewrites these on the way out instead, that being the one
-  # pass every generated file goes through.
-  #
-  # GH_PAT was retired when CI moved to the run's own ${{github.token}}. The
-  # secret no longer exists, so a surviving reference expands to empty and fails
-  # whatever needs it - most visibly a required `token:` input, which reports
-  # `Input required and not supplied: token`. GH_BOT_PAT is NOT retired:
-  # auto-approve.yml still uses it, and it must keep resolving.
+  # Rewritten on write: default_with is a no-op once `with:` is set, so stale refs would be copied forward forever.
   RETIRED_SECRETS = { '${{secrets.GH_PAT}}' => '${{github.token}}' }.freeze # rubocop:disable Style/StringHashKeys -- the key is the literal expression matched in generated YAML, not a name
   public_constant :RETIRED_SECRETS
 
@@ -137,9 +109,6 @@ module GHB
     :"#{service}_dependency"
   end
 
-  # Full "owner/repo@version" ref for an external action, reading the pinned
-  # version from config/actions.yaml (the single source of truth bumped by the
-  # external-actions-bump cron). Raises ConfigError if the action is not listed.
   def self.external_action(name)
     path = File.expand_path("../#{EXTERNAL_ACTIONS_CONFIG_FILE}", __dir__)
     raise(ConfigError, "Missing required external actions file: #{EXTERNAL_ACTIONS_CONFIG_FILE}") unless File.exist?(path)

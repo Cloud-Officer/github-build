@@ -208,8 +208,6 @@ RSpec.describe(GHB::GitHubAPIClient) do
       expect(client.graphql('query { viewer { login } }')).to(eq({}))
     end
 
-    # GraphQL reports failures inside a 200 response, so the status code alone
-    # would let a failed query look like a successful one.
     it 'raises when a 200 response carries a GraphQL errors array' do
       stub_request(:post, graphql_url)
         .to_return(status: 200, body: { data: nil, errors: [{ message: 'Resource not accessible by integration' }, { message: 'Field does not exist' }] }.to_json)

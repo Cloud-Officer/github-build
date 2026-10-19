@@ -1,35 +1,16 @@
 # frozen_string_literal: true
 
 module GHB
-  # Renders the canonical excluded-directory list (the same set FileScanner uses,
-  # from config/languages.yaml) into each linter config's native ignore syntax.
-  #
-  # Each managed config carries a sentinel-delimited block:
-  #
-  #   <comment> ghb:excluded-dirs:start
-  #   ...generated lines...
-  #   <comment> ghb:excluded-dirs:end
-  #
-  # so a single source of truth keeps every linter config aligned. Configs without
-  # the sentinels (or that we don't manage) are returned unchanged.
+  # Renders the excluded-dirs list into the sentinel-delimited block of each linter config.
   module LinterIgnoreRenderer
     SENTINEL_START = 'ghb:excluded-dirs:start'
     SENTINEL_END = 'ghb:excluded-dirs:end'
     private_constant :SENTINEL_START, :SENTINEL_END
 
-    # Matches the managed block: captures the start-sentinel line and the
-    # end-sentinel line, with the regenerated body going between them.
     SENTINEL_PATTERN = /(.*#{Regexp.escape(SENTINEL_START)}.*\n)(?:.*\n)*?(.*#{Regexp.escape(SENTINEL_END)}.*)/
     private_constant :SENTINEL_PATTERN
 
-    # ESLint-only static ignores layered on top of the canonical excluded dirs.
-    # Workflow DSL scripts (*.workflow.js) legitimately combine a top-level
-    # `export const meta` with a top-level `return` (the Workflow runtime extracts
-    # the meta export and wraps the body in an async function), which no single
-    # ESLint parser mode can parse. They are validated by the Workflow runtime,
-    # not ESLint, so they are always ignored. This is a file glob (not a
-    # directory) and specific to ESLint, hence kept here rather than in the
-    # shared excluded_dirs list.
+    # Workflow DSL scripts mix a top-level export and return, which no ESLint parser mode accepts.
     ESLINT_EXTRA_IGNORES = ['**/*.workflow.js'].freeze
     private_constant :ESLINT_EXTRA_IGNORES
 
@@ -48,39 +29,21 @@ module GHB
     }.freeze
     public_constant :FORMATS
 
-    # Managed configs whose project-added lines (outside the sentinel block) must
-    # survive a rebuild: they are rendered against the project's own existing file
-    # rather than the bundled template, so e.g. a project's custom Trivy skip-dirs
-    # (added below the end sentinel) are preserved. The other managed configs are
-    # fully curated by us and are refreshed from the bundled template each build.
     MERGE_EXISTING_CONFIGS = %i[trivy.yaml].freeze
     public_constant :MERGE_EXISTING_CONFIGS
 
-    # @param config_name [String] linter config file name
-    # @return [Boolean] true if this config has a managed excluded-dirs block
     def manages?(config_name)
       FORMATS.key?(config_name.to_sym)
     end
 
-    # @param config_name [String] linter config file name
-    # @return [Boolean] true if this config must be merged into the project's
-    #   existing file (preserving content outside the managed block) rather than
-    #   copied fresh from the bundled template
     def merges_existing?(config_name)
       MERGE_EXISTING_CONFIGS.include?(config_name.to_sym)
     end
 
-    # @param content [String] file content
-    # @return [Boolean] true if `content` carries a complete managed block
     def managed_block?(content)
       content.include?(SENTINEL_START) && content.include?(SENTINEL_END)
     end
 
-    # Replace the managed block in `content` with `dirs` rendered for `config_name`.
-    # @param config_name [String] linter config file name (e.g. '.eslintrc.json')
-    # @param content [String] current config file content
-    # @param dirs [Array<String>] canonical excluded directory names
-    # @return [String] content with the managed block regenerated (or unchanged)
     def render_excluded_dirs(config_name, content, dirs)
       renderer = FORMATS[config_name.to_sym]
       return content unless renderer
@@ -96,8 +59,6 @@ module GHB
       dirs.uniq.sort_by(&:downcase)
     end
 
-    # Replaces every line strictly between the start and end sentinel lines with
-    # `body`, preserving the sentinel lines themselves (and their indentation).
     def replace_between_sentinels(content, body)
       content.sub(SENTINEL_PATTERN) { "#{Regexp.last_match(1)}#{body}\n#{Regexp.last_match(2)}" }
     end
@@ -132,38 +93,24 @@ module GHB
       lines.join("\n")
     end
 
-    # cfn-lint's ignore_templates is a YAML list of globs; match the directory
-    # anywhere in the tree with a trailing `/**`.
     def body_cfnlint(dirs)
       lines = dirs.map { |dir| "  - #{dir}/**" }
       lines.join("\n")
     end
 
-    # SwiftLint's excluded: is a YAML list of paths. The managed block carries the
-    # shared dirs; Swift-specific extras (e.g. SourcePackages, Tuist/.build) live
-    # outside the sentinels in the shipped template.
     def body_swiftlint(dirs)
-      # Match each excluded dir at ANY depth, mirroring the recursive globs the
-      # other renderers use (trivy `**/<dir>`, cfnlint `<dir>/**`, etc.). A bare
-      # `- .build` only excludes the repo-root copy, so nested build/checkout
-      # caches in submodules (e.g. Projects/<sub>/Tuist/.build/checkouts) slip
-      # through and trip `swiftlint --strict`. The leading `*` makes the scalar
-      # a YAML alias, so each entry is quoted.
+      # Quoted because a leading `*` would make the scalar a YAML alias.
       lines = dirs.map { |dir| %(  - "**/#{dir}") }
       lines.join("\n")
     end
 
-    # markdownlint-cli2's globs: is a YAML list where a leading `!` negates. The
-    # entry is quoted because `!` opens a YAML tag otherwise.
+    # Quoted because a leading `!` would open a YAML tag.
     def body_markdownlint(dirs)
       lines = dirs.map { |dir| %(  - "!**/#{dir}/**") }
       lines.join("\n")
     end
 
-    # Trivy's scan.skip-dirs is a YAML list of glob paths (4-space indent, nested
-    # under scan: > skip-dirs:). Use `**/<dir>` so the directory is skipped at any
-    # depth. The leading `*` makes the scalar an alias in YAML, so each entry is
-    # quoted.
+    # Quoted because a leading `*` would make the scalar a YAML alias.
     def body_trivy(dirs)
       lines = dirs.map { |dir| %(    - "**/#{dir}") }
       lines.join("\n")
