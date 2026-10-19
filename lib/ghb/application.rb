@@ -292,7 +292,7 @@ module GHB
         { contents: 'read', 'pull-requests': 'write' }
       ]
       @new_workflow.permissions =
-        if @old_workflow.permissions.any? and !previous_defaults.include?(@old_workflow.permissions)
+        if !@old_workflow.permissions.empty? and !previous_defaults.include?(@old_workflow.permissions)
           @old_workflow.permissions
         else
           { contents: 'read' }
@@ -300,11 +300,11 @@ module GHB
       @new_workflow.env = @old_workflow.env
       @new_workflow.defaults = @old_workflow.defaults || {}
       @new_workflow.concurrency =
-        if @old_workflow.concurrency.any?
-          @old_workflow.concurrency
-        else
+        if @old_workflow.concurrency.empty?
           # Cancel superseded full builds when a PR branch is pushed again.
           { group: 'build-${{github.ref}}', 'cancel-in-progress': true }
+        else
+          @old_workflow.concurrency
         end
     end
 
