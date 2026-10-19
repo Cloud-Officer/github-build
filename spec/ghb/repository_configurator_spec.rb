@@ -1052,6 +1052,20 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         expect { configurator.configure }
           .to(output(/could not read the force-push allowlist over GraphQL: GraphQL request failed: Bad credentials/).to_stderr)
       end
+
+      it 'counts an unreadable allowlist in the final summary' do
+        allow(github_client).to(receive(:graphql).and_raise(GHB::GitHubAPIError, 'GraphQL request failed: Bad credentials'))
+
+        expect { configurator.configure }
+          .to(output(/Repository settings configured with 1 warning\(s\)/).to_stderr)
+      end
+
+      it 'does not report success when the allowlist cannot be read' do
+        allow(github_client).to(receive(:graphql).and_raise(GHB::GitHubAPIError, 'GraphQL request failed: Bad credentials'))
+
+        expect { configurator.configure }
+          .not_to(output(/configured successfully/).to_stdout)
+      end
     end
   end
 end

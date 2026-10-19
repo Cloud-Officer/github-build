@@ -10,6 +10,12 @@ module GHB
   class Workflow
     GITHUB_ENV_VAR_REGEX = /\$\{GITHUB_([A-Z_]+)\}/
     private_constant :GITHUB_ENV_VAR_REGEX
+    READ_ALL_PERMISSIONS = %i[actions attestations checks contents deployments discussions issues models packages pages pull-requests repository-projects security-events statuses]
+                           .to_h { |scope| [scope, 'read'] }
+                           .freeze
+    private_constant :READ_ALL_PERMISSIONS
+    SCALAR_PERMISSIONS = %w[read-all write-all].freeze
+    private_constant :SCALAR_PERMISSIONS
 
     def initialize(name)
       @name = name
@@ -96,6 +102,7 @@ module GHB
       raise(ConfigError, "Invalid workflow file #{file}: expected a mapping at the document root, got #{parsed.class}") unless parsed.is_a?(Hash)
 
       workflow_data = parsed.deep_symbolize_keys
+      validate_permissions(file, 'permissions', workflow_data[:permissions])
 
       @name = workflow_data[:name]
       @run_name = workflow_data[:'run-name']
@@ -108,6 +115,8 @@ module GHB
 
       workflow_data[:jobs]&.each do |job_id, job_data|
         raise(ConfigError, "Invalid workflow file #{file}: job '#{job_id}' must be a mapping, got #{job_data.class}") unless job_data.is_a?(Hash)
+
+        validate_permissions(file, "job '#{job_id}' permissions", job_data[:permissions])
 
         do_job(job_id) do
           do_name(job_data[:name])
@@ -180,7 +189,7 @@ module GHB
         next unless job.steps.any? { |step| step.with.key?(:'aws-role-to-assume') }
 
         inherited = @permissions.empty? ? { contents: 'read' } : @permissions
-        job.permissions = (job.permissions.empty? ? inherited : job.permissions).merge('id-token': 'write')
+        job.permissions = with_id_token(job.permissions.empty? ? inherited : job.permissions)
       end
     end
 
@@ -189,7 +198,7 @@ module GHB
       hash[:name] = @name unless @name.nil?
       hash[:'run-name'] = @run_name unless @run_name.nil?
       hash[:on] = @on.sort.to_h unless @on.empty?
-      hash[:permissions] = @permissions.sort.to_h unless @permissions.empty?
+      hash[:permissions] = @permissions.is_a?(Hash) ? @permissions.sort.to_h : @permissions unless @permissions.empty?
       hash[:env] = @env.sort.to_h unless @env.empty?
       hash[:defaults] = @defaults.sort.to_h unless @defaults.empty?
       hash[:concurrency] = @concurrency unless @concurrency.empty?
@@ -198,6 +207,20 @@ module GHB
     end
 
     private
+
+    def validate_permissions(file, key, permissions)
+      return if permissions.nil? or permissions.is_a?(Hash) or SCALAR_PERMISSIONS.include?(permissions)
+
+      raise(ConfigError, "Invalid workflow file #{file}: #{key} must be a mapping, 'read-all' or 'write-all', got #{permissions.inspect}")
+    end
+
+    def with_id_token(permissions)
+      case permissions
+      when 'write-all' then permissions
+      when 'read-all' then READ_ALL_PERMISSIONS.merge('id-token': 'write')
+      else permissions.merge('id-token': 'write')
+      end
+    end
 
     # Replace every reference to a retired secret, `run:` bodies included.
     #

@@ -303,6 +303,29 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       expect { workflow.read('steps.yml') }
         .to(raise_error(GHB::ConfigError, /steps\.yml: job 'build' step 1 must be a mapping, got String/))
     end
+
+    it 'keeps scalar permissions and concurrency as written' do
+      allow(File).to(receive(:read).and_return("---\npermissions: read-all\nconcurrency: build-${{ github.ref }}\njobs:\n  build:\n    permissions: write-all\n    concurrency: job-group\n".dup))
+      workflow.read('scalar.yml')
+      job = workflow.jobs[:build]
+
+      expect([workflow.permissions, workflow.concurrency, job.permissions, job.concurrency])
+        .to(eq(['read-all', 'build-${{ github.ref }}', 'write-all', 'job-group']))
+    end
+
+    it 'raises a clear ConfigError naming the file when the workflow permissions scalar is unknown' do
+      allow(File).to(receive(:read).and_return("---\npermissions: read\n".dup))
+
+      expect { workflow.read('perms.yml') }
+        .to(raise_error(GHB::ConfigError, /perms\.yml: permissions must be a mapping, 'read-all' or 'write-all', got "read"/))
+    end
+
+    it 'raises a clear ConfigError naming the job when its permissions scalar is unknown' do
+      allow(File).to(receive(:read).and_return("---\njobs:\n  build:\n    permissions: none\n".dup))
+
+      expect { workflow.read('perms.yml') }
+        .to(raise_error(GHB::ConfigError, /perms\.yml: job 'build' permissions must be a mapping, 'read-all' or 'write-all', got "none"/))
+    end
   end
 
   describe '#write' do
@@ -515,6 +538,14 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       expect(hash[:permissions].keys.first).to(eq(:contents))
     end
 
+    it 'emits scalar permissions and concurrency verbatim' do
+      workflow = described_class.new('CI')
+      workflow.do_permissions('read-all')
+      workflow.do_concurrency('build-${{ github.ref }}')
+
+      expect(workflow.to_h).to(include(permissions: 'read-all', concurrency: 'build-${{ github.ref }}'))
+    end
+
     it 'excludes empty values' do # rubocop:disable RSpec/MultipleExpectations
       workflow = described_class.new('Minimal')
       hash = workflow.to_h
@@ -579,6 +610,27 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
       job.do_permissions({ contents: 'read', 'pull-requests': 'write' })
       workflow.adopt_aws_role
       expect(job.permissions).to(eq({ contents: 'read', 'pull-requests': 'write', 'id-token': 'write' }))
+    end
+
+    it 'expands inherited read-all permissions before granting id-token: write' do
+      workflow.do_permissions('read-all')
+      job = add_deploy_job(GHB.secrets(:aws))
+      workflow.adopt_aws_role
+      expect(job.permissions).to(include(actions: 'read', contents: 'read', statuses: 'read', 'id-token': 'write'))
+    end
+
+    it 'expands a job read-all block before granting id-token: write' do
+      job = add_deploy_job(GHB.secrets(:aws))
+      job.do_permissions('read-all')
+      workflow.adopt_aws_role
+      expect(job.permissions).to(include(contents: 'read', 'pull-requests': 'read', 'id-token': 'write'))
+    end
+
+    it 'keeps write-all, which already grants id-token: write' do
+      job = add_deploy_job(GHB.secrets(:aws))
+      job.do_permissions('write-all')
+      workflow.adopt_aws_role
+      expect(job.permissions).to(eq('write-all'))
     end
 
     it 'leaves customised access keys and their job permissions alone', :aggregate_failures do

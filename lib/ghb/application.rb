@@ -123,8 +123,26 @@ module GHB
       branch = `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null`.strip.sub(%r{^refs/remotes/origin/}, '')
       return branch unless branch.empty?
 
-      warn("WARNING: could not detect the default branch from origin/HEAD, falling back to 'master'")
+      branch = remote_default_branch || api_default_branch
+      return branch if branch
+
+      warn("WARNING: could not detect the default branch from origin/HEAD, the origin remote or the GitHub API, falling back to 'master'")
       'master'
+    end
+
+    def remote_default_branch
+      `GIT_TERMINAL_PROMPT=0 git ls-remote --symref origin HEAD 2>/dev/null`[%r{^ref: refs/heads/(\S+)\tHEAD$}, 1]
+    end
+
+    def api_default_branch
+      github_token = ENV.fetch('GITHUB_TOKEN', nil)
+      return if github_token.nil? || github_token.empty? || `git remote get-url origin 2>/dev/null`.strip.empty?
+
+      repo_url = "https://api.github.com/repos/#{@options.organization}/#{Dir.pwd.split('/').last}"
+      branch = JSON.parse(GitHubAPIClient.new(github_token).get(repo_url).body)['default_branch']
+      branch unless branch.to_s.empty?
+    rescue StandardError
+      nil
     end
 
     def configure_options(argv)
@@ -274,7 +292,7 @@ module GHB
         { contents: 'read', 'pull-requests': 'write' }
       ]
       @new_workflow.permissions =
-        if @old_workflow.permissions.any? and !previous_defaults.include?(@old_workflow.permissions)
+        if !@old_workflow.permissions.empty? and !previous_defaults.include?(@old_workflow.permissions)
           @old_workflow.permissions
         else
           { contents: 'read' }
@@ -282,11 +300,11 @@ module GHB
       @new_workflow.env = @old_workflow.env
       @new_workflow.defaults = @old_workflow.defaults || {}
       @new_workflow.concurrency =
-        if @old_workflow.concurrency.any?
-          @old_workflow.concurrency
-        else
+        if @old_workflow.concurrency.empty?
           # Cancel superseded full builds when a PR branch is pushed again.
           { group: 'build-${{github.ref}}', 'cancel-in-progress': true }
+        else
+          @old_workflow.concurrency
         end
     end
 
