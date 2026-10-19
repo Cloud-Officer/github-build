@@ -54,7 +54,6 @@ module GHB
     # the PAT reference this tool used to inject, so a GITHUB_TOKEN the user set deliberately
     # (or already migrated to the run token) is left alone.
     def self.drop_injected_pat(env)
-      env.delete('GITHUB_TOKEN') if env['GITHUB_TOKEN'] == INJECTED_PAT
       env.delete(:GITHUB_TOKEN) if env[:GITHUB_TOKEN] == INJECTED_PAT
     end
 
@@ -313,7 +312,7 @@ module GHB
           step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
           step.do_shell('bash')
           step.do_run(dependency[:package_manager_default]) if step.run.nil?
-          step.env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
+          step.env[:GITHUB_TOKEN] = DEPENDENCY_STEP_TOKEN
           @code_deploy_pre_steps << step.deep_dup if needs_codedeploy_setup
         end
       end
@@ -351,7 +350,7 @@ module GHB
               step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
               step.do_shell('bash')
               step.do_run(dep[:package_manager_default]) if step.run.nil?
-              step.env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
+              step.env[:GITHUB_TOKEN] = DEPENDENCY_STEP_TOKEN
             end
           end
         else
@@ -359,7 +358,7 @@ module GHB
             step.copy_properties(step.find_step(@old_workflow.jobs[:"#{language[:short_name]}_unit_tests"]&.steps, step.name))
             step.do_shell('bash')
             step.do_run("cd #{subdir} && #{dep[:package_manager_default]}") if step.run.nil?
-            step.env['GITHUB_TOKEN'] = DEPENDENCY_STEP_TOKEN
+            step.env[:GITHUB_TOKEN] = DEPENDENCY_STEP_TOKEN
           end
         end
 

@@ -627,14 +627,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       it 'gives the dependency-install step the ephemeral token, never the PAT', :aggregate_failures do
         install_step = go_steps.find { |step| step.name == 'Go Modules' }
 
-        expect(install_step.env['GITHUB_TOKEN']).to(eq('${{github.token}}'))
+        expect(install_step.env[:GITHUB_TOKEN]).to(eq('${{github.token}}'))
         expect(install_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
       end
 
       it 'gives the unit-test step no token at all', :aggregate_failures do
         test_step = go_steps.find { |step| step.name == 'Testing' }
 
-        expect(test_step.env).not_to(have_key('GITHUB_TOKEN'))
+        expect(test_step.env).not_to(have_key(:GITHUB_TOKEN))
         expect(test_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
       end
 
@@ -659,22 +659,28 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         before do
           old_workflow.do_job(:go_unit_tests) do
             do_name('Go Unit Tests')
-            do_step('Testing') { do_env({ 'GITHUB_TOKEN' => '${{secrets.GH_PAT}}' }) } # rubocop:disable Style/StringHashKeys
-            do_step('Go Modules') { do_env({ 'GITHUB_TOKEN' => '${{secrets.GH_PAT}}' }) } # rubocop:disable Style/StringHashKeys
+            do_step('Testing') { do_env({ GITHUB_TOKEN: '${{secrets.GH_PAT}}' }) }
+            do_step('Go Modules') { do_env({ GITHUB_TOKEN: '${{secrets.GH_PAT}}' }) }
           end
         end
 
         it 'strips the inherited PAT from the unit-test step', :aggregate_failures do
           test_step = go_steps.find { |step| step.name == 'Testing' }
 
-          expect(test_step.env).not_to(have_key('GITHUB_TOKEN'))
+          expect(test_step.env).not_to(have_key(:GITHUB_TOKEN))
           expect(test_step.env.values).not_to(include('${{secrets.GH_PAT}}'))
         end
 
         it 'downgrades the inherited PAT on the dependency-install step' do
           install_step = go_steps.find { |step| step.name == 'Go Modules' }
 
-          expect(install_step.env['GITHUB_TOKEN']).to(eq('${{github.token}}'))
+          expect(install_step.env[:GITHUB_TOKEN]).to(eq('${{github.token}}'))
+        end
+
+        it 'keeps a single Symbol GITHUB_TOKEN key on the dependency-install step' do
+          install_step = go_steps.find { |step| step.name == 'Go Modules' }
+
+          expect(install_step.env).to(eq({ GITHUB_TOKEN: '${{github.token}}' }))
         end
       end
 
@@ -683,14 +689,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         before do
           old_workflow.do_job(:go_unit_tests) do
             do_name('Go Unit Tests')
-            do_step('Testing') { do_env({ 'GITHUB_TOKEN' => '${{secrets.MY_OWN_TOKEN}}' }) } # rubocop:disable Style/StringHashKeys
+            do_step('Testing') { do_env({ GITHUB_TOKEN: '${{secrets.MY_OWN_TOKEN}}' }) }
           end
         end
 
         it 'leaves a user-chosen token untouched' do
           test_step = go_steps.find { |step| step.name == 'Testing' }
 
-          expect(test_step.env['GITHUB_TOKEN']).to(eq('${{secrets.MY_OWN_TOKEN}}'))
+          expect(test_step.env[:GITHUB_TOKEN]).to(eq('${{secrets.MY_OWN_TOKEN}}'))
         end
       end
     end
