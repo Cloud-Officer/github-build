@@ -288,31 +288,84 @@ RSpec.describe(GHB::Application) do
     let(:app) { internals_class.new }
 
     describe '#detect_default_branch' do
+      let(:repo_url) { "https://api.github.com/repos/test-org/#{Dir.pwd.split('/').last}" }
+
+      def stub_git(symbolic_ref: '', ls_remote: '', get_url: "git@github.com:test-org/repo.git\n")
+        allow(app).to(receive(:`).with('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null').and_return(symbolic_ref))
+        allow(app).to(receive(:`).with('GIT_TERMINAL_PROMPT=0 git ls-remote --symref origin HEAD 2>/dev/null').and_return(ls_remote))
+        allow(app).to(receive(:`).with('git remote get-url origin 2>/dev/null').and_return(get_url))
+      end
+
+      def stub_token(token)
+        allow(ENV).to(receive(:fetch).and_call_original)
+        allow(ENV).to(receive(:fetch).with('GITHUB_TOKEN', nil).and_return(token))
+      end
+
+      before do
+        app.instance_variable_set(:@options, instance_double(GHB::Options, organization: 'test-org'))
+        allow(app).to(receive(:warn))
+        stub_token(nil)
+      end
+
       it 'returns the branch reported by git symbolic-ref' do
-        allow(app).to(receive(:`).with('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null').and_return("refs/remotes/origin/main\n"))
+        stub_git(symbolic_ref: "refs/remotes/origin/main\n")
 
         expect(app.detect_default_branch).to(eq('main'))
       end
 
-      it "falls back to 'master' when origin/HEAD is not resolvable" do
-        allow(app).to(receive(:warn))
-        allow(app).to(receive(:`).with('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null').and_return(''))
+      it 'returns the origin remote HEAD branch when origin/HEAD is not set' do
+        stub_git(ls_remote: "ref: refs/heads/main\tHEAD\n0123456789abcdef\tHEAD\n")
+
+        expect(app.detect_default_branch).to(eq('main'))
+      end
+
+      it 'returns the GitHub API default branch when the remote cannot be queried' do
+        stub_git
+        stub_token('token')
+        stub_request(:get, repo_url).to_return(status: 200, body: { default_branch: 'main' }.to_json)
+
+        expect(app.detect_default_branch).to(eq('main'))
+      end
+
+      it 'skips the GitHub API when there is no origin remote' do
+        stub_git(get_url: '')
+        stub_token('token')
 
         expect(app.detect_default_branch).to(eq('master'))
       end
 
-      it 'warns when origin/HEAD is not resolvable' do
-        allow(app).to(receive(:warn))
-        allow(app).to(receive(:`).with('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null').and_return(''))
+      it "falls back to 'master' when the GitHub API request fails" do
+        stub_git
+        stub_token('token')
+        stub_request(:get, repo_url).to_return(status: 404, body: '{}')
+
+        expect(app.detect_default_branch).to(eq('master'))
+      end
+
+      it "falls back to 'master' when the GitHub API reports no default branch" do
+        stub_git
+        stub_token('token')
+        stub_request(:get, repo_url).to_return(status: 200, body: '{}')
+
+        expect(app.detect_default_branch).to(eq('master'))
+      end
+
+      it "falls back to 'master' when no source resolves the default branch" do
+        stub_git
+
+        expect(app.detect_default_branch).to(eq('master'))
+      end
+
+      it 'warns when no source resolves the default branch' do
+        stub_git
 
         app.detect_default_branch
 
-        expect(app).to(have_received(:warn).with(%r{could not detect the default branch from origin/HEAD, falling back to 'master'}))
+        expect(app).to(have_received(:warn).with(/could not detect the default branch .* falling back to 'master'/))
       end
 
       it 'does not warn when origin/HEAD resolves' do
-        allow(app).to(receive(:warn))
-        allow(app).to(receive(:`).with('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null').and_return("refs/remotes/origin/main\n"))
+        stub_git(symbolic_ref: "refs/remotes/origin/main\n")
 
         app.detect_default_branch
 
@@ -320,7 +373,7 @@ RSpec.describe(GHB::Application) do
       end
 
       it "detects 'master' when that is the default branch" do
-        allow(app).to(receive(:`).with('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null').and_return("refs/remotes/origin/master\n"))
+        stub_git(symbolic_ref: "refs/remotes/origin/master\n")
 
         expect(app.detect_default_branch).to(eq('master'))
       end
