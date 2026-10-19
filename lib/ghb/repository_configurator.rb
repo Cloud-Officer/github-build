@@ -207,7 +207,7 @@ module GHB
       puts('        No classic branch protection rule found for the default branch') if rule.nil?
       rule
     rescue GitHubAPIError => e
-      warn("        WARNING: could not read the force-push allowlist over GraphQL: #{e.message}")
+      record_warning("        WARNING: could not read the force-push allowlist over GraphQL: #{e.message}")
       nil
     end
 
@@ -465,9 +465,13 @@ module GHB
     def warn_unless_successful(response, action)
       return if response.code.between?(200, 299)
 
-      @warning_count += 1
       body = response.body.to_s.strip[0, 500]
-      warn("    WARNING: could not #{action}: HTTP #{response.code}#{" #{body}" unless body.empty?}")
+      record_warning("    WARNING: could not #{action}: HTTP #{response.code}#{" #{body}" unless body.empty?}")
+    end
+
+    def record_warning(message)
+      @warning_count += 1
+      warn(message)
     end
 
     def enable_codeql_default_setup(github_client, repo_url)
