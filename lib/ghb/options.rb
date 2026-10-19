@@ -12,8 +12,6 @@ module GHB
     # Flags that are one-shot in nature and must not be persisted to the generated workflow header.
     EPHEMERAL_FLAGS = %w[--sync_required_status_checks].freeze
     # Flags removed from the CLI that may still linger in a downstream repo's persisted build.yml header.
-    # They are stripped (with a warning) during persisted-args replay so old headers self-heal on the next
-    # regeneration instead of aborting on OptionParser::InvalidOption.
     REMOVED_FLAGS = %w[--mono_repo --options-elasticsearch --skip_dependabot --only_dependabot --skip_codeql].freeze
     REMOVED_VALUE_FLAGS = %w[--options-elasticsearch].freeze
     private_constant :ARGS_COMMENT_PREFIX
@@ -76,9 +74,6 @@ module GHB
       raise(ConfigError, "Malformed github-build args in #{file}: #{e.message}")
     end
 
-    # Drops flags that no longer exist from persisted args so replay tolerates removed options.
-    # Each dropped flag is reported on stderr; because it never reaches @argv/@original_argv,
-    # the regenerated build.yml header self-heals (the flag disappears on the next run).
     def strip_removed_flags(args, file)
       kept = []
       remaining = args.dup

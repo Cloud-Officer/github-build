@@ -46,11 +46,6 @@ RSpec.describe(GHB::DependabotManager) do
       end
     end
 
-    # Regression guard for the retirement of the cron dependency workflow. These
-    # are the exact conditions that used to generate it: a licenses job plus at
-    # least one dependency step. Both files must still be removed and no job may
-    # be emitted, otherwise secrets.GH_PAT returns to ~/.gitconfig in cleartext
-    # ahead of package-manager updates that run third-party install scripts.
     context 'when a licenses job and dependency steps are present' do
       let(:dependencies_steps) { [GHB::Step.new('Setup', { with: { 'ssh-key': '${{secrets.SSH_KEY}}' } })] }
 

@@ -69,10 +69,6 @@ RSpec.describe(GHB::RepositoryConfigurator) do
     allow(github_client).to(receive_messages(put: ok, post: ok, patch: ok))
   end
 
-  # Shape of the GraphQL force-push allowlist read. Defaults to a protected branch
-  # with nobody on the allowlist, which is the state every pre-existing example assumes.
-  # JSON.parse(...to_json) so the fixture has the string keys a real GraphQL
-  # response carries, without writing string-keyed hash literals by hand.
   def branch_protection_rule_data(actors, rule_id: 'BPR_kwDOabcdef')
     JSON.parse({ repository: { ref: { branchProtectionRule: branch_protection_rule(actors, rule_id) } } }.to_json)
   end
@@ -81,8 +77,6 @@ RSpec.describe(GHB::RepositoryConfigurator) do
     {
       id: rule_id,
       allowsForcePushes: actors.any?,
-      # A nil actor becomes a null node, so fixtures can cover both shapes GitHub
-      # can hand back for an allowance it will not describe.
       bypassForcePushAllowances: { nodes: actors.map { |actor| actor && { actor: actor } } }
     }
   end
@@ -962,9 +956,6 @@ RSpec.describe(GHB::RepositoryConfigurator) do
     end
   end
 
-  # allow_force_pushes: false in the REST PUT is silently ignored while a force-push
-  # actor allowlist exists, so asserting only that the `false` was *sent* passes on a
-  # branch that is still force-pushable. These examples assert the GraphQL state instead.
   describe '#configure force-push allowlist' do
     context 'when the default branch has a force-push actor allowlist' do
       before do

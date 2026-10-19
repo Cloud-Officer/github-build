@@ -122,9 +122,6 @@ RSpec.describe(GHB::LinterIgnoreRenderer) do
     end
   end
 
-  # Drift guard: the shipped templates must already match what copy time produces
-  # for the current languages.yaml. If this fails, re-run the renderer over the
-  # templates (or someone hand-edited a managed block).
   describe 'shipped linter templates' do
     let(:canonical_dirs) do
       config = Psych.safe_load(File.read('config/languages.yaml'))

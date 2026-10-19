@@ -6,8 +6,6 @@ require 'find'
 require 'psych'
 
 module GHB
-  # Shared utility methods for file scanning and content searching.
-  # Provides pure Ruby file operations to avoid shell command injection (SEC-001, SEC-002).
   module FileScanner
     private
 
@@ -15,9 +13,6 @@ module GHB
       @file_cache[path] ||= File.read(path)
     end
 
-    # Builds the list of excluded directory patterns from languages.yaml.
-    # Combines install_dirs from all dependency entries with the top-level excluded_dirs.
-    # @return [Array<String>] directory names to exclude (e.g., ['node_modules', 'vendor', '.git'])
     def excluded_dirs_from_config
       @excluded_dirs_from_config ||=
         begin
@@ -39,11 +34,7 @@ module GHB
         end
     end
 
-    # Single regexp matching any caller-supplied excluded path fragment or any
-    # excluded directory from languages.yaml, so each scanned path is tested once.
     # Entries match literally and only as whole path segments ("app" never matches "application").
-    # @param excluded_paths [Array<String>] directory or file paths to exclude
-    # @return [Regexp] alternation of every exclusion path (never matches when empty)
     def excluded_paths_pattern(excluded_paths)
       segments =
         (excluded_paths + excluded_dirs_from_config).filter_map do |entry|
@@ -54,12 +45,6 @@ module GHB
       segments.empty? ? Regexp.union : Regexp.new("(?:\\A|/)(?:#{segments.uniq.join('|')})(?:/|\\z)")
     end
 
-    # Pure Ruby file finder - avoids shell command injection (SEC-001, SEC-002)
-    # @param path [String] starting directory path
-    # @param pattern [Regexp] file pattern to match
-    # @param excluded_paths [Array<String>] paths to exclude (partial matches)
-    # @param max_depth [Integer, nil] maximum directory depth (nil for unlimited)
-    # @return [Array<String>] list of matching file paths
     def find_files_matching(path, pattern, excluded_paths = [], max_depth: nil)
       matches = []
       base_depth = path.count(File::SEPARATOR)
@@ -72,9 +57,6 @@ module GHB
           Find.prune if current_depth > max_depth
         end
 
-        # Skip excluded paths (submodules, excluded_folders, dirs from languages.yaml)
-        # and anything the repo's .gitignore excludes (e.g. the .ruby-lsp sub-bundle),
-        # so ignored files never count toward language/dependency/linter detection.
         if file_path.match?(excluded_pattern) || git_ignored?(file_path)
           Find.prune
           next
@@ -90,11 +72,6 @@ module GHB
       []
     end
 
-    # Returns true when the repo's .gitignore (plus global/exclude rules) ignores
-    # this path, so gitignored files/folders are never scanned for detection.
-    # Paths are matched relative to the repo root, mirroring `git ls-files` output.
-    # @param file_path [String] path yielded by Find (e.g. "./.ruby-lsp/Gemfile")
-    # @return [Boolean] true if the path is git-ignored
     def git_ignored?(file_path)
       ignored = gitignored_paths
       return false if ignored.empty?
@@ -111,11 +88,6 @@ module GHB
       end
     end
 
-    # Git-ignored files and directories relative to the repo root, computed once.
-    # Uses `git ls-files` so the real .gitignore semantics apply (negations,
-    # nested .gitignore files, global excludes). Returns [] when git is
-    # unavailable or the cwd is not a repository, leaving scanning unfiltered.
-    # @return [Array<String>] ignored entries; directories carry a trailing slash
     def gitignored_paths
       return @gitignored_paths if defined?(@gitignored_paths)
 
@@ -128,10 +100,6 @@ module GHB
       @gitignored_paths = []
     end
 
-    # Pure Ruby file content search
-    # @param file [String] file path to search
-    # @param pattern [String] pattern to search for (literal string match)
-    # @return [Boolean] true if pattern found in file
     def file_contains?(file, pattern)
       return false unless File.exist?(file) && File.file?(file)
 
@@ -144,16 +112,6 @@ module GHB
       false
     end
 
-    # Matches a file's shebang (first line only) against a regex.
-    #
-    # Distinct from file_contains?, which is a literal substring test applied to
-    # every line: a shebang is identified by shape rather than by one fixed
-    # string (#!/bin/sh, #!/usr/bin/env bash, #!/bin/bash -e), and only the first
-    # line may be consulted -- a script that merely mentions "bash" in a comment
-    # is not a bash script.
-    # @param file [String] file path to inspect
-    # @param pattern [Regexp] regex to match the first line against
-    # @return [Boolean] true if the first line matches
     def file_shebang_matches?(file, pattern)
       return false unless File.exist?(file) && File.file?(file)
 
@@ -166,13 +124,6 @@ module GHB
       false
     end
 
-    # Atomic file copy with optional transformation
-    # Copies source to a temp file, applies optional transformation, then renames atomically
-    # @param source [String] source file path
-    # @param target [String] target file path
-    # @yield [content] optional block to transform content before writing
-    # @yieldparam content [String] the file content
-    # @yieldreturn [String] the transformed content
     def atomic_copy_config(source, target)
       content = File.read(source)
       content = yield(content) if block_given?

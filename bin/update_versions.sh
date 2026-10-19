@@ -1,22 +1,11 @@
 #!/usr/bin/env bash
 
-# Refresh the pinned language and service versions in config/languages.yaml and
-# config/options/*.yaml from their upstream sources. Run from the repository
-# root (every path below is relative to the working directory).
-#
-# Strict mode note: each lookup is a `<fetch> | <filter>` pipeline whose filters
-# (jq, grep, sort, tail) exit 0 on empty input, so under bare `set -e` a failed
-# fetch used to write an empty version into the config YAML. Under `pipefail`
-# those pipelines fail instead, so every lookup ends with `|| true` — keeping
-# the AWS-first paths degrading to their public fallback — and every resolved
-# value is checked by `require_version` before yq touches a file.
+# Refresh pinned versions in config/languages.yaml and config/options/*.yaml; run from the repo root.
 
 set -euo pipefail
 
 LANGUAGE_FILE="config/languages.yaml"
 
-# Abort with a clear error instead of writing an empty (or JSON null) version
-# into a config file.
 function require_version()
 {
   local name="$1" value="$2" min_major="${3:-}"
@@ -114,9 +103,7 @@ if [ -z "${latest_valkey}" ]; then
     latest_valkey=$(curl -fsS https://api.github.com/repos/valkey-io/valkey/releases | jq -r '[.[] | select(.tag_name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .tag_name] | first' || true)
 fi
 
-# Validate version against actions-setup-redis supported valkey versions. An
-# unsupported or unresolved version degrades to the "latest" tag rather than
-# failing the run.
+# actions-setup-redis supports only the valkey minors it lists; anything else falls back to "latest".
 valkey_versions=$(curl -fsS https://raw.githubusercontent.com/shogo82148/actions-setup-redis/main/src/versions/valkey.json | jq -r '[.[].version | split(".")[0:2] | join(".")] | unique | .[]' || true)
 valkey_minor=$(echo "${latest_valkey}" | grep -oE '^[0-9]+\.[0-9]+' || true)
 
@@ -127,12 +114,7 @@ fi
 export latest_valkey
 yq e --indent=2 '(.options[] | select(.name == "redis-version").value) = env(latest_valkey)' -i "config/options/redis.yaml"
 
-# OpenSearch
-#
-# Track the `OpenSearch_*` line, not `Elasticsearch_*`. AWS forked OpenSearch after
-# Elastic's 2021 licence change, so `list-versions` caps Elasticsearch compatibility at
-# 7.10 permanently -- filtering on it pinned us to a dead lineage while our domains run
-# AWS::OpenSearchService::Domain. Major.minor is what ankane/setup-opensearch expects.
+# OpenSearch: list-versions caps Elasticsearch at 7.10, so track the OpenSearch_* line as major.minor.
 
 latest_opensearch=$(aws opensearch list-versions --query 'Versions[*]' --output text 2>/dev/null | tr '\t' '\n' | grep -E '^OpenSearch_[0-9]+\.[0-9]+$' | sed 's/OpenSearch_//' | sort -V | tail -n1 || true)
 

@@ -8,8 +8,6 @@ require_relative 'file_scanner'
 require_relative 'gitignore_rules'
 
 module GHB
-  # Manages .gitignore file generation and updates. Owns the I/O orchestration
-  # (HTTP fetch + file writes); the rule logic lives in GitignoreRules.
   class GitignoreManager
     include FileScanner
 
@@ -73,8 +71,6 @@ module GHB
         puts("    Custom patterns: #{tool_names.join(', ')}")
       end
 
-      # Preserve custom entries after "# End of" section from original gitignore
-      # but skip the managed patterns section (it was regenerated above)
       custom_lines = @rules.preserve_custom_entries(git_ignore, custom_patterns)
 
       content = (new_git_ignore + custom_lines.join).gsub(/\n{3,16}/, "\n\n").gsub('/bin/*', '#/bin/*').gsub('# Pods/', 'Pods/')

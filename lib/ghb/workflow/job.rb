@@ -5,8 +5,7 @@ require_relative 'copyable_properties'
 require_relative 'step'
 
 module GHB
-  # Data model for GitHub Actions job - instance variables map to YAML schema.
-  # Any new copyable ivar must be added to COPYABLE_PROPERTIES.
+  # Instance variables map to the YAML schema; new copyable ivars go in COPYABLE_PROPERTIES.
   class Job
     include CopyableProperties
 

@@ -18,8 +18,7 @@ module GHB
     READ_ONLY_PERMISSIONS = { contents: 'read' }.freeze
     private_constant :REVIEWDOG_PERMISSIONS, :READ_ONLY_PERMISSIONS
 
-    # Job-level permissions for a linter without its own `permissions` entry:
-    # reviewdog needs pull-requests: write to post review comments, every other linter only reads.
+    # reviewdog needs pull-requests: write to post review comments.
     def self.default_permissions(linter)
       (linter[:reviewdog] ? REVIEWDOG_PERMISSIONS : READ_ONLY_PERMISSIONS).dup
     end
@@ -59,8 +58,6 @@ module GHB
     RENAMED_CONFIGS = { '.markdownlint.yml': '.markdownlint-cli2.yaml' }.freeze
     private_constant :RENAMED_CONFIGS
 
-    # A basename containing a dot. Files matched by extension (foo.sh) are taken
-    # at their word; only extensionless ones are asked for a shebang.
     EXTENSION_RE = %r{[^/]\.[^/]*$}
     private_constant :EXTENSION_RE
 
@@ -77,7 +74,6 @@ module GHB
         return
       end
 
-      # Pure Ruby file finding - avoids shell injection (SEC-001)
       excluded_paths = @options.excluded_folders + @submodules + [@options.linters_config_file]
       pattern = Regexp.new(linter[:pattern])
       matches = find_files_matching(linter[:path], pattern, excluded_paths)
@@ -94,10 +90,7 @@ module GHB
         end
       end
 
-      # A `pattern` cannot identify a language whose files carry no extension --
-      # a CLI installed onto PATH is named `deploy`, not `deploy.sh`. Such a
-      # pattern has to be loose enough to admit every extensionless file, and
-      # `shebang_match` is what narrows it back down to the intended language.
+      # Extensionless files pass the loose pattern; their shebang decides the language.
       if linter[:shebang_match] && !matches.empty?
         shebang_pattern = Regexp.new(linter[:shebang_match])
         matches = matches.select { |file| file.match?(EXTENSION_RE) || file_shebang_matches?(file, shebang_pattern) }
@@ -114,9 +107,6 @@ module GHB
       add_linter_job(short_name, linter)
     end
 
-    # A linter's `config` may be a single file name or a list of them (e.g. Trivy
-    # ships both trivy.yaml and .trivyignore). Normalise to an array, dropping a
-    # nil/empty config (linters like Actionlint have none).
     def configs_for(linter)
       Array(linter[:config]).compact
     end
@@ -157,17 +147,10 @@ module GHB
       elsif File.exist?("linters/#{config_name}") && config_name != '.editorconfig' && !project_owned_config?(config_name)
         FileUtils.ln_s("linters/#{config_name}", config_name, force: true)
       else
-        # Use atomic file operation to prevent data loss if copy fails. For
-        # merge-managed configs (e.g. trivy.yaml) render into the project's own
-        # file so its out-of-block additions survive; otherwise copy the template.
         atomic_copy_config(config_source(config_name), config_name) do |content|
-          # Keep each linter's ignore list aligned with the single source of truth
-          # (excluded_dirs + install_dirs from languages.yaml).
           content = render_excluded_dirs(config_name, content, excluded_dirs_from_config) if manages?(config_name)
 
-          # Uncomment Rails-specific rules if this is a Rails project. Only
-          # un-comment commented-out YAML config (list items and mapping keys)
-          # so prose comments (e.g. the MultilineMethodSignature note) survive.
+          # Uncomments only YAML list items and mapping keys so prose comments survive.
           content = content.gsub(/^(\s*)# (?=\s*(?:-\s|[^\s:#]+:(?:\s|$)))/, '\1') if config_name == '.rubocop.yml' && File.exist?('Gemfile') && File.read('Gemfile').include?('rails')
 
           content
@@ -184,18 +167,10 @@ module GHB
       File.absolute_path(path, root).start_with?("#{root}/")
     end
 
-    # True when a merge-managed config has been deliberately turned from a symlink
-    # into a real file carrying our sentinel block. Re-symlinking it to the shared
-    # copy would discard whatever the project added outside the block, so such a
-    # file takes the merge path instead: the managed block is still refreshed from
-    # the single source of truth, and the project's own entries survive.
     def project_owned_config?(config_name)
       merges_existing?(config_name) && File.exist?(config_name) && !File.symlink?(config_name) && managed_block?(File.read(config_name))
     end
 
-    # Resolves the content source for a config: the project's existing file when
-    # it is a merge-managed config already carrying our sentinel block (so custom
-    # lines outside the block are preserved), otherwise the bundled template.
     def config_source(config_name)
       bundled = "#{__dir__}/../../config/linters/#{config_name}"
       return bundled unless merges_existing?(config_name)
@@ -225,11 +200,7 @@ module GHB
           defaults.merge!(linter[:options]) if linter[:options]
           step.default_with(defaults)
 
-          # The run token, not the org PAT (SEC-001). Private cross-repo submodules
-          # resolve over SSH through secrets.SSH_KEY -- every .gitmodules we generate for
-          # uses a git@github.com: URL -- so actions/checkout never needs the PAT here.
-          # Assigned rather than defaulted so workflows generated before this change are
-          # upgraded in place on regeneration. reviewdog keeps the same run token.
+          # Assigned, not defaulted, so older workflows carrying the PAT are upgraded on regeneration.
           step.with[:'github-token'] = '${{github.token}}'
           step.with[:'reviewdog-token'] = '${{github.token}}' if linter[:reviewdog]
         end

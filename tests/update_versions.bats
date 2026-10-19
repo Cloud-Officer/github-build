@@ -1,14 +1,6 @@
 #!/usr/bin/env bats
 
-# Tests for bin/update_versions.sh. Fake `curl`, `aws`, `pyenv` and `rbenv`
-# binaries on PATH resolve fixed upstream payloads (no network, no AWS
-# credentials), and the script runs against a throwaway copy of `config/` so the
-# real files are never touched. Real `jq`/`yq` are used so the actual filters and
-# yq expressions are exercised.
-#
-# Fake behaviour is driven by env knobs: FAKE_CURL_FAIL (substring of the URL to
-# fail on), FAKE_AWS_OK (AWS answers instead of failing), FAKE_JAVA_NULL,
-# FAKE_NODE_NO_LTS, FAKE_PYENV_EMPTY and FAKE_VALKEY_UNSUPPORTED.
+# Fake env knobs: FAKE_CURL_FAIL (URL substring), FAKE_AWS_OK, FAKE_JAVA_NULL, FAKE_NODE_NO_LTS, FAKE_PYENV_EMPTY, FAKE_VALKEY_UNSUPPORTED.
 
 require_tool() {
   command -v "${1}" >/dev/null && return 0
@@ -129,10 +121,6 @@ value_of() {
   yq e "(.${2}[] | select(.name == \"${3}\").value)" "${1}"
 }
 
-# ===========================================================================
-# Conventions (the finding this script was changed for)
-# ===========================================================================
-
 @test "the script runs under strict mode" {
   grep -q '^set -euo pipefail$' "${BATS_TEST_DIRNAME}/../bin/update_versions.sh"
   ! grep -qE '^set -e$' "${BATS_TEST_DIRNAME}/../bin/update_versions.sh"
@@ -168,10 +156,6 @@ value_of() {
   [ "${total}" -eq "${ordered}" ]
   ! grep -qE '^yq --indent' "${script}"
 }
-
-# ===========================================================================
-# Success path
-# ===========================================================================
 
 @test "resolves and writes every language and service version" {
   run "${SCRIPT}"
@@ -225,17 +209,11 @@ value_of() {
 }
 
 @test "a failing aws CLI falls back to the public sources instead of aborting" {
-  # Regression: under pipefail a non-zero `aws` would kill the whole pipeline
-  # before the `-z` fallback could run.
   run "${SCRIPT}"
   [ "${status}" -eq 0 ]
   [ "$(value_of config/options/mongodb.yaml options mongodb-version)" = "8.3.8" ]
   [ "$(value_of config/options/opensearch.yaml options opensearch-version)" = "3.8" ]
 }
-
-# ===========================================================================
-# Valkey / redis degradation
-# ===========================================================================
 
 @test "a valkey version unsupported by actions-setup-redis degrades to latest" {
   FAKE_VALKEY_UNSUPPORTED=1 run "${SCRIPT}"
@@ -248,10 +226,6 @@ value_of() {
   [ "${status}" -eq 0 ]
   [ "$(value_of config/options/redis.yaml options redis-version)" = "latest" ]
 }
-
-# ===========================================================================
-# Failure paths — never write an empty version
-# ===========================================================================
 
 @test "a failed upstream fetch exits non-zero and writes nothing" {
   before="$(cat config/languages.yaml)"

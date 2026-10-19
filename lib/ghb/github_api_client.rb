@@ -14,8 +14,6 @@ module GHB
     MAX_RETRIES = 3
     # Cap a single rate-limit back-off so a far-future X-RateLimit-Reset can't hang CI.
     MAX_RETRY_WAIT = 60
-    # Bound every request so a stalled connection can't hang the CLI indefinitely
-    # (and so the Net::OpenTimeout / Net::ReadTimeout retry path can actually fire).
     OPEN_TIMEOUT = 10
     READ_TIMEOUT = 30
     RETRYABLE_ERRORS = [Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNRESET, Errno::ECONNREFUSED, SocketError, OpenSSL::SSL::SSLError].freeze
@@ -51,12 +49,7 @@ module GHB
       execute(:patch, url, body: body, expected_codes: expected_codes)
     end
 
-    # Runs a GraphQL query or mutation and returns its `data` hash.
-    #
-    # GraphQL is needed for the settings the classic REST API cannot represent
-    # (notably branch-protection actor allowlists). It reports failures inside a
-    # 200 response's `errors` array rather than through the status code, so those
-    # are surfaced here as GitHubAPIError just like a failed REST call.
+    # GraphQL reports failures in a 200 response's `errors` array, not through the status code.
     def graphql(query, variables: {})
       response = execute(
         :post,
@@ -120,8 +113,7 @@ module GHB
       response.code >= 500 || rate_limited?(response)
     end
 
-    # A secondary limit answers 403 with Retry-After while the primary quota,
-    # and so X-RateLimit-Remaining, is untouched.
+    # A secondary limit answers 403 with Retry-After while X-RateLimit-Remaining is untouched.
     def rate_limited?(response)
       return true if response.code == 429
       return false unless response.code == 403
@@ -131,8 +123,6 @@ module GHB
         response.body.to_s.include?('secondary rate limit')
     end
 
-    # Honor Retry-After / X-RateLimit-Reset for rate-limited responses (capped);
-    # otherwise fall back to linear back-off (1s, 2s, 3s).
     def retry_wait(response, retries)
       return retries unless rate_limited?(response)
 

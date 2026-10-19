@@ -16,43 +16,18 @@ module GHB
     SWIFT_DEPLOY_CHECK_FLAGS = %w[DEPLOY_ON_BETA DEPLOY_ON_RC DEPLOY_ON_PROD DEPLOY_MACOS DEPLOY_TVOS].freeze
     # Languages whose dependency steps must also be staged as CodeDeploy pre-steps.
     CODEDEPLOY_SETUP_LANGUAGES = %w[go php].freeze
-    # How many directory levels below the repo root a sub-project dependency file
-    # may sit and still be detected (e.g. js/<module>/package-lock.json is 2 deep).
+    # e.g. js/<module>/package-lock.json is 2 levels deep.
     SUBDIR_DEPENDENCY_SCAN_DEPTH = 2
-    # Token exposed to dependency-install steps. Deliberately the ephemeral, repo-scoped
-    # run token and NOT secrets.GH_PAT (SEC-001): install steps execute arbitrary
-    # third-party code (postinstall hooks, plugins), so an org-scoped long-lived PAT in their
-    # environment is one malicious transitive dependency away from exfiltration.
-    #
-    # Kept rather than dropped because Tuist's SwiftPM resolution reads GITHUB_TOKEN/GH_TOKEN.
-    # The other package managers authenticate by other means and are unaffected: Composer via
-    # the github-oauth config setup-php writes from the run token, Bundler via
-    # BUNDLE_GITHUB__COM, npm/yarn/pnpm via NODE_AUTH_TOKEN, Carthage via GITHUB_ACCESS_TOKEN,
-    # and private sibling repos over SSH through webfactory/ssh-agent with secrets.SSH_KEY.
-    # It also raises the API rate limit from 60/hour per runner IP to 1,000/hour per
-    # repository -- and unlike the PAT's 5,000/hour shared across every repo and workflow,
-    # that budget is isolated per repo, so concurrent builds no longer contend.
-    #
-    # Unit-test steps get no token at all: none of the supported test frameworks read one.
-    # Spelled ${{github.token}} rather than ${{secrets.GITHUB_TOKEN}}: same value, but the
-    # github context exists everywhere the secrets context does and in several places it does
-    # not - inside a composite action most of all, which is what every cloud-officer/ci-actions
-    # step is. One spelling across the generator also keeps `secrets.` a grep for the secrets a
-    # repo genuinely has to configure; the run token is minted per job and is not one of them.
+    # Run token, not GH_PAT: install steps execute third-party code; Tuist reads GITHUB_TOKEN.
     DEPENDENCY_STEP_TOKEN = '${{github.token}}'
-    # The PAT reference this tool used to inject, kept so regeneration can recognise and strip
-    # it from workflows generated before SEC-001 was fixed.
+    # Legacy PAT reference stripped from previously generated workflows.
     INJECTED_PAT = '${{secrets.GH_PAT}}'
     FAILURE_ARTIFACTS_STEP_NAME = 'Upload Failure Artifacts'
     private_constant :SWIFT_DEPLOY_CHECK_FLAGS, :CODEDEPLOY_SETUP_LANGUAGES, :SUBDIR_DEPENDENCY_SCAN_DEPTH, :DEPENDENCY_STEP_TOKEN, :INJECTED_PAT, :FAILURE_ARTIFACTS_STEP_NAME
 
     attr_reader :code_deploy_pre_steps
 
-    # Steps inherit their env from the previously generated workflow via copy_properties, so
-    # simply no longer injecting the PAT would leave it in place forever in every repo that
-    # already has one written. Strip it on regeneration -- but only when the value is exactly
-    # the PAT reference this tool used to inject, so a GITHUB_TOKEN the user set deliberately
-    # (or already migrated to the run token) is left alone.
+    # Only the exact legacy value is stripped so a GITHUB_TOKEN the user set survives.
     def self.drop_injected_pat(env)
       env.delete(:GITHUB_TOKEN) if env[:GITHUB_TOKEN] == INJECTED_PAT
     end
@@ -65,9 +40,6 @@ module GHB
       @unit_tests_conditions = unit_tests_conditions
       @file_cache = context.file_cache
       @code_deploy_pre_steps = []
-      # Package managers marked `package_manager_once` that have already emitted an
-      # install step in this job, so a system-wide tool install is not repeated per
-      # detected sub-project. Scoped to the builder, which is per language job.
       @installed_once = []
     end
 
@@ -97,7 +69,6 @@ module GHB
       detected_services = Set.new(ALWAYS_ENABLED_SERVICES)
       setup_options = {}
 
-      # Pure Ruby file finding - avoids shell injection (SEC-002)
       excluded_paths = @options.excluded_folders + @submodules
       pattern = Regexp.new(".*\\.(#{language[:file_extension]})$")
       matches = find_files_matching('.', pattern, excluded_paths)
@@ -105,8 +76,6 @@ module GHB
       if matches.any?
         dependency_detected = false
         mono_dependency_locations = []
-        # Every lockfile found, root and sub-project alike, so the dependency cache can be
-        # pointed at the paths it must hash (issue #263).
         detected_dependencies = []
 
         language[:dependencies].each do |dependency|
@@ -125,7 +94,6 @@ module GHB
 
         language_detected = true
 
-        # Pure Ruby dependency checking - avoids shell injection (SEC-002)
         language[:dependencies].each do |dependency|
           detected_services.merge(detect_services(dependency, dependency[:dependency_file]))
         end
@@ -148,14 +116,7 @@ module GHB
       add_language_job(language, setup_options, version_file, mono_dependency_locations, cache_options)
     end
 
-    # Wire the language's dependency cache (e.g. actions/setup-node's `cache:`) to the
-    # lockfiles actually present in the repo.
-    #
-    # The cache is only ever enabled together with the paths it must hash: with a bare
-    # `cache: npm` the setup action looks for a lockfile at the repo root and fails with
-    # "Dependencies lock file is not found" in any repo whose lockfile lives in a
-    # sub-project (ci-actions' slack/package-lock.json). That is why the two options are
-    # derived here as a pair rather than carrying a static value in the config (#263).
+    # A bare `cache: npm` fails when the lockfile is not at the repo root, so cache and paths are set together.
     def cache_setup_options(language, detected_dependencies)
       cache_option = language[:cache_option]
       path_option = language[:cache_dependency_path_option]
@@ -167,9 +128,7 @@ module GHB
       cache_names = cacheable.map { |found| found[:dependency][:cache_name] }
       cache_names.uniq!
 
-      # The setup actions take a single package manager, so a repo mixing two (npm and
-      # yarn side by side) cannot be expressed. Leave caching off rather than guess and
-      # cache the wrong dependency tree.
+      # The setup actions accept a single package manager, so a repo mixing two skips caching.
       unless cache_names.one?
         puts("        Skipping #{cache_option}: #{cache_skip_reason(cache_names)}")
 
@@ -191,9 +150,6 @@ module GHB
       "multiple package managers detected (#{cache_names.join(', ')})"
     end
 
-    # Services whose marker string (the `<service>_dependency` key) appears in the given
-    # dependency file. Used for both the repo-root and the sub-project lockfiles so the
-    # two detection sites can no longer diverge.
     def detect_services(dependency, path)
       DETECTABLE_SERVICES.select do |service|
         marker = dependency[GHB.service_dependency_key(service)]
@@ -201,14 +157,8 @@ module GHB
       end
     end
 
-    # Find a language's dependency lockfile in sub-project directories. Scans up to
-    # SUBDIR_DEPENDENCY_SCAN_DEPTH levels below the repo root, skipping the root
-    # itself (detected separately) and any excluded/vendored directory. Replaces the
-    # former `--mono_repo`-gated one-level glob: sub-project detection is now default.
     def find_subdir_dependencies(dependency, excluded_paths)
-      # find_files_matching yields root-relative paths ("./sub/file"), where a file
-      # directly under the start dir is depth 1; a file N directories deep is depth
-      # N+1. Allow one extra so SUBDIR_DEPENDENCY_SCAN_DEPTH counts subdir levels.
+      # find_files_matching counts a file directly under the start dir as depth 1.
       pattern = Regexp.new("/#{Regexp.escape(dependency[:dependency_file])}\\z")
       matches = find_files_matching('.', pattern, excluded_paths, max_depth: SUBDIR_DEPENDENCY_SCAN_DEPTH + 1)
 
@@ -286,11 +236,7 @@ module GHB
 
         step.with[:'github-token'] = '${{github.token}}'
 
-        # Applied outside the `with.empty?` branch above on purpose. A workflow generated
-        # before the cache was wired already carries a populated `with`, so merging only on
-        # the empty path would leave the cache dead in every existing repo -- exactly the
-        # NODE-CACHE-is-declared-but-never-passed state issue #263 reported. An operator's
-        # own value still wins: only keys absent from `with` are filled in.
+        # Merged even into a populated `with` so existing workflows gain the cache; operator values win.
         cache_options.each { |key, value| step.with[key.to_sym] = value unless step.with.key?(key.to_sym) }
 
         @code_deploy_pre_steps << step.deep_dup if needs_codedeploy_setup
@@ -320,14 +266,7 @@ module GHB
         dep = loc[:dependency]
         subdir = loc[:subdir]
 
-        # `package_manager_once` marks a dependency whose command installs a tool
-        # system-wide rather than that sub-project's dependencies -- shell_script's
-        # `.bats` is a zero-byte marker and the command installs the bats runner
-        # itself. Every other ecosystem's command (npm install, composer install,
-        # bundle install, pip install -r) resolves a manifest in its own directory,
-        # so repeating it per sub-project is required. Emitting a system-wide
-        # install once per detected directory only repeats `apt-get update` on the
-        # same runner and multiplies the chances of a transient apt failure.
+        # These commands install a system-wide tool, so repeating them per sub-project only multiplies apt runs.
         if dep[:package_manager_once]
           unless @installed_once.include?(dep[:package_manager_name])
             @installed_once << dep[:package_manager_name]
@@ -425,8 +364,6 @@ module GHB
       sync_ruby_version_files(file_version) if strict && version_file == '.ruby-version'
     end
 
-    # A Dockerfile that pins Ruby in an ARG drifts silently from .ruby-version
-    # and only fails when the image is built, which is usually a release.
     def sync_ruby_version_files(version)
       sync_file_version('Gemfile', /^(\s*ruby\s+['"])\d[\w.]*(['"])/, version)
       sync_file_version('Gemfile.lock', /^(RUBY VERSION\r?\n\s+ruby )\S+/, version)
@@ -471,11 +408,7 @@ module GHB
       puts("#{'*' * 80}\n\e[0m")
     end
 
-    # A version file may intentionally pin fewer segments than the recommended
-    # value: e.g. .php-version pins "8.5" and setup-php/phpenv resolve the latest
-    # patch at install time. A recommendation that only adds a more specific
-    # patch within the same prefix is not a real mismatch, so it must not
-    # trigger a version-mismatch warning.
+    # e.g. .php-version "8.5" resolves the latest patch, so "8.5.3" is not a mismatch.
     def version_file_mismatch?(file_version, recommended)
       return false if file_version == recommended
       return false if recommended.start_with?("#{file_version}.")

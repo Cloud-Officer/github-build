@@ -1,12 +1,5 @@
 #!/usr/bin/env bats
 
-# Tests for bump-actions/bump-actions.sh. A fake `gh` on PATH resolves a fixed
-# version/tag map (no network), and BUMP_MANIFEST points the resolver at a
-# throwaway fixture manifest. The script is also sourced so its helpers can be
-# unit-tested directly (its body is guarded by
-# `[[ "${BASH_SOURCE[0]}" == "${0}" ]]`). The fake `gh` mirrors the one in
-# cloud-officer/ci-actions so the shared helpers stay behaviour-compatible.
-
 setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/../bump-actions/bump-actions.sh"
   BIN="$(mktemp -d)"
@@ -52,10 +45,6 @@ EOF
   chmod +x "${BIN}/gh"
 }
 
-# Manifest fixture covering: floating major to bump, exact semver to bump, an
-# already-current major, a cloud-officer entry (skipped), a SHA pin, a branch
-# pin, an exact pin ahead of latest, a tag-only repo, and two repos whose
-# release tags are hostile.
 make_manifest() {
   cat > "${MANIFEST}" <<'EOF'
 ---
@@ -72,10 +61,6 @@ evil/action: v9.0.0
 salvageable/action: v1
 EOF
 }
-
-# ===========================================================================
-# Helper unit tests (sourced) — shared with cloud-officer/ci-actions
-# ===========================================================================
 
 @test "is_sha matches only 40-char hex" {
   is_sha 0123456789abcdef0123456789abcdef01234567
@@ -131,10 +116,6 @@ EOF
   [[ "${output}" != *"cloud-officer/internal-action"* ]]
   [[ "${output}" != *"#"* ]]
 }
-
-# ===========================================================================
-# Dry-run resolution
-# ===========================================================================
 
 @test "dry run lists floating-major and exact-semver bumps" {
   run "${SCRIPT}"
@@ -219,10 +200,6 @@ EOF
   [ "$(cat "${MANIFEST}")" = "${before}" ]
 }
 
-# ===========================================================================
-# Apply
-# ===========================================================================
-
 @test "--apply rewrites the bumped entries and leaves the rest untouched" {
   run "${SCRIPT}" --apply
   [ "${status}" -eq 0 ]
@@ -237,10 +214,6 @@ EOF
   # comment header preserved
   grep -q '^# External action version manifest' "${MANIFEST}"
 }
-
-# ===========================================================================
-# PR body, empty result and missing manifest
-# ===========================================================================
 
 @test "--pr-body-file writes a table and release notes" {
   body="$(mktemp)"

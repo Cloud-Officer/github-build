@@ -3,29 +3,9 @@
 require_relative '../ghb'
 
 module GHB
-  # Builds the Vercel deploy jobs (beta_deploy / rc_deploy / prod_deploy).
-  #
-  # This is the Vercel counterpart to CodeDeployJobBuilder: where an appspec.yml
-  # repo gets AWS CodeDeploy *_deploy jobs, a Vercel repo gets *_deploy jobs that
-  # drive the Vercel CLI. A repo is treated as Vercel when a vercel.json marker
-  # file is present, or its package.json declares a "vercel" or "next"
-  # dependency.
-  #
-  # CodeDeploy takes precedence: when appspec.yml exists these jobs are left to
-  # CodeDeployJobBuilder so the *_deploy job names do not collide.
-  #
-  # Each job emits four generated steps (Setup, Install Vercel CLI, Pull Vercel
-  # Environment Information, Deploy Project to Vercel). Any other step found on an
-  # existing *_deploy job - typically project-specific `vercel alias ...` steps,
-  # whose domains the generator cannot know - is preserved and appended, so
-  # regeneration stops stripping them (the bug the pnp-web-next hotfix worked
-  # around).
+  # CodeDeployJobBuilder owns the *_deploy jobs when appspec.yml exists, so these are skipped then.
   class VercelJobBuilder
-    # Generated deploy jobs: environment key => display name + Vercel CLI target.
-    # prod publishes with `--prod`; beta and rc deploy a preview build and
-    # capture the resulting URL so preserved alias steps can reference it via
-    # steps.deploy.outputs.url. "RC" is upper-cased to match the hand-written
-    # Vercel template (CodeDeploy's equivalent reads "Rc Deploy").
+    # "RC" is upper-cased to match the hand-written Vercel template.
     DEPLOYS = {
       beta: { name: 'Beta Deploy', target: 'preview' },
       rc: { name: 'RC Deploy', target: 'preview' },
@@ -33,14 +13,10 @@ module GHB
     }.freeze
     private_constant :DEPLOYS
 
-    # Names of the steps this builder generates; every other step on an existing
-    # *_deploy job is treated as a custom step to preserve.
     GENERATED_STEP_NAMES = ['Setup', 'Install Vercel CLI', 'Pull Vercel Environment Information', 'Deploy Project to Vercel'].freeze
     private_constant :GENERATED_STEP_NAMES
 
-    # JavaScript version files; when one is present the ci-actions setup reads the
-    # Node version from it, so a node-version carried over from a previous Setup
-    # step is dropped (mirrors LanguageJobBuilder#build_setup_step).
+    # When one is present the ci-actions setup reads the Node version from it.
     NODE_VERSION_FILES = %w[.node-version .nvmrc].freeze
     private_constant :NODE_VERSION_FILES
 
@@ -64,8 +40,7 @@ module GHB
 
       puts('    Adding Vercel deploys...')
 
-      # Capture needs once, before any deploy job is added, so every deploy job
-      # depends on the build/test/lint jobs only - not on each other.
+      # Captured before any deploy job is added so deploy jobs never depend on each other.
       needs = @new_workflow.deploy_needs
 
       DEPLOYS.each do |environment, config|
@@ -107,10 +82,6 @@ module GHB
       end
     end
 
-    # The per-environment `if:` gating a single deploy job: run on its deploy
-    # trigger only if none of the build/test/lint jobs failed. Built from the
-    # captured needs list (not live @jobs.keys) so the three jobs never reference
-    # one another.
     def build_if_statement(environment, needs)
       base_condition = "always() && needs.variables.outputs.DEPLOY_ON_#{environment.to_s.upcase} == '1'"
       job_conditions = needs.map { |job| "needs.#{job}.result != 'failure'" }
@@ -159,8 +130,6 @@ module GHB
       end
     end
 
-    # Re-append any non-generated steps (e.g. project-specific `vercel alias`
-    # steps) from the existing job so regeneration preserves them.
     def append_custom_steps(job)
       return if job.carried_from.nil?
 

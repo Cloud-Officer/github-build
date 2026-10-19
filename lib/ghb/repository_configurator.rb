@@ -9,10 +9,7 @@ require_relative 'github_api_client'
 module GHB
   # Configures GitHub repository settings including branch protection, security features, and CodeQL.
   class RepositoryConfigurator
-    # Reads the force-push actor allowlist for the default branch. The classic REST
-    # branch-protection API does not expose this list at all: it collapses "nobody may
-    # force push" and "only these actors may force push" into the same
-    # allow_force_pushes boolean, so a REST read cannot tell the two apart.
+    # The REST branch-protection API cannot tell "nobody may force push" from a force-push actor allowlist.
     FORCE_PUSH_ALLOWANCES_QUERY = <<~GRAPHQL
       query($owner: String!, $repository: String!, $qualifiedName: String!) {
         repository(owner: $owner, name: $repository) {
@@ -36,9 +33,6 @@ module GHB
       }
     GRAPHQL
 
-    # Empties the allowlist. Selecting the allowances back out of the mutation result
-    # re-verifies the change in the same round trip, so the caller never has to trust
-    # that the mutation did what it said.
     CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION = <<~GRAPHQL
       mutation($ruleId: ID!) {
         updateBranchProtectionRule(input: { branchProtectionRuleId: $ruleId, bypassForcePushActorIds: [] }) {
@@ -87,7 +81,6 @@ module GHB
     def configure
       return if @options.skip_repository_settings
 
-      # Validate GITHUB_TOKEN is present (SEC-003)
       github_token = ENV.fetch('GITHUB_TOKEN', nil)
       raise(ConfigError, 'GITHUB_TOKEN environment variable is required for repository settings') if github_token.nil? || github_token.empty?
 
@@ -138,8 +131,7 @@ module GHB
       augment_required_status_checks
       log_codeql_languages(github_client, repo_url)
 
-      # CodeQL checks are NOT included because they use "smart mode" which only runs
-      # when relevant files change. CodeQL still blocks PRs through code scanning alerts.
+      # CodeQL is excluded: its "smart mode" runs only when relevant files change.
       expected_checks = @required_status_checks.dup
       actual_checks = current_protection.dig('required_status_checks', 'contexts') || []
       xcode_checks = discover_xcode_cloud_checks(github_client, repo_url, actual_checks, expected_checks, protection_exists)
@@ -161,12 +153,7 @@ module GHB
       enforce_force_push_allowlist(github_client, repository)
     end
 
-    # The `allow_force_pushes: false` sent in the PUT above is silently a no-op when
-    # the branch sits in GitHub's "Allow force pushes -> Specify who can force push"
-    # mode: the PUT still returns 200 and the rest of the payload applies, but the
-    # actor allowlist survives and the branch stays force-pushable. Only GraphQL can
-    # see that list, and only GraphQL can empty it, so read it back here and clear it,
-    # rather than reporting success over a branch history anyone on the list can rewrite.
+    # GitHub silently ignores allow_force_pushes: false while an actor allowlist exists; only GraphQL can clear it.
     def enforce_force_push_allowlist(github_client, repository)
       puts('    Checking force-push allowlist...')
 
@@ -189,10 +176,7 @@ module GHB
       puts('        Force-push allowlist cleared')
     end
 
-    # Returns the branch protection rule covering the default branch, or nil when there
-    # is none. A GraphQL failure (a token without GraphQL access, say) leaves the drift
-    # undetectable rather than proven, so it warns and lets the run continue; a proven
-    # non-empty allowlist is what fails the run, in enforce_force_push_allowlist above.
+    # A GraphQL failure leaves drift undetectable, so it warns instead of failing the run.
     def fetch_branch_protection_rule(github_client, repository)
       data = github_client.graphql(
         FORCE_PUSH_ALLOWANCES_QUERY,
@@ -211,8 +195,6 @@ module GHB
       nil
     end
 
-    # Empties the allowlist and returns whatever GitHub reports as still allowed
-    # (empty on success).
     def clear_force_push_allowlist(github_client, rule_id)
       puts('        Clearing force-push allowlist...')
       data = github_client.graphql(CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION, variables: { ruleId: rule_id })
@@ -236,12 +218,7 @@ module GHB
     def augment_required_status_checks
       @required_status_checks << 'Vercel' if GHB.vercel?
 
-      # Add checks for a hand-maintained .github/workflows/smoke.yml. That
-      # workflow is intentionally NOT generated (e.g. ci-actions smoke-tests
-      # its own composite actions), so its jobs are absent from
-      # @required_status_checks; discover them here so they stay required
-      # across regenerations. Job names are read dynamically so renaming a
-      # smoke job needs no generator change.
+      # smoke.yml is hand-maintained, not generated, so its jobs must be discovered here.
       smoke_workflow = '.github/workflows/smoke.yml'
       return unless File.exist?(smoke_workflow)
 
@@ -257,9 +234,7 @@ module GHB
       codeql_setup = JSON.parse(codeql_response.body)
       return unless codeql_setup['state'] == 'configured' && codeql_setup['languages'].is_a?(Array)
 
-      # Filter out redundant languages from API response: the API returns 'javascript',
-      # 'javascript-typescript', and 'typescript' but only 'javascript' check actually
-      # runs (it covers both JS and TS).
+      # The API lists javascript-typescript and typescript, but only the javascript check runs.
       redundant_languages = %w[javascript-typescript typescript]
       languages = codeql_setup['languages'].reject { |lang| redundant_languages.include?(lang) }
       puts("    CodeQL languages detected: #{languages.join(', ')} (#{languages.length})")
@@ -315,17 +290,13 @@ module GHB
     end
 
     def build_branch_protection_payload(current_protection, expected_checks, protection_exists, sync_required_status_checks)
-      # Preserve existing dismissal restrictions / bypass allowances or use empty defaults.
-      # filter_map drops entries GitHub returns without a login/slug so the PUT body
-      # never contains a [null] users/teams array (which GitHub rejects with 422).
+      # filter_map drops entries without a login/slug: GitHub rejects a [null] users/teams array with 422.
       dismissal_users = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'users')&.filter_map { |u| u['login'] } || []
       dismissal_teams = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'teams')&.filter_map { |t| t['slug'] } || []
       bypass_users = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'users')&.filter_map { |u| u['login'] } || []
       bypass_teams = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'teams')&.filter_map { |t| t['slug'] } || []
 
-      # Use existing checks if protection exists, otherwise build from expected checks.
-      # When syncing, rebuild from expected_checks but preserve app_id from existing entries
-      # to avoid clobbering integration-specific check configurations (e.g. Xcode Cloud).
+      # Preserve app_id from existing entries so integration checks (e.g. Xcode Cloud) are not clobbered.
       status_checks =
         if protection_exists && !sync_required_status_checks
           current_protection.dig('required_status_checks', 'checks') || []
