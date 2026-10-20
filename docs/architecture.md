@@ -126,13 +126,11 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `validate_option_entries(data, relative_path)`: Validates option config entries
 - `workflow_read`: Reads existing workflow YAML file
 - `workflow_set_defaults`: Sets workflow defaults from existing or new values. The workflow-level `permissions:` default is `{ contents: read }`; a block that exactly matches a superseded generator default (`contents: read` with `pull-requests: read` or `write`) is upgraded to it on regeneration, while any other user-tailored block is kept
-- `collect_required_status_checks`: Collects status checks from generated jobs for branch protection, expanding matrix jobs into the per-combination check names GitHub actually creates (`Job (ubuntu-latest, 3.3)`); a job whose matrix cannot be expanded statically is warned about and skipped. Called from `execute` immediately after `LanguageJobBuilder` and `DockerBuildJobBuilder` and *before* `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder` and `SlackJobBuilder` run, so only the variables, linter, licenses, unit-test and Docker build jobs become required checks — deploy and notification jobs are gated by `deploy_if_statement` and must not block a merge
-- `matrix_combinations(matrix)` and its helpers (`symbolize_matrix_keys`, `matrix_control_entries`, `matrix_control_entry`, `expandable_axis?`, `scalar_matrix_value?`, `expand_axes`, `reject_excluded`, `apply_includes`): Expand a job matrix in GitHub's documented order — `exclude:` rows dropped first, then `include:` rows merged — returning `nil` when the matrix carries dynamic or non-scalar values
+- `collect_required_status_checks`: Collects status checks from generated jobs for branch protection through `GHB::CheckNames.for_job`, so matrix jobs become the per-combination check names GitHub actually creates (`Job (ubuntu-latest, 3.3)`); a job whose names cannot be resolved statically is warned about and skipped. Called from `execute` immediately after `LanguageJobBuilder` and `DockerBuildJobBuilder` and *before* `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder` and `SlackJobBuilder` run, so only the variables, linter, licenses, unit-test and Docker build jobs become required checks — deploy and notification jobs are gated by `deploy_if_statement` and must not block a merge
 - `workflow_write`: Writes the generated workflow to YAML file, right after `Workflow#adopt_aws_role` has run over every generated job
 
 **Constants:**
 
-- `MATRIX_CONTROL_KEYS`: Matrix keys (`include`, `exclude`) that shape the expansion instead of declaring an axis
 - `SERVICE_CONFIG_KEYS`: Validation keys of the service options files, derived from `GHB::SERVICES`
 
 **Includes:**
@@ -230,6 +228,23 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `SUCCESS_EXIT_CODE`: 0
 - `ERROR_EXIT_CODE`: 1
+
+### GHB::CheckNames
+
+**Purpose:** Turns a workflow job (name plus `strategy`) into the check-run names GitHub reports for it. Shared by `GHB::Application#collect_required_status_checks` (generated jobs) and `GHB::RepositoryConfigurator#augment_required_status_checks` (jobs of a hand-maintained `smoke.yml`), so both produce the same names.
+
+**Location:** `lib/ghb/check_names.rb`
+
+**Key Components:**
+
+- `for_job(name, strategy)`: Returns the check names, or `nil` when they cannot be resolved statically (a dynamic matrix, an unknown `matrix.<key>`, or any other `${{ }}` expression in the name)
+- `name_for(name, combination)`: GitHub's naming rule — when the name interpolates `${{ matrix.<key> }}` the values are substituted and nothing is appended; otherwise the combination's values are appended as `Name (v1, v2)`
+- `matrix_combinations(matrix)` and its helpers (`symbolize_matrix_keys`, `matrix_control_entries`, `matrix_control_entry`, `expandable_axis?`, `scalar_matrix_value?`, `expand_axes`, `reject_excluded`, `apply_includes`): Expand a job matrix in GitHub's documented order — `exclude:` rows dropped first, then `include:` rows merged — returning `nil` when the matrix carries dynamic or non-scalar values
+
+**Constants:**
+
+- `MATRIX_CONTROL_KEYS`: Matrix keys (`include`, `exclude`) that shape the expansion instead of declaring an axis
+- `EXPRESSION` / `MATRIX_EXPRESSION`: Match any `${{ }}` expression, and a `${{ matrix.<key> }}` reference
 
 ### GHB::BuildContext
 
@@ -600,7 +615,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `apply_ruleset(github_client, repo_url, ruleset, payload)`: Creates the ruleset (`POST`, 201) or updates it in place (`PUT`), then verifies the response
 - `verify_ruleset(applied, payload)`: Raises unless GitHub reports the ruleset as `active` with every requested rule type, so a ruleset that did not take effect never leads to the classic rule being deleted
 - `delete_classic_protection(github_client, repo_url)`: Deletes the classic branch protection rule of the default branch; a failure is a counted warning, since the ruleset already protects the branch
-- `augment_required_status_checks`: Adds integration-derived checks to the collected list — a `Vercel` check when `GHB.vercel?` is true (a `vercel.json` marker, or a `"vercel"` / `"next"` dependency in `package.json`), plus the job names of a hand-maintained `.github/workflows/smoke.yml` (read dynamically, since that workflow is intentionally not generated). CodeQL checks are deliberately excluded: default setup runs in "smart mode" and only on relevant file changes, so it blocks PRs through code scanning alerts rather than a required check
+- `augment_required_status_checks`: Adds integration-derived checks to the collected list — a `Vercel` check when `GHB.vercel?` is true (a `vercel.json` marker, or a `"vercel"` / `"next"` dependency in `package.json`), plus the check names of a hand-maintained `.github/workflows/smoke.yml` (read dynamically, since that workflow is intentionally not generated, and expanded through `GHB::CheckNames.for_job` so matrix jobs require the names GitHub reports; an unresolvable job is a counted warning). CodeQL checks are deliberately excluded: default setup runs in "smart mode" and only on relevant file changes, so it blocks PRs through code scanning alerts rather than a required check
 - `log_codeql_languages(github_client, repo_url)`: Reports the languages CodeQL default setup covers (filtering the redundant `javascript-typescript` / `typescript` entries the API returns alongside `javascript`); informational only — it contributes no required checks
 - `discover_xcode_cloud_checks(github_client, repo_url, actual_checks, expected_checks, protection_exists)`: Returns Xcode Cloud checks when a `ci_scripts` directory exists, dispatching to the protection-based or commit-status-based discovery below
 - `sync_required_checks?(expected_checks, actual_checks, protection_exists)`: Prints the missing/extra checks and returns whether to overwrite the remote check list. On a mismatch it syncs when `--sync_required_status_checks` is set or, when stdin is a terminal, when the user answers `y`/`yes` to a `[y/N]` prompt; otherwise it raises
@@ -844,16 +859,16 @@ The list is validated on every architecture review for accuracy (Requirements ma
 
 **Purpose:** Turns the generated workflow jobs into the exact check-run names GitHub will report, so branch protection requires checks that actually exist.
 
-**Location:** `lib/ghb/application.rb` in `GHB::Application#collect_required_status_checks` and `GHB::Application#matrix_combinations` (with `symbolize_matrix_keys`, `matrix_control_entries`, `matrix_control_entry`, `expandable_axis?`, `scalar_matrix_value?`, `expand_axes`, `reject_excluded`, `apply_includes`)
+**Location:** `lib/ghb/check_names.rb` (`GHB::CheckNames.for_job`, `name_for`, `matrix_combinations` and its helpers), called from `GHB::Application#collect_required_status_checks` and `GHB::RepositoryConfigurator#augment_required_status_checks`
 
 **Implementation:**
 
-1. Walks the generated jobs; a job without a `strategy.matrix` contributes its name verbatim
+1. Walks the generated jobs and the jobs of a hand-maintained `smoke.yml`; a job without a `strategy.matrix` contributes its name verbatim, unless the name holds a `${{ }}` expression
 2. Normalizes the matrix: keys are symbolized, `include:` / `exclude:` rows are separated from the axes, and the whole matrix is rejected (returning `nil`) when any axis or control-row value is dynamic or non-scalar — a Hash, an Array, `nil`, an empty axis, or an expression GitHub resolves at run time
 3. Expands the axes as a Cartesian product with the first axis varying slowest, matching the order GitHub creates jobs in; an include-only matrix starts from no base combination
 4. Drops every combination matched by an `exclude:` row, then merges each `include:` row into the combinations it does not contradict on an axis key — rows that match nothing become their own combination. This exclude-then-include order is GitHub's documented expansion order and reversing it produces check names that never appear
-5. Emits one check name per combination in GitHub's format, `Job (ubuntu-latest, 3.3)`
-6. A matrix that cannot be expanded statically is warned about on stderr and skipped rather than guessed at, so an unexpandable job simply is not required
+5. Emits one check name per combination in GitHub's format: `${{ matrix.<key> }}` references in the name are substituted (`Setup action (${{ matrix.os }})` becomes `Setup action (ubuntu-latest)`) and nothing is appended; a name without them gets the values appended, `Job (ubuntu-latest, 3.3)`
+6. A job whose names cannot be resolved statically (dynamic matrix, unknown `matrix.<key>`, any other expression) is warned about on stderr and skipped rather than guessed at, so it simply is not required — a smoke job warning also counts toward the repository settings warning summary
 
 **Complexity:** O(product of axis lengths) per job, times the `include:`/`exclude:` row counts for the filtering passes
 

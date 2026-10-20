@@ -10,6 +10,7 @@ require_relative '../ghb'
 require_relative 'auto_approve_manager'
 require_relative 'aws_job_builder'
 require_relative 'build_context'
+require_relative 'check_names'
 require_relative 'code_deploy_job_builder'
 require_relative 'dependabot_manager'
 require_relative 'docker_build_job_builder'
@@ -32,10 +33,6 @@ module GHB
   # Represents an instance of an application. This is the entry point for all invocations from the command line.
   class Application
     include FileScanner
-
-    # Matrix keys that shape the expansion instead of declaring an axis.
-    MATRIX_CONTROL_KEYS = %i[include exclude].freeze
-    private_constant :MATRIX_CONTROL_KEYS
 
     # Validation keys of the service options files, derived from the SERVICES registry.
     SERVICE_CONFIG_KEYS =
@@ -309,107 +306,15 @@ module GHB
       @new_workflow.jobs.each_value do |job|
         next if job.nil?
 
-        matrix = job.strategy.is_a?(Hash) ? job.strategy[:matrix] || job.strategy['matrix'] : nil
+        names = CheckNames.for_job(job.name, job.strategy)
 
-        if matrix.nil?
-          @required_status_checks << job.name
+        if names.nil?
+          warn("Warning: cannot resolve the check names of job '#{job.name}' (dynamic matrix values or unresolved expressions); skipping it in the required status checks.")
           next
         end
 
-        combinations = matrix_combinations(matrix)
-
-        if combinations.nil?
-          warn("Warning: cannot expand the matrix of job '#{job.name}' into check names (dynamic or non-scalar matrix values); skipping it in the required status checks.")
-          next
-        end
-
-        combinations.each { |combination| @required_status_checks << "#{job.name} (#{combination.values.join(', ')})" }
+        @required_status_checks.concat(names)
       end
-    end
-
-    # Mirrors GitHub's matrix expansion order so generated check names match real check-run contexts.
-    def matrix_combinations(matrix)
-      return unless matrix.is_a?(Hash)
-
-      matrix = symbolize_matrix_keys(matrix)
-      return if matrix.nil?
-
-      axes = matrix.except(*MATRIX_CONTROL_KEYS)
-      includes = matrix_control_entries(matrix[:include])
-      excludes = matrix_control_entries(matrix[:exclude])
-      return if includes.nil? || excludes.nil?
-      return if axes.empty? && includes.empty?
-      return unless axes.all? { |_key, values| expandable_axis?(values) }
-
-      combinations = reject_excluded(expand_axes(axes), excludes)
-      apply_includes(combinations, includes, axes.keys)
-    end
-
-    def symbolize_matrix_keys(hash)
-      return unless hash.keys.all? { |key| key.is_a?(Symbol) || key.is_a?(String) }
-
-      hash.transform_keys(&:to_sym)
-    end
-
-    # @return [Array<Hash>, nil] normalized include/exclude rows, or nil when they are not statically usable
-    def matrix_control_entries(entries)
-      return [] if entries.nil?
-      return unless entries.is_a?(Array)
-
-      normalized = entries.map { |entry| matrix_control_entry(entry) }
-      return if normalized.any?(&:nil?)
-
-      normalized
-    end
-
-    def matrix_control_entry(entry)
-      return unless entry.is_a?(Hash) && entry.any?
-
-      normalized = symbolize_matrix_keys(entry)
-      return if normalized.nil? || !normalized.each_value.all? { |value| scalar_matrix_value?(value) }
-
-      normalized
-    end
-
-    def expandable_axis?(values)
-      values.is_a?(Array) && values.any? && values.all? { |value| scalar_matrix_value?(value) }
-    end
-
-    def scalar_matrix_value?(value)
-      !value.nil? && !value.is_a?(Hash) && !value.is_a?(Array)
-    end
-
-    # An include-only matrix has no base combination: every include row is its own job.
-    def expand_axes(axes)
-      return [] if axes.empty?
-
-      axes.reduce([{}]) do |combinations, (key, values)|
-        combinations.flat_map { |combination| values.map { |value| combination.merge(key => value) } }
-      end
-    end
-
-    def reject_excluded(combinations, excludes)
-      combinations.reject do |combination|
-        excludes.any? { |exclusion| exclusion.all? { |key, value| combination.key?(key) && combination[key] == value } }
-      end
-    end
-
-    def apply_includes(combinations, includes, axis_keys)
-      added = []
-
-      includes.each do |inclusion|
-        matched = false
-        combinations =
-          combinations.map do |combination|
-            next combination unless axis_keys.all? { |key| !inclusion.key?(key) || combination[key] == inclusion[key] }
-
-            matched = true
-            combination.merge(inclusion)
-          end
-        added << inclusion unless matched
-      end
-
-      combinations + added
     end
 
     def workflow_write
