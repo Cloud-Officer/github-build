@@ -9,50 +9,11 @@ require_relative 'github_api_client'
 module GHB
   # Configures GitHub repository settings including branch protection, security features, and CodeQL.
   class RepositoryConfigurator
-    # The REST branch-protection API cannot tell "nobody may force push" from a force-push actor allowlist.
-    FORCE_PUSH_ALLOWANCES_QUERY = <<~GRAPHQL
-      query($owner: String!, $repository: String!, $qualifiedName: String!) {
-        repository(owner: $owner, name: $repository) {
-          ref(qualifiedName: $qualifiedName) {
-            branchProtectionRule {
-              id
-              allowsForcePushes
-              bypassForcePushAllowances(first: 100) {
-                nodes {
-                  actor {
-                    __typename
-                    ... on User { login }
-                    ... on Team { slug }
-                    ... on App { slug }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    GRAPHQL
+    RULESET_NAME = 'github-build'
 
-    CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION = <<~GRAPHQL
-      mutation($ruleId: ID!) {
-        updateBranchProtectionRule(input: { branchProtectionRuleId: $ruleId, bypassForcePushActorIds: [] }) {
-          branchProtectionRule {
-            id
-            allowsForcePushes
-            bypassForcePushAllowances(first: 100) {
-              nodes {
-                actor {
-                  __typename
-                  ... on User { login }
-                  ... on Team { slug }
-                  ... on App { slug }
-                }
-              }
-            }
-          }
-        }
-      }
-    GRAPHQL
+    CLASSIC_BYPASS_ACTOR_TYPES = { users: 'User', teams: 'Team', apps: 'Integration' }.freeze
+
+    CLASSIC_DISMISSAL_ACTOR_TYPES = { users: 'User', teams: 'Team' }.freeze
 
     SECRET_SCANNING_SETTINGS = %i[
       secret_scanning
@@ -69,8 +30,9 @@ module GHB
 
     private_constant :SECRET_SCANNING_SETTINGS
     private_constant :WORKFLOW_TOKEN_PERMISSIONS
-    private_constant :FORCE_PUSH_ALLOWANCES_QUERY
-    private_constant :CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION
+    private_constant :RULESET_NAME
+    private_constant :CLASSIC_BYPASS_ACTOR_TYPES
+    private_constant :CLASSIC_DISMISSAL_ACTOR_TYPES
 
     def initialize(options:, required_status_checks:, default_branch: 'master')
       @options = options
@@ -96,12 +58,7 @@ module GHB
       is_private = repo_info['private'] == true
       adopt_repository_default_branch(repo_info['default_branch'])
 
-      # Get current branch protection to preserve settings (404 means no protection configured yet)
-      response = github_client.get("#{repo_url}/branches/#{@default_branch}/protection", expected_codes: [200, 404])
-      protection_exists = response.code == 200
-      current_protection = protection_exists ? JSON.parse(response.body) : {}
-
-      configure_branch_protection(github_client, repo_url, current_protection, protection_exists, repository)
+      configure_branch_protection(github_client, repo_url)
       configure_repository_options(github_client, repo_url)
       if is_private
         disable_security_features(github_client, repo_url)
@@ -127,92 +84,112 @@ module GHB
       @default_branch = repository_default_branch
     end
 
-    def configure_branch_protection(github_client, repo_url, current_protection, protection_exists, repository)
+    def configure_branch_protection(github_client, repo_url)
       augment_required_status_checks
       log_codeql_languages(github_client, repo_url)
 
+      ruleset = fetch_ruleset(github_client, repo_url)
+      classic_protection = fetch_classic_protection(github_client, repo_url)
+      current = ruleset ? ruleset_state(ruleset) : classic_state(classic_protection)
+      protection_exists = !current.nil?
+
       # CodeQL is excluded: its "smart mode" runs only when relevant files change.
       expected_checks = @required_status_checks.dup
-      actual_checks = current_protection.dig('required_status_checks', 'contexts') || []
+      actual_checks = protection_exists ? current[:checks].map { |check| check[:context] } : []
       xcode_checks = discover_xcode_cloud_checks(github_client, repo_url, actual_checks, expected_checks, protection_exists)
       expected_checks.concat(xcode_checks)
 
       sync = sync_required_checks?(expected_checks, actual_checks, protection_exists)
-      branch_protection = build_branch_protection_payload(current_protection, expected_checks, protection_exists, sync)
+      payload = build_ruleset_payload(current, expected_checks, sync)
 
-      puts('    Setting branch protection...')
-      github_client.put("#{repo_url}/branches/#{@default_branch}/protection", body: branch_protection)
-
-      # Enable required signatures (separate endpoint)
-      puts('    Enabling required signatures...')
-      github_client.post(
-        "#{repo_url}/branches/#{@default_branch}/protection/required_signatures",
-        expected_codes: [200, 204]
-      )
-
-      enforce_force_push_allowlist(github_client, repository)
+      apply_ruleset(github_client, repo_url, ruleset, payload)
+      delete_classic_protection(github_client, repo_url) if classic_protection
     end
 
-    # GitHub silently ignores allow_force_pushes: false while an actor allowlist exists; only GraphQL can clear it.
-    def enforce_force_push_allowlist(github_client, repository)
-      puts('    Checking force-push allowlist...')
+    def fetch_ruleset(github_client, repo_url)
+      response = github_client.get("#{repo_url}/rulesets?includes_parents=false&targets=branch")
+      summary = JSON.parse(response.body).find { |ruleset| ruleset['name'] == RULESET_NAME && ruleset['source_type'] == 'Repository' }
+      return if summary.nil?
 
-      rule = fetch_branch_protection_rule(github_client, repository)
-      return if rule.nil?
+      JSON.parse(github_client.get("#{repo_url}/rulesets/#{summary['id']}").body)
+    end
 
-      actors = force_push_actors(rule)
+    def fetch_classic_protection(github_client, repo_url)
+      response = github_client.get("#{repo_url}/branches/#{@default_branch}/protection", expected_codes: [200, 404])
+      response.code == 200 ? JSON.parse(response.body) : nil
+    end
 
-      if actors.empty?
-        puts('        No force-push actor allowlist')
-        return
+    def ruleset_state(ruleset)
+      rules = ruleset['rules'] || []
+      checks = rules.find { |rule| rule['type'] == 'required_status_checks' }
+                    &.dig('parameters', 'required_status_checks') || []
+      pull_request = rules.find { |rule| rule['type'] == 'pull_request' }
+                          &.dig('parameters') || {}
+
+      {
+        checks: checks.map { |check| status_check(check['context'], check['integration_id']) },
+        bypass_actors: ruleset['bypass_actors'] || [],
+        dismissal_restriction: pull_request['dismissal_restriction']
+      }
+    end
+
+    def classic_state(protection)
+      return if protection.nil?
+
+      status_checks = protection['required_status_checks'] || {}
+      app_ids = (status_checks['checks'] || []).to_h { |check| [check['context'], check['app_id']] }
+      contexts = status_checks['contexts'] || app_ids.keys
+      reviews = protection['required_pull_request_reviews'] || {}
+      bypass = classic_actors(reviews['bypass_pull_request_allowances'], CLASSIC_BYPASS_ACTOR_TYPES)
+      dismissal = classic_actors(reviews['dismissal_restrictions'], CLASSIC_DISMISSAL_ACTOR_TYPES)
+
+      {
+        checks: contexts.map { |context| status_check(context, app_ids[context]) },
+        bypass_actors: bypass.map { |actor| { actor_id: actor[:id], actor_type: actor[:type], bypass_mode: 'pull_request' } },
+        dismissal_restriction: dismissal.any? ? { enabled: true, allowed_actors: dismissal } : nil
+      }
+    end
+
+    # filter_map drops entries without an id: GitHub rejects an actor whose id is null with 422.
+    def classic_actors(allowances, actor_types)
+      return [] if allowances.nil?
+
+      actor_types.flat_map do |key, type|
+        (allowances[key.to_s] || []).filter_map { |actor| { id: actor['id'], type: type } if actor['id'] }
       end
-
-      warn("        WARNING: #{@default_branch} is force-pushable despite allow_force_pushes: false — #{actors.length} actor(s) on the force-push allowlist:")
-      actors.each { |actor| warn("          ! #{actor}") }
-
-      remaining = clear_force_push_allowlist(github_client, rule['id'])
-      raise(RepositorySettingsError, "force-push allowlist on #{@default_branch} not cleared, still allows: #{remaining.join(', ')}") if remaining.any?
-
-      puts('        Force-push allowlist cleared')
     end
 
-    # A GraphQL failure leaves drift undetectable, so it warns instead of failing the run.
-    def fetch_branch_protection_rule(github_client, repository)
-      data = github_client.graphql(
-        FORCE_PUSH_ALLOWANCES_QUERY,
-        variables: {
-          owner: @options.organization,
-          repository: repository,
-          qualifiedName: "refs/heads/#{@default_branch}"
-        }
-      )
-
-      rule = data.dig('repository', 'ref', 'branchProtectionRule')
-      puts('        No classic branch protection rule found for the default branch') if rule.nil?
-      rule
-    rescue GitHubAPIError => e
-      record_warning("        WARNING: could not read the force-push allowlist over GraphQL: #{e.message}")
-      nil
+    def status_check(context, integration_id)
+      { context: context, integration_id: integration_id }.compact
     end
 
-    def clear_force_push_allowlist(github_client, rule_id)
-      puts('        Clearing force-push allowlist...')
-      data = github_client.graphql(CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION, variables: { ruleId: rule_id })
-      force_push_actors(data.dig('updateBranchProtectionRule', 'branchProtectionRule') || {})
-    rescue GitHubAPIError => e
-      raise(RepositorySettingsError, "could not clear the force-push allowlist on #{@default_branch}: #{e.message}")
+    def apply_ruleset(github_client, repo_url, ruleset, payload)
+      response =
+        if ruleset
+          puts("    Updating #{RULESET_NAME} ruleset...")
+          github_client.put("#{repo_url}/rulesets/#{ruleset['id']}", body: payload)
+        else
+          puts("    Creating #{RULESET_NAME} ruleset...")
+          github_client.post("#{repo_url}/rulesets", body: payload, expected_codes: [201])
+        end
+
+      verify_ruleset(JSON.parse(response.body), payload)
     end
 
-    # Flattens bypassForcePushAllowances into "User octocat" / "Team core-team" labels.
-    def force_push_actors(rule)
-      nodes = rule.dig('bypassForcePushAllowances', 'nodes') || []
+    # The classic rule is only deleted after this passes, so the branch is never left unprotected.
+    def verify_ruleset(applied, payload)
+      expected_types = payload[:rules].map { |rule| rule[:type] }
+      applied_types = (applied['rules'] || []).map { |rule| rule['type'] }
+      missing_types = expected_types - applied_types
+      return if applied['enforcement'] == 'active' && missing_types.empty?
 
-      nodes.filter_map do |node|
-        actor = node&.dig('actor')
-        next unless actor
+      raise(RepositorySettingsError, "#{RULESET_NAME} ruleset was not applied as expected (enforcement: #{applied['enforcement'].inspect}, missing rules: #{missing_types.join(', ')})")
+    end
 
-        "#{actor['__typename'] || 'Actor'} #{actor['login'] || actor['slug'] || '(unnamed)'}"
-      end
+    def delete_classic_protection(github_client, repo_url)
+      puts("    Removing classic branch protection rule on #{@default_branch}...")
+      response = github_client.delete("#{repo_url}/branches/#{@default_branch}/protection", expected_codes: nil)
+      warn_unless_successful(response, 'delete the classic branch protection rule')
     end
 
     def augment_required_status_checks
@@ -289,54 +266,50 @@ module GHB
       %w[y yes].include?($stdin.gets.to_s.strip.downcase)
     end
 
-    def build_branch_protection_payload(current_protection, expected_checks, protection_exists, sync_required_status_checks)
-      # filter_map drops entries without a login/slug: GitHub rejects a [null] users/teams array with 422.
-      dismissal_users = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'users')&.filter_map { |u| u['login'] } || []
-      dismissal_teams = current_protection.dig('required_pull_request_reviews', 'dismissal_restrictions', 'teams')&.filter_map { |t| t['slug'] } || []
-      bypass_users = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'users')&.filter_map { |u| u['login'] } || []
-      bypass_teams = current_protection.dig('required_pull_request_reviews', 'bypass_pull_request_allowances', 'teams')&.filter_map { |t| t['slug'] } || []
-
-      # Preserve app_id from existing entries so integration checks (e.g. Xcode Cloud) are not clobbered.
-      status_checks =
-        if protection_exists && !sync_required_status_checks
-          current_protection.dig('required_status_checks', 'checks') || []
-        elsif protection_exists && sync_required_status_checks
-          existing_app_ids =
-            (current_protection.dig('required_status_checks', 'checks') || []).to_h do |check|
-              [check['context'], check['app_id']]
-            end
-          expected_checks.map { |check| { context: check, app_id: existing_app_ids.fetch(check, nil) } }
-        else
-          expected_checks.map { |check| { context: check, app_id: nil } }
-        end
-
+    def build_ruleset_payload(current, expected_checks, sync_required_status_checks)
       {
-        required_status_checks: {
-          strict: false,
-          checks: status_checks
-        },
-        enforce_admins: true,
-        required_pull_request_reviews: {
-          dismiss_stale_reviews: true,
-          require_code_owner_reviews: true,
-          require_last_push_approval: true,
-          required_approving_review_count: 1,
-          dismissal_restrictions: {
-            users: dismissal_users,
-            teams: dismissal_teams
-          },
-          bypass_pull_request_allowances: {
-            users: bypass_users,
-            teams: bypass_teams
+        name: RULESET_NAME,
+        target: 'branch',
+        enforcement: 'active',
+        conditions: { ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] } },
+        bypass_actors: current ? current[:bypass_actors] : [],
+        rules: [
+          { type: 'deletion' },
+          { type: 'non_fast_forward' },
+          { type: 'required_signatures' },
+          { type: 'pull_request', parameters: pull_request_parameters(current) },
+          {
+            type: 'required_status_checks',
+            parameters: {
+              strict_required_status_checks_policy: false,
+              required_status_checks: ruleset_status_checks(current, expected_checks, sync_required_status_checks)
+            }
           }
-        },
-        restrictions: nil,
-        required_linear_history: false,
-        allow_force_pushes: false,
-        allow_deletions: false,
-        block_creations: false,
-        required_conversation_resolution: true
+        ]
       }
+    end
+
+    def pull_request_parameters(current)
+      parameters = {
+        allowed_merge_methods: %w[squash rebase],
+        dismiss_stale_reviews_on_push: true,
+        require_code_owner_review: true,
+        require_last_push_approval: true,
+        required_approving_review_count: 1,
+        required_review_thread_resolution: true
+      }
+      dismissal_restriction = current && current[:dismissal_restriction]
+      parameters[:dismissal_restriction] = dismissal_restriction if dismissal_restriction
+      parameters
+    end
+
+    # Preserve integration_id from existing entries so integration checks (e.g. Xcode Cloud) are not clobbered.
+    def ruleset_status_checks(current, expected_checks, sync_required_status_checks)
+      return expected_checks.map { |check| status_check(check, nil) } if current.nil?
+      return current[:checks] unless sync_required_status_checks
+
+      integration_ids = current[:checks].to_h { |check| [check[:context], check[:integration_id]] }
+      expected_checks.map { |check| status_check(check, integration_ids[check]) }
     end
 
     def discover_xcode_cloud_checks_from_protection(actual_checks, expected_checks)

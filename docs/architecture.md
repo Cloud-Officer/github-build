@@ -24,8 +24,8 @@ flowchart TD
     MANAGERS --> MIXINS
     MANAGERS --> RULES["GHB::GitignoreRules<br>pure gitignore rule logic"]
     RULES --> MIXINS
-    MANAGERS --> API["GHB::GitHubAPIClient<br>REST + GraphQL, timeouts, rate-limit retries"]
-    API --> GITHUB(["GitHub REST / GraphQL API"])
+    MANAGERS --> API["GHB::GitHubAPIClient<br>REST, timeouts, rate-limit retries"]
+    API --> GITHUB(["GitHub REST API"])
     MANAGERS --> GIO(["gitignore.io API"])
     BUILDERS --> MODEL["Workflow model<br>GHB::Workflow, GHB::Job, GHB::Step<br>sharing GHB::CopyableProperties"]
     MANAGERS --> MODEL
@@ -46,7 +46,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 5. Post-generation managers handle output: `DependabotManager`, `AutoApproveManager`, `DockerhubManager`, `GitignoreManager`, and `RepositoryConfigurator`
 6. `GitignoreManager` delegates pure rule logic (template detection, content transforms) to `GHB::GitignoreRules`
 7. `FileScanner` mixin provides shared pure-Ruby file operations to builders that need file pattern matching
-8. `GitHubAPIClient` centralizes GitHub REST and GraphQL API calls with retry logic for `RepositoryConfigurator`
+8. `GitHubAPIClient` centralizes GitHub REST API calls with retry logic for `RepositoryConfigurator`
 9. `Workflow`, `Job`, and `Step` classes model the GitHub Actions YAML structure
 
 ## Software units
@@ -77,7 +77,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `ConfigError`: Custom exception class for configuration validation failures
 - `GitHubAPIError`: Custom exception class for failed GitHub REST API calls (carries the response body for diagnosis)
-- `RepositorySettingsError`: Custom exception class raised by `GHB::RepositoryConfigurator` when repository settings could not be applied (branch protection check mismatch, or a force-push allowlist that could not be cleared)
+- `RepositorySettingsError`: Custom exception class raised by `GHB::RepositoryConfigurator` when repository settings could not be applied (required-status-check mismatch, or a ruleset GitHub did not apply as requested)
 - `CI_ACTIONS_VERSION`: Version tag for `cloud-officer/ci-actions` references
 - `EXTERNAL_ACTIONS_CONFIG_FILE`: Path to the external (third-party) GitHub Actions version manifest (`config/actions.yaml`)
 - `external_action(name)`: Class method that resolves an external action to its full `owner/repo@version` ref by reading the pinned version from `config/actions.yaml` (single source of truth bumped by the external-actions cron); raises `ConfigError` if the action is not listed
@@ -289,7 +289,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 ### GHB::GitHubAPIClient
 
-**Purpose:** Centralized GitHub REST and GraphQL API client with shared headers, bounded timeouts, rate-limit-aware retries, and error handling. Raises `GHB::GitHubAPIError` (carrying a truncated response body) when a response code falls outside the caller's `expected_codes`.
+**Purpose:** Centralized GitHub REST API client with shared headers, bounded timeouts, rate-limit-aware retries, and error handling. Raises `GHB::GitHubAPIError` (carrying a truncated response body) when a response code falls outside the caller's `expected_codes`.
 
 **Location:** `lib/ghb/github_api_client.rb`
 
@@ -300,7 +300,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `put(url, body:, expected_codes:)`: HTTP PUT with response validation
 - `post(url, body:, headers:, expected_codes:)`: HTTP POST with response validation
 - `patch(url, body:, expected_codes:)`: HTTP PATCH with response validation
-- `graphql(query, variables:)`: Runs a GraphQL query or mutation against `https://api.github.com/graphql` (bearer auth) and returns its `data` hash. GraphQL reports failures inside a 200 response's `errors` array rather than through the status code, so those — and a body that is not valid JSON — are raised as `GHB::GitHubAPIError` just like a failed REST call. Used for the settings the classic REST API cannot represent, notably branch-protection actor allowlists
+- `delete(url, expected_codes:)`: HTTP DELETE with response validation (defaults to `204`)
 
 **Private Methods:**
 
@@ -312,7 +312,6 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Constants:**
 
-- `GRAPHQL_URL`: The GitHub GraphQL endpoint used by `graphql`
 - `MAX_RETRIES`: Retry attempts per request (3)
 - `RETRYABLE_ERRORS`: The transient network exceptions `with_retries` retries
 - `MAX_RETRY_WAIT`: Cap on a single rate-limit backoff so a far-future `X-RateLimit-Reset` cannot hang CI (60s)
@@ -581,31 +580,36 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 ### GHB::RepositoryConfigurator
 
-**Purpose:** Configures GitHub repository settings including branch protection rules, security features (vulnerability alerts, secret scanning, CodeQL), repository options, and the default GitHub Actions workflow token permissions via the GitHub REST API, falling back to GraphQL for the one setting REST cannot express (the force-push actor allowlist).
+**Purpose:** Configures GitHub repository settings including the default-branch protection ruleset, security features (vulnerability alerts, secret scanning, CodeQL), repository options, and the default GitHub Actions workflow token permissions via the GitHub REST API.
 
 **Location:** `lib/ghb/repository_configurator.rb`
 
 **Key Components:**
 
 - `initialize(options:, required_status_checks:, default_branch:)`: Accepts options, collected status checks, and default branch
-- `configure`: Returns immediately under `--skip_repository_settings`. Otherwise validates GITHUB_TOKEN, retrieves repo info, adopts the default branch GitHub reports, and configures branch protection, security features, and repository options. Ends with a success line or the count of non-fatal warnings
+- `configure`: Returns immediately under `--skip_repository_settings`. Otherwise validates GITHUB_TOKEN, retrieves repo info, adopts the default branch GitHub reports, and configures the branch protection ruleset, security features, and repository options. Ends with a success line or the count of non-fatal warnings
 
 **Private Methods:**
 
 - `adopt_repository_default_branch(repository_default_branch)`: Switches to the default branch the repository API reports when it differs from the one detected locally via git, with a warning
-- `configure_branch_protection(github_client, repo_url, current_protection, protection_exists, repository)`: Assembles the expected check list (generated jobs, augmented checks, Xcode Cloud checks), validates it, applies the branch protection payload, enables required signatures, and enforces the force-push allowlist
+- `configure_branch_protection(github_client, repo_url)`: Reads the current state from the `github-build` ruleset, or from the classic branch protection rule when no ruleset exists yet (first run after the migration), assembles the expected check list (generated jobs, augmented checks, Xcode Cloud checks), validates it, applies the ruleset, and only then deletes the classic rule
+- `fetch_ruleset(github_client, repo_url)`: Finds the repository-level branch ruleset named `RULESET_NAME` (organization rulesets with the same name are ignored) and fetches it in full, since the list endpoint omits the rules
+- `fetch_classic_protection(github_client, repo_url)`: Reads the classic branch protection rule of the default branch, or `nil` on 404
+- `ruleset_state(ruleset)` / `classic_state(protection)`: Normalize either source into the required checks (context plus optional `integration_id`), the bypass actors, and the review dismissal restriction. Classic `bypass_pull_request_allowances` users, teams and apps become `pull_request`-mode bypass actors, and classic `dismissal_restrictions` users and teams become the `pull_request` rule's `dismissal_restriction`
+- `classic_actors(allowances, actor_types)`: Maps classic users/teams/apps to `{ id:, type: }` actors, dropping entries without an `id` (GitHub rejects a null actor id with 422)
+- `apply_ruleset(github_client, repo_url, ruleset, payload)`: Creates the ruleset (`POST`, 201) or updates it in place (`PUT`), then verifies the response
+- `verify_ruleset(applied, payload)`: Raises unless GitHub reports the ruleset as `active` with every requested rule type, so a ruleset that did not take effect never leads to the classic rule being deleted
+- `delete_classic_protection(github_client, repo_url)`: Deletes the classic branch protection rule of the default branch; a failure is a counted warning, since the ruleset already protects the branch
 - `augment_required_status_checks`: Adds integration-derived checks to the collected list — a `Vercel` check when `GHB.vercel?` is true (a `vercel.json` marker, or a `"vercel"` / `"next"` dependency in `package.json`), plus the job names of a hand-maintained `.github/workflows/smoke.yml` (read dynamically, since that workflow is intentionally not generated). CodeQL checks are deliberately excluded: default setup runs in "smart mode" and only on relevant file changes, so it blocks PRs through code scanning alerts rather than a required check
 - `log_codeql_languages(github_client, repo_url)`: Reports the languages CodeQL default setup covers (filtering the redundant `javascript-typescript` / `typescript` entries the API returns alongside `javascript`); informational only — it contributes no required checks
 - `discover_xcode_cloud_checks(github_client, repo_url, actual_checks, expected_checks, protection_exists)`: Returns Xcode Cloud checks when a `ci_scripts` directory exists, dispatching to the protection-based or commit-status-based discovery below
 - `sync_required_checks?(expected_checks, actual_checks, protection_exists)`: Prints the missing/extra checks and returns whether to overwrite the remote check list. On a mismatch it syncs when `--sync_required_status_checks` is set or, when stdin is a terminal, when the user answers `y`/`yes` to a `[y/N]` prompt; otherwise it raises
 - `sync_confirmed?`: The confirmation behind `sync_required_checks?` — `true` under `--sync_required_status_checks`, `false` without a terminal on stdin, otherwise the answer to the prompt
-- `build_branch_protection_payload(current_protection, expected_checks, protection_exists, sync_required_status_checks)`: Builds the PUT body — reusing the remote check list unless syncing, preserving `app_id` values when syncing, and `filter_map`-ing dismissal/bypass users and teams so the payload never carries a `[null]` array (which GitHub rejects with 422)
-- `enforce_force_push_allowlist(github_client, repository)`: Reads the default branch's force-push actor allowlist over GraphQL after the PUT and clears it when non-empty. The `allow_force_pushes: false` sent in the PUT is silently a no-op while that allowlist exists — the PUT still returns 200, but the branch stays force-pushable and REST reports the same `allow_force_pushes` boolean for "nobody may force push" and "only these actors may". Names every actor found and raises if the list survives clearing, so the run never reports success over a rewritable branch history
-- `fetch_branch_protection_rule(github_client, repository)`: Fetches the classic branch protection rule (id plus `bypassForcePushAllowances`) for `refs/heads/<default_branch>`. Returns `nil` when no rule exists, and warns without failing when GraphQL is unreachable — an unreadable allowlist is undetected drift, not proven drift
-- `clear_force_push_allowlist(github_client, rule_id)`: Runs `updateBranchProtectionRule(bypassForcePushActorIds: [])` and returns the actors GitHub still reports as allowed, re-verifying the mutation in the same round trip
-- `force_push_actors(rule)`: Flattens `bypassForcePushAllowances` nodes into `User <login>` / `Team <slug>` / `App <slug>` labels for the warnings and error message
+- `build_ruleset_payload(current, expected_checks, sync_required_status_checks)`: Builds the ruleset body targeting `~DEFAULT_BRANCH` (so a default-branch rename needs no change) with the `deletion`, `non_fast_forward`, `required_signatures`, `pull_request` and `required_status_checks` rules, keeping the current bypass actors
+- `pull_request_parameters(current)`: One approval, code-owner review, last-push approval, stale-review dismissal, required conversation resolution, squash/rebase merges, plus the current dismissal restriction when there is one
+- `ruleset_status_checks(current, expected_checks, sync_required_status_checks)`: Reuses the current check list unless syncing, preserving `integration_id` values when syncing so integration checks such as Xcode Cloud are not clobbered
 - `report_xcode_cloud_checks(xcode_checks, source)`: Prints the discovered Xcode Cloud checks and where they were found
-- `discover_xcode_cloud_checks_from_protection(actual_checks, expected_checks)`: Extracts Xcode Cloud checks from existing branch protection by finding checks not in the expected set
+- `discover_xcode_cloud_checks_from_protection(actual_checks, expected_checks)`: Extracts Xcode Cloud checks from the existing ruleset or classic rule by finding checks not in the expected set
 - `discover_xcode_cloud_checks_from_statuses(github_client, repo_url)`: Discovers Xcode Cloud checks from commit statuses on the default branch for new repos without existing protection
 - `configure_repository_options(github_client, repo_url)`: Applies merge strategy, wiki/projects, and delete-branch-on-merge settings, then sets the repository's default workflow `GITHUB_TOKEN` permissions to `WORKFLOW_TOKEN_PERMISSIONS`
 - `enable_security_features` / `disable_security_features` / `set_security_features(github_client, repo_url, state, **)`: Toggle the `SECRET_SCANNING_SETTINGS` by repository visibility through a single shared PATCH
@@ -614,11 +618,12 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 **Constants:**
 
-- `FORCE_PUSH_ALLOWANCES_QUERY` / `CLEAR_FORCE_PUSH_ALLOWANCES_MUTATION`: The GraphQL documents reading and clearing the default branch's force-push actor allowlist
+- `RULESET_NAME`: `github-build`, the name of the repository ruleset this tool owns
+- `CLASSIC_BYPASS_ACTOR_TYPES` / `CLASSIC_DISMISSAL_ACTOR_TYPES`: How classic allowance lists map to ruleset actor types
 - `SECRET_SCANNING_SETTINGS`: The secret-scanning toggles flipped together by repository visibility
 - `WORKFLOW_TOKEN_PERMISSIONS`: The repository Actions workflow defaults applied on every run — `default_workflow_permissions: read` so a workflow without its own `permissions:` block gets a read-only `GITHUB_TOKEN`, and `can_approve_pull_request_reviews: false` since the generated auto-approve workflow approves with `GH_BOT_PAT`, not the run token
 
-**Errors:** Raises `GHB::ConfigError` when `GITHUB_TOKEN` is missing, and `GHB::RepositorySettingsError` on a required-status-check mismatch that is neither synced by `--sync_required_status_checks` nor confirmed at the prompt, and when the force-push allowlist cannot be cleared.
+**Errors:** Raises `GHB::ConfigError` when `GITHUB_TOKEN` is missing, and `GHB::RepositorySettingsError` on a required-status-check mismatch that is neither synced by `--sync_required_status_checks` nor confirmed at the prompt, and when GitHub does not apply the ruleset as requested.
 
 **Internal Dependencies:**
 
@@ -787,7 +792,7 @@ All dependencies are managed via Bundler with versions locked in `Gemfile.lock`.
 
 Each entry carries three reviewed fields:
 
-- **Risk Level** (per IEC 62304): *Low* — a failure cannot lead to harm; *Medium* — a failure can lead to reversible harm; *High* — a failure can lead to irreversible harm. `httparty` is the only High entry, since it carries every GitHub REST and GraphQL call that rewrites branch protection and repository security settings.
+- **Risk Level** (per IEC 62304): *Low* — a failure cannot lead to harm; *Medium* — a failure can lead to reversible harm; *High* — a failure can lead to irreversible harm. `httparty` is the only High entry, since it carries every GitHub REST call that rewrites branch protection and repository security settings.
 - **Requirements** — why this project needs the library, in terms of its actual usage sites. Transitive packages pulled in only by another gem are recorded as `Dependency`.
 - **Verification Reasoning** — why this library rather than an alternative (official/vendor-maintained, sole provider of a capability, or the reference implementation for a tool the project already targets). Transitive packages are recorded as `Dependency`.
 
@@ -859,7 +864,7 @@ The list is validated on every architecture review for accuracy (Requirements ma
 
 ### Repository Settings Configuration
 
-**Purpose:** Configures GitHub repository settings including branch protection.
+**Purpose:** Configures GitHub repository settings including the default-branch protection ruleset.
 
 **Location:** `lib/ghb/repository_configurator.rb` in `GHB::RepositoryConfigurator#configure`
 
@@ -867,13 +872,13 @@ The list is validated on every architecture review for accuracy (Requirements ma
 
 1. Validates `GITHUB_TOKEN` environment variable is present
 2. Retrieves current repository info via `GitHubAPIClient` to check visibility (public/private) and to adopt the default branch GitHub reports when it differs from the locally detected one
-3. Gets current branch protection via GitHub API (handles 404 for new repos without protection)
+3. Reads the `github-build` repository ruleset, and the classic branch protection rule of the default branch (404 when absent); the ruleset is the source of truth, the classic rule is only used to carry checks and allowances over on the first run after the migration
 4. Augments the checks collected from generated workflow jobs (the variables, linter, licenses, unit-test and Docker build jobs only — deploy and notification jobs are built after collection and are deliberately not required; matrix jobs already expanded into their per-combination check names by `GHB::Application#collect_required_status_checks`) with a `Vercel` check (when `GHB.vercel?` is true) and the job names of a hand-maintained `.github/workflows/smoke.yml`. CodeQL languages are logged for visibility only — CodeQL default setup runs in "smart mode" and is intentionally not made a required check
-5. Discovers Xcode Cloud checks dynamically when `ci_scripts` directory exists: extracts from existing branch protection or from commit statuses on the default branch for new repos
-6. Validates existing checks match expected checks (only for existing protection); on mismatch, raises an error unless `--sync_required_status_checks` is set or the user confirms at the interactive prompt (offered only when stdin is a terminal), in which case the remote check list is rebuilt from `expected_checks` while preserving `app_id` values for existing entries (so integration-specific configurations such as Xcode Cloud checks are not clobbered)
-7. Builds the protection payload, preserving existing dismissal restrictions and bypass allowances while dropping entries GitHub returns without a `login`/`slug` so the request body never contains a `[null]` users/teams array
-8. Configures branch protection with required status checks, code-owner review enforcement (`require_code_owner_reviews: true`), pull request reviews, and conversation resolution, then enables required signatures via the separate `required_signatures` endpoint
-9. Reads the default branch's force-push actor allowlist over GraphQL and clears it when non-empty, because `allow_force_pushes: false` in the REST payload is silently ignored while that allowlist exists; the actors are named in the output and an allowlist that survives clearing fails the run
+5. Discovers Xcode Cloud checks dynamically when `ci_scripts` directory exists: extracts from the existing ruleset or classic rule, or from commit statuses on the default branch for new repos
+6. Validates existing checks match expected checks (only for existing protection); on mismatch, raises an error unless `--sync_required_status_checks` is set or the user confirms at the interactive prompt (offered only when stdin is a terminal), in which case the remote check list is rebuilt from `expected_checks` while preserving `integration_id` values for existing entries (so integration-specific configurations such as Xcode Cloud checks are not clobbered)
+7. Builds the ruleset targeting `~DEFAULT_BRANCH`: no deletion, no force pushes (`non_fast_forward`), required signatures, a `pull_request` rule (one approval, code-owner review, last-push approval, stale-review dismissal, conversation resolution, squash/rebase merges) and the required status checks. Bypass actors and the review dismissal restriction are kept from the current state; classic bypass allowances become `pull_request`-mode bypass actors, so they can merge a pull request without meeting the rules but cannot push to the branch directly
+8. Creates or updates the `github-build` ruleset and verifies GitHub reports it `active` with every rule, raising otherwise
+9. Deletes the classic branch protection rule only after that verification, so the branch is never unprotected; a failed delete is a counted warning
 10. Configures repository options: enables vulnerability alerts and automated security fixes, disables wiki and projects, configures merge strategies, enables delete branch on merge, and restricts the default workflow `GITHUB_TOKEN` to read-only without the right to approve pull requests
 11. Enables secret scanning features (push protection, validity checks, non-provider patterns, AI detection) for public repos; disables them for private repos (GHAS cost avoidance)
 12. Enables CodeQL default setup for public repos; disables it for private repos (GHAS cost avoidance). The two private-repo disable calls are best-effort: a non-2xx response is reported as a warning and counted in the final summary rather than failing the run
@@ -882,8 +887,9 @@ The list is validated on every architecture review for accuracy (Requirements ma
 
 - Uses GITHUB_TOKEN for API authentication via `GitHubAPIClient`
 - Validates branch protection before modification
-- Preserves existing dismissal restrictions and bypass allowances
-- Verifies over GraphQL that the default branch is actually not force-pushable, since the REST `allow_force_pushes` boolean cannot distinguish "nobody may force push" from "these actors may"
+- Preserves existing dismissal restrictions and bypass actors
+- Ruleset bypass is explicit, so there is no hidden force-push allowlist to clear, unlike the classic branch protection rule
+- Deletes the classic rule only after the ruleset is verified active
 - Handles new repositories without existing branch protection gracefully
 
 ### Gitignore Template Detection
@@ -917,7 +923,7 @@ The list is validated on every architecture review for accuracy (Requirements ma
 **Authorization:**
 
 - Repository settings only modifiable with appropriate token permissions
-- Branch protection enforces code review requirements, including code-owner reviews
+- The branch protection ruleset enforces code review requirements, including code-owner reviews
 - Required status checks prevent merging broken code
 
 **Input Validation:**
@@ -942,7 +948,7 @@ The list is validated on every architecture review for accuracy (Requirements ma
 
 - `GHB::ConfigError` raised for configuration validation failures (missing or malformed YAML, an external action absent from `config/actions.yaml`, an unknown command-line option, a malformed existing workflow, a missing `GITHUB_TOKEN`, or a gitignore.io fetch that failed or returned a rejected body)
 - `GHB::GitHubAPIError` raised by `GHB::GitHubAPIClient` for unexpected REST response codes, carrying the method, URL, status, and a truncated response body for diagnosis
-- `GHB::RepositorySettingsError` raised by `GHB::RepositoryConfigurator` when repository settings could not be applied (required-status-check mismatch, or a force-push allowlist that survived clearing)
+- `GHB::RepositorySettingsError` raised by `GHB::RepositoryConfigurator` when repository settings could not be applied (required-status-check mismatch, or a ruleset GitHub did not apply as requested)
 - All three are rescued by the top-level `StandardError` handler in `bin/github-build.rb`, which also prints the `cause` chain, with backtrace output DEBUG-only via `ENV['DEBUG']`
 - Exit codes via `GHB::Status` indicate success (0) or error (1)
 - Transient API failures (5xx, rate limiting, connection timeouts/resets) are retried by `GHB::GitHubAPIClient` before surfacing

@@ -85,6 +85,12 @@ options
 Create a [Github personal access token](https://github.com/settings/tokens) and set it in the `GITHUB_TOKEN`
 environment variable to enable the repository settings check.
 
+The default branch is protected by a repository ruleset named `github-build`, which targets `~DEFAULT_BRANCH`. On the
+first run against a repository that still has a classic branch protection rule, its required checks, pull request
+bypass allowances and review dismissal restrictions are carried over to the ruleset. The classic rule is then deleted,
+but only once the ruleset is confirmed active. Do not use GitHub's **Convert to ruleset** button: `github-build`
+manages the ruleset itself.
+
 ### Examples
 
 On this repository.
