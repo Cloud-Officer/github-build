@@ -250,15 +250,20 @@ module GHB
       extra_checks = actual_checks - expected_checks
       return false if missing_checks.none? && extra_checks.none?
 
+      # Adding generated checks only tightens protection; dropping a required check needs a human decision.
+      if extra_checks.none?
+        puts('        Adding required checks:')
+        missing_checks.each { |check| puts("          + #{check}") }
+        return true
+      end
+
       if missing_checks.any?
         warn('        MISSING (expected but not in branch protection):')
         missing_checks.each { |check| warn("          ✗ #{check}") }
       end
 
-      if extra_checks.any?
-        warn('        EXTRA (in branch protection but not expected):')
-        extra_checks.each { |check| warn("          + #{check}") }
-      end
+      warn('        EXTRA (in branch protection but not expected):')
+      extra_checks.each { |check| warn("          + #{check}") }
 
       raise(RepositorySettingsError, 'branch protection checks mismatch!') unless sync_confirmed?
 

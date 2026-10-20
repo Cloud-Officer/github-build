@@ -473,8 +473,14 @@ RSpec.describe(GHB::RepositoryConfigurator) do
           .not_to(raise_error)
       end
 
-      it 'raises when the ruleset checks do not match' do
-        stub_existing_ruleset(existing_ruleset.merge(rules: [{ type: 'required_status_checks', parameters: { required_status_checks: [{ context: 'Build' }] } }]))
+      it 'adds checks missing from the ruleset' do
+        stub_existing_ruleset(existing_ruleset.merge(rules: [{ type: 'required_status_checks', parameters: { required_status_checks: [{ context: 'Build', integration_id: 15_368 }] } }]))
+        configurator.configure
+        expect(written_checks).to(eq([{ context: 'Build', integration_id: 15_368 }, { context: 'Lint' }]))
+      end
+
+      it 'raises when the ruleset requires a check that is no longer generated' do
+        stub_existing_ruleset(existing_ruleset.merge(rules: [{ type: 'required_status_checks', parameters: { required_status_checks: [{ context: 'Build' }, { context: 'Lint' }, { context: 'Removed' }] } }]))
         expect { configurator.configure }
           .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
       end
@@ -517,28 +523,69 @@ RSpec.describe(GHB::RepositoryConfigurator) do
       end
     end
 
-    context 'when branch protection exists with missing checks' do
+    context 'when branch protection exists with missing checks only' do
       include_context 'with classic branch protection'
 
       def current_protection
         {
           required_status_checks: {
             contexts: ['Build'],
-            checks: [{ context: 'Build', app_id: nil }]
+            checks: [{ context: 'Build', app_id: 15_368 }]
           },
           required_pull_request_reviews: {}
         }
       end
 
-      it 'raises an error when expected checks are missing from branch protection' do
+      it 'adds the missing checks without a terminal' do
+        configurator.configure
+        expect(written_checks).to(eq([{ context: 'Build', integration_id: 15_368 }, { context: 'Lint' }]))
+      end
+
+      it 'does not prompt even when stdin is a terminal' do
+        answer_sync_prompt('n')
+        configurator.configure
+        expect($stderr).not_to(have_received(:print))
+      end
+
+      it 'lists the checks it adds' do
+        expect { configurator.configure }
+          .to(output(/Adding required checks:\n          \+ Lint\n/).to_stdout)
+      end
+
+      it 'does not report a mismatch' do
+        expect { configurator.configure }
+          .not_to(output(/MISSING|EXTRA/).to_stderr)
+      end
+    end
+
+    context 'when branch protection exists with missing and extra checks' do
+      include_context 'with classic branch protection'
+
+      def current_protection
+        {
+          required_status_checks: {
+            contexts: %w[Build OldLint],
+            checks: [{ context: 'Build', app_id: 15_368 }, { context: 'OldLint', app_id: 15_368 }]
+          },
+          required_pull_request_reviews: {}
+        }
+      end
+
+      it 'raises without a terminal' do
+        allow($stdin).to(receive(:gets).and_raise('prompted without a terminal'))
         expect { configurator.configure }
           .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
       end
 
-      it 'does not prompt when stdin is not a terminal' do
-        allow($stdin).to(receive(:gets).and_raise('prompted without a terminal'))
-        expect { configurator.configure }
-          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+      def configure_until_mismatch
+        configurator.configure
+      rescue GHB::RepositorySettingsError
+        nil
+      end
+
+      it 'lists both the missing and the extra checks' do
+        expect { configure_until_mismatch }
+          .to(output(/MISSING.*✗ Lint.*EXTRA.*\+ OldLint/m).to_stderr)
       end
 
       it 'asks on stderr before syncing' do
@@ -550,7 +597,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do
       it 'syncs the expected checks when the prompt is accepted' do
         answer_sync_prompt('y')
         configurator.configure
-        expect(written_checks).to(eq([{ context: 'Build' }, { context: 'Lint' }]))
+        expect(written_checks).to(eq([{ context: 'Build', integration_id: 15_368 }, { context: 'Lint' }]))
       end
 
       it 'accepts yes in any case' do
