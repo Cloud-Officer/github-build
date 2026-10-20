@@ -185,65 +185,30 @@ RSpec.describe(GHB::GitHubAPIClient) do
     end
   end
 
-  describe '#graphql' do
-    let(:graphql_url) { 'https://api.github.com/graphql' }
+  describe '#delete' do
+    it 'sends DELETE request with auth headers' do
+      stub_request(:delete, base_url)
+        .with(headers: default_headers)
+        .to_return(status: 204, body: '')
 
-    it 'posts the query and variables and returns the data hash' do # rubocop:disable RSpec/ExampleLength
-      stub_request(:post, graphql_url)
-        .with(
-          body: { query: 'query { viewer { login } }', variables: { owner: 'org' } }.to_json,
-          headers: { Authorization: 'bearer test-token-123', Accept: 'application/json' }
-        )
-        .to_return(status: 200, body: { data: { viewer: { login: 'octocat' } } }.to_json)
-
-      expect(client.graphql('query { viewer { login } }', variables: { owner: 'org' }))
-        .to(eq(JSON.parse('{"viewer":{"login":"octocat"}}')))
+      response = client.delete(base_url)
+      expect(response.code).to(eq(204))
     end
 
-    it 'defaults variables to an empty hash' do
-      stub_request(:post, graphql_url)
-        .with(body: { query: 'query { viewer { login } }', variables: {} }.to_json)
-        .to_return(status: 200, body: '{"data":{}}')
+    it 'raises on unexpected status code' do
+      stub_request(:delete, base_url)
+        .to_return(status: 403, body: '{"message":"Forbidden"}')
 
-      expect(client.graphql('query { viewer { login } }')).to(eq({}))
+      expect { client.delete(base_url) }
+        .to(raise_error(GHB::GitHubAPIError, /HTTP DELETE.*failed.*403/))
     end
 
-    it 'raises when a 200 response carries a GraphQL errors array' do
-      stub_request(:post, graphql_url)
-        .to_return(status: 200, body: { data: nil, errors: [{ message: 'Resource not accessible by integration' }, { message: 'Field does not exist' }] }.to_json)
+    it 'skips validation when expected_codes is nil' do
+      stub_request(:delete, base_url)
+        .to_return(status: 404, body: '{}')
 
-      expect { client.graphql('query { viewer { login } }') }
-        .to(raise_error(GHB::GitHubAPIError, 'GraphQL request failed: Resource not accessible by integration; Field does not exist'))
-    end
-
-    it 'ignores an empty errors array' do
-      stub_request(:post, graphql_url)
-        .to_return(status: 200, body: { data: { ok: true }, errors: [] }.to_json)
-
-      expect(client.graphql('query { viewer { login } }')).to(eq(JSON.parse('{"ok":true}')))
-    end
-
-    it 'returns an empty hash when data is null' do
-      stub_request(:post, graphql_url)
-        .to_return(status: 200, body: '{"data":null}')
-
-      expect(client.graphql('query { viewer { login } }')).to(eq({}))
-    end
-
-    it 'raises when the response body is not valid JSON' do
-      stub_request(:post, graphql_url)
-        .to_return(status: 200, body: '<html>maintenance</html>')
-
-      expect { client.graphql('query { viewer { login } }') }
-        .to(raise_error(GHB::GitHubAPIError, /GraphQL response was not valid JSON/))
-    end
-
-    it 'raises on an unexpected status code' do
-      stub_request(:post, graphql_url)
-        .to_return(status: 401, body: '{"message":"Bad credentials"}')
-
-      expect { client.graphql('query { viewer { login } }') }
-        .to(raise_error(GHB::GitHubAPIError, /HTTP POST.*graphql failed: 401/))
+      response = client.delete(base_url, expected_codes: nil)
+      expect(response.code).to(eq(404))
     end
   end
 

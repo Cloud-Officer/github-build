@@ -10,7 +10,6 @@ require_relative '../ghb'
 module GHB
   # Centralized GitHub API client with shared headers, retry logic, and error handling.
   class GitHubAPIClient
-    GRAPHQL_URL = 'https://api.github.com/graphql'
     MAX_RETRIES = 3
     # Cap a single rate-limit back-off so a far-future X-RateLimit-Reset can't hang CI.
     MAX_RETRY_WAIT = 60
@@ -18,7 +17,6 @@ module GHB
     READ_TIMEOUT = 30
     RETRYABLE_ERRORS = [Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNRESET, Errno::ECONNREFUSED, SocketError, OpenSSL::SSL::SSLError].freeze
 
-    private_constant :GRAPHQL_URL
     private_constant :MAX_RETRIES
     private_constant :MAX_RETRY_WAIT
     private_constant :OPEN_TIMEOUT
@@ -49,30 +47,8 @@ module GHB
       execute(:patch, url, body: body, expected_codes: expected_codes)
     end
 
-    # GraphQL reports failures in a 200 response's `errors` array, not through the status code.
-    def graphql(query, variables: {})
-      response = execute(
-        :post,
-        GRAPHQL_URL,
-        body: { query: query, variables: variables },
-        headers: { Authorization: "bearer #{@token}", Accept: 'application/json' }
-      )
-
-      payload =
-        begin
-          JSON.parse(response.body)
-        rescue JSON::ParserError => e
-          raise(GitHubAPIError, "GraphQL response was not valid JSON: #{e.message}")
-        end
-
-      errors = payload['errors']
-
-      if errors.is_a?(Array) && errors.any?
-        messages = errors.filter_map { |error| error['message'] }
-        raise(GitHubAPIError, "GraphQL request failed: #{messages.join('; ')}")
-      end
-
-      payload['data'] || {}
+    def delete(url, expected_codes: [204])
+      execute(:delete, url, expected_codes: expected_codes)
     end
 
     private

@@ -14,9 +14,11 @@ RSpec.describe(GHB::RepositoryConfigurator) do
     {
       repo_info: http_response(200, { private: false }.to_json),
       protection: http_response(404, '{"message":"Not Found"}'),
+      rulesets: http_response(200, '[]'),
       codeql_default_setup: http_response(200, { state: 'not-configured' }.to_json),
       codeql_get: http_response(200, { state: 'not-configured' }.to_json),
       ok: http_response(200, '{}'),
+      no_content: http_response(204, ''),
       accepted: http_response(202, '{}')
     }
   end
@@ -29,16 +31,51 @@ RSpec.describe(GHB::RepositoryConfigurator) do
 
   def repo_url = "https://api.github.com/repos/#{organization}/#{repository}"
 
+  def rulesets_url = "#{repo_url}/rulesets"
+
   def github_token = 'test-token-abc123'
 
   def required_status_checks = %w[Build Lint]
 
+  def existing_ruleset_id = 77
+
   def http_response(code, body) = instance_double(HTTParty::Response, code: code, body: body)
 
+  def applied_ruleset_response(code, body)
+    http_response(code, { id: existing_ruleset_id, enforcement: body[:enforcement], rules: body[:rules] }.to_json)
+  end
+
+  def written_rulesets = (@written_rulesets ||= [])
+
+  def written_ruleset = written_rulesets.last
+
+  def written_rule(type) = written_ruleset[:rules].find { |rule| rule[:type] == type }
+
+  def written_checks = written_rule('required_status_checks')[:parameters][:required_status_checks]
+
+  def classic_protection_url(branch = default_branch) = "#{repo_url}/branches/#{branch}/protection"
+
   def stub_branch_protection(branch)
-    allow(github_client).to(receive(:get).with("#{repo_url}/branches/#{branch}/protection", expected_codes: [200, 404]).and_return(api_responses[:protection]))
-    allow(github_client).to(receive(:put).with("#{repo_url}/branches/#{branch}/protection", body: anything).and_return(api_responses[:ok]))
-    allow(github_client).to(receive(:post).with("#{repo_url}/branches/#{branch}/protection/required_signatures", expected_codes: [200, 204]).and_return(api_responses[:ok]))
+    allow(github_client).to(receive(:get).with(classic_protection_url(branch), expected_codes: [200, 404]).and_return(api_responses[:protection]))
+    allow(github_client).to(receive(:delete).with(classic_protection_url(branch), expected_codes: nil).and_return(api_responses[:no_content]))
+  end
+
+  def stub_rulesets
+    allow(github_client).to(receive(:get).with("#{rulesets_url}?includes_parents=false&targets=branch").and_return(api_responses[:rulesets]))
+    allow(github_client).to(receive(:post).with(rulesets_url, body: anything, expected_codes: [201])) do |_url, body:, **|
+      written_rulesets << body
+      applied_ruleset_response(201, body)
+    end
+    allow(github_client).to(receive(:put).with("#{rulesets_url}/#{existing_ruleset_id}", body: anything)) do |_url, body:, **|
+      written_rulesets << body
+      applied_ruleset_response(200, body)
+    end
+  end
+
+  def stub_existing_ruleset(ruleset)
+    summary = { id: existing_ruleset_id, name: 'github-build', source_type: 'Repository' }
+    allow(github_client).to(receive(:get).with("#{rulesets_url}?includes_parents=false&targets=branch").and_return(http_response(200, [summary].to_json)))
+    allow(github_client).to(receive(:get).with("#{rulesets_url}/#{existing_ruleset_id}").and_return(http_response(200, ruleset.merge(id: existing_ruleset_id).to_json)))
   end
 
   def stub_repository_default_branch(branch)
@@ -63,24 +100,6 @@ RSpec.describe(GHB::RepositoryConfigurator) do
     allow($stderr).to(receive(:print))
   end
 
-  def stub_successful_writes
-    ok = instance_double(HTTParty::Response, code: 200, body: '{}')
-    allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup").and_return(instance_double(HTTParty::Response, code: 200, body: { state: 'not-configured' }.to_json)))
-    allow(github_client).to(receive_messages(put: ok, post: ok, patch: ok))
-  end
-
-  def branch_protection_rule_data(actors, rule_id: 'BPR_kwDOabcdef')
-    JSON.parse({ repository: { ref: { branchProtectionRule: branch_protection_rule(actors, rule_id) } } }.to_json)
-  end
-
-  def branch_protection_rule(actors, rule_id = 'BPR_kwDOabcdef')
-    {
-      id: rule_id,
-      allowsForcePushes: actors.any?,
-      bypassForcePushAllowances: { nodes: actors.map { |actor| actor && { actor: actor } } }
-    }
-  end
-
   shared_context 'with a stubbed repository API' do
     before do
       allow(github_client).to(receive(:get).with(repo_url).and_return(api_responses[:repo_info]))
@@ -91,6 +110,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do
       allow(github_client).to(receive(:put).with("#{repo_url}/actions/permissions/workflow", body: anything, expected_codes: [204]).and_return(api_responses[:ok]))
       allow(github_client).to(receive(:patch).with(repo_url, body: anything).and_return(api_responses[:ok]))
       allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: anything, expected_codes: [200, 202]).and_return(api_responses[:accepted]))
+      stub_rulesets
       stub_branch_protection(default_branch)
     end
   end
@@ -104,6 +124,10 @@ RSpec.describe(GHB::RepositoryConfigurator) do
     end
   end
 
+  shared_context 'with classic branch protection' do
+    let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
+  end
+
   before do
     allow($stdin).to(receive(:tty?).and_return(false))
     allow($stdout).to(receive(:puts))
@@ -114,7 +138,6 @@ RSpec.describe(GHB::RepositoryConfigurator) do
     allow(File).to(receive(:exist?).with('package.json').and_return(false))
     allow(File).to(receive(:exist?).with('.github/workflows/smoke.yml').and_return(false))
     allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(false))
-    allow(github_client).to(receive(:graphql).and_return(branch_protection_rule_data([])))
   end
 
   include_context 'with a stubbed repository API'
@@ -144,37 +167,53 @@ RSpec.describe(GHB::RepositoryConfigurator) do
   end
 
   describe '#configure branch protection' do
-    context 'when configuring a public repository with no existing branch protection' do
-      it 'completes the full configure flow for a public repository' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+    context 'when the repository has neither a ruleset nor classic protection' do
+      before { configurator.configure }
+
+      it 'creates the github-build ruleset on the default branch' do
+        expect(written_ruleset).to(include(name: 'github-build', target: 'branch', enforcement: 'active', conditions: { ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] } }))
+      end
+
+      it 'lets nobody bypass the ruleset' do
+        expect(written_ruleset[:bypass_actors]).to(eq([]))
+      end
+
+      it 'blocks deletion and force pushes and requires signed commits' do
+        expect(written_ruleset[:rules].map { |rule| rule[:type] }).to(include('deletion', 'non_fast_forward', 'required_signatures'))
+      end
+
+      def expected_pull_request_parameters
+        {
+          allowed_merge_methods: %w[squash rebase],
+          dismiss_stale_reviews_on_push: true,
+          require_code_owner_review: true,
+          require_last_push_approval: true,
+          required_approving_review_count: 1,
+          required_review_thread_resolution: true
+        }
+      end
+
+      it 'requires one code-owner approval of the last push with resolved conversations' do
+        expect(written_rule('pull_request')[:parameters]).to(eq(expected_pull_request_parameters))
+      end
+
+      it 'requires the generated checks without the strict up-to-date policy' do
+        expect(written_rule('required_status_checks')[:parameters]).to(eq(strict_required_status_checks_policy: false, required_status_checks: [{ context: 'Build' }, { context: 'Lint' }]))
+      end
+
+      it 'does not try to delete a classic rule that does not exist' do
+        expect(github_client).not_to(have_received(:delete))
+      end
+
+      it 'no longer calls the classic protection endpoints' do
+        expect(github_client).not_to(have_received(:put).with(classic_protection_url, anything))
+      end
+    end
+
+    context 'when configuring a public repository' do
+      it 'completes the repository options and security flow' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         configurator.configure
 
-        expect(github_client).to(have_received(:get).with(repo_url))
-        expect(github_client).to(have_received(:get).with("#{repo_url}/branches/#{default_branch}/protection", expected_codes: [200, 404]))
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_status_checks: hash_including(
-                strict: false,
-                checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }]
-              ),
-              enforce_admins: true,
-              required_pull_request_reviews: hash_including(
-                dismiss_stale_reviews: true,
-                require_code_owner_reviews: true,
-                require_last_push_approval: true,
-                required_approving_review_count: 1
-              ),
-              restrictions: nil,
-              required_linear_history: false,
-              allow_force_pushes: false,
-              allow_deletions: false,
-              block_creations: false,
-              required_conversation_resolution: true
-            )
-          )
-        )
-        expect(github_client).to(have_received(:post).with("#{repo_url}/branches/#{default_branch}/protection/required_signatures", expected_codes: [200, 204]))
         expect(github_client).to(have_received(:put).with("#{repo_url}/vulnerability-alerts", expected_codes: [200, 204]))
         expect(github_client).to(have_received(:put).with("#{repo_url}/automated-security-fixes", expected_codes: [200, 204]))
         expect(github_client).to(have_received(:put).with("#{repo_url}/actions/permissions/workflow", body: { default_workflow_permissions: 'read', can_approve_pull_request_reviews: false }, expected_codes: [204]))
@@ -209,24 +248,9 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         expect(github_client).to(have_received(:get).with("#{repo_url}/code-scanning/default-setup"))
         expect(github_client).to(have_received(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'configured', query_suite: 'default' }, expected_codes: [200, 202]))
       end
-
-      it 'builds expected checks from required_status_checks when no existing protection' do # rubocop:disable RSpec/ExampleLength
-        configurator.configure
-
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_status_checks: hash_including(
-                checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }]
-              )
-            )
-          )
-        )
-      end
     end
 
-    context 'when branch protection exists with matching checks' do
+    context 'when migrating from classic protection with matching checks' do
       let(:api_responses) do
         super().merge(
           protection: http_response(200, current_protection.to_json),
@@ -235,53 +259,88 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         )
       end
 
-      def existing_checks
-        JSON.parse([{ context: 'Build', app_id: 12_345 }, { context: 'Lint', app_id: 12_345 }].to_json)
-      end
-
       def current_protection
         {
           required_status_checks: {
             contexts: %w[Build Lint],
-            checks: existing_checks
+            checks: [{ context: 'Build', app_id: 12_345 }, { context: 'Lint', app_id: 12_345 }]
           },
           required_pull_request_reviews: {
             dismissal_restrictions: {
-              users: [{ login: 'admin-user' }],
-              teams: [{ slug: 'core-team' }]
+              users: [{ login: 'admin-user', id: 11 }],
+              teams: [{ slug: 'core-team', id: 22 }]
             },
             bypass_pull_request_allowances: {
-              users: [{ login: 'bot-user' }],
-              teams: [{ slug: 'release-team' }]
+              users: [{ login: 'bot-user', id: 33 }],
+              teams: [{ slug: 'release-team', id: 44 }],
+              apps: [{ slug: 'renovate', id: 55 }]
             }
           }
         }
       end
 
-      it 'preserves existing checks and dismissal/bypass settings' do # rubocop:disable RSpec/ExampleLength
+      it 'carries the classic checks over with their integration ids' do
         configurator.configure
+        expect(written_checks).to(eq([{ context: 'Build', integration_id: 12_345 }, { context: 'Lint', integration_id: 12_345 }]))
+      end
 
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_status_checks: hash_including(
-                strict: false,
-                checks: existing_checks
-              ),
-              required_pull_request_reviews: hash_including(
-                dismissal_restrictions: {
-                  users: ['admin-user'],
-                  teams: ['core-team']
-                },
-                bypass_pull_request_allowances: {
-                  users: ['bot-user'],
-                  teams: ['release-team']
-                }
-              )
-            )
-          )
-        )
+      def expected_bypass_actors
+        [
+          { actor_id: 33, actor_type: 'User', bypass_mode: 'pull_request' },
+          { actor_id: 44, actor_type: 'Team', bypass_mode: 'pull_request' },
+          { actor_id: 55, actor_type: 'Integration', bypass_mode: 'pull_request' }
+        ]
+      end
+
+      it 'carries the pull request bypass allowances over as pull-request-only bypass actors' do
+        configurator.configure
+        expect(written_ruleset[:bypass_actors]).to(eq(expected_bypass_actors))
+      end
+
+      it 'carries the review dismissal restriction over' do
+        configurator.configure
+        expect(written_rule('pull_request')[:parameters][:dismissal_restriction]).to(eq(enabled: true, allowed_actors: [{ id: 11, type: 'User' }, { id: 22, type: 'Team' }]))
+      end
+
+      it 'deletes the classic rule once the ruleset is applied' do
+        configurator.configure
+        expect(github_client).to(have_received(:delete).with(classic_protection_url, expected_codes: nil))
+      end
+
+      def rulesets_written_before_delete
+        written_at_delete = []
+        allow(github_client).to(receive(:delete)) { written_at_delete << written_rulesets.size and api_responses[:no_content] }
+        configurator.configure
+        written_at_delete
+      end
+
+      it 'creates the ruleset before deleting the classic rule' do
+        expect(rulesets_written_before_delete).to(eq([1]))
+      end
+
+      it 'raises when the ruleset comes back without enforcement' do
+        allow(github_client).to(receive(:post).with(rulesets_url, body: anything, expected_codes: [201]).and_return(http_response(201, { id: 1, enforcement: 'disabled', rules: [] }.to_json)))
+        expect { configurator.configure }
+          .to(raise_error(GHB::RepositorySettingsError, /github-build ruleset was not applied as expected \(enforcement: "disabled"/))
+      end
+
+      it 'keeps the classic rule when the ruleset comes back without enforcement' do
+        allow(github_client).to(receive(:post).with(rulesets_url, body: anything, expected_codes: [201]).and_return(http_response(201, { id: 1, enforcement: 'disabled', rules: [] }.to_json)))
+        configurator.configure
+      rescue GHB::RepositorySettingsError
+        expect(github_client).not_to(have_received(:delete))
+      end
+
+      it 'keeps the classic rule when the ruleset is missing a rule' do
+        allow(github_client).to(receive(:post).with(rulesets_url, body: anything, expected_codes: [201]).and_return(http_response(201, { id: 1, enforcement: 'active', rules: [{ type: 'deletion' }] }.to_json)))
+        expect { configurator.configure }
+          .to(raise_error(GHB::RepositorySettingsError, /missing rules: non_fast_forward, required_signatures, pull_request, required_status_checks/))
+      end
+
+      it 'warns but keeps the run going when the classic rule cannot be deleted' do
+        allow(github_client).to(receive(:delete).and_return(http_response(403, '{"message":"Forbidden"}')))
+        expect { configurator.configure }
+          .to(output(/WARNING: could not delete the classic branch protection rule: HTTP 403/).to_stderr)
       end
 
       it 'reports CodeQL as already configured' do
@@ -296,32 +355,18 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         expect(github_client).to(have_received(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil))
       end
 
-      it "reads protection from the repository API default branch when git detected 'master' but the API reports 'main'" do
+      it "reads classic protection from the repository API default branch when git detected 'master' but the API reports 'main'" do
         stub_repository_default_branch('main')
         allow(configurator).to(receive(:warn))
         configurator.configure
-        expect(github_client).to(have_received(:get).with("#{repo_url}/branches/main/protection", expected_codes: [200, 404]))
+        expect(github_client).to(have_received(:get).with(classic_protection_url('main'), expected_codes: [200, 404]))
       end
 
-      it "writes protection to the repository API default branch when git detected 'master' but the API reports 'main'" do
+      it "deletes classic protection on the repository API default branch when git detected 'master' but the API reports 'main'" do
         stub_repository_default_branch('main')
         allow(configurator).to(receive(:warn))
         configurator.configure
-        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/main/protection", body: anything))
-      end
-
-      it "requires signatures on the repository API default branch when git detected 'master' but the API reports 'main'" do
-        stub_repository_default_branch('main')
-        allow(configurator).to(receive(:warn))
-        configurator.configure
-        expect(github_client).to(have_received(:post).with("#{repo_url}/branches/main/protection/required_signatures", expected_codes: [200, 204]))
-      end
-
-      it "reads the force-push allowlist for the repository API default branch when git detected 'master' but the API reports 'main'" do
-        stub_repository_default_branch('main')
-        allow(configurator).to(receive(:warn))
-        configurator.configure
-        expect(github_client).to(have_received(:graphql).with(/bypassForcePushAllowances/, variables: hash_including(qualifiedName: 'refs/heads/main')))
+        expect(github_client).to(have_received(:delete).with(classic_protection_url('main'), expected_codes: nil))
       end
 
       it 'warns naming both branches when the repository API default branch differs from the detected one' do
@@ -337,59 +382,118 @@ RSpec.describe(GHB::RepositoryConfigurator) do
       end
     end
 
-    context 'when GitHub returns dismissal/bypass users without a login key' do
-      let(:api_responses) do
-        super().merge(
-          protection: http_response(200, current_protection.to_json),
-          codeql_default_setup: http_response(200, { state: 'configured', languages: %w[ruby] }.to_json),
-          codeql_get: http_response(200, { state: 'configured' }.to_json)
-        )
-      end
+    context 'when classic allowances contain entries without an id' do
+      include_context 'with classic branch protection'
 
       def current_protection
         {
-          required_status_checks: {
-            contexts: %w[Build Lint],
-            checks: []
-          },
+          required_status_checks: { contexts: %w[Build Lint], checks: [] },
           required_pull_request_reviews: {
-            dismissal_restrictions: {
-              users: [{}],
-              teams: [{}]
-            },
-            bypass_pull_request_allowances: {
-              users: [{ login: 'bot-user' }, {}],
-              teams: []
-            }
+            dismissal_restrictions: { users: [{}], teams: [{}] },
+            bypass_pull_request_allowances: { users: [{ login: 'bot-user', id: 33 }, {}], teams: [] }
           }
         }
       end
 
-      it 'compacts malformed entries so the PUT body never contains a [null] list' do # rubocop:disable RSpec/ExampleLength
-        configurator.configure
+      before { configurator.configure }
 
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_pull_request_reviews: hash_including(
-                dismissal_restrictions: {
-                  users: [],
-                  teams: []
-                },
-                bypass_pull_request_allowances: {
-                  users: ['bot-user'],
-                  teams: []
-                }
-              )
-            )
-          )
-        )
+      it 'drops actors without an id from the bypass list' do
+        expect(written_ruleset[:bypass_actors]).to(eq([{ actor_id: 33, actor_type: 'User', bypass_mode: 'pull_request' }]))
+      end
+
+      it 'leaves review dismissal unrestricted when no dismissal actor has an id' do
+        expect(written_rule('pull_request')[:parameters]).not_to(have_key(:dismissal_restriction))
+      end
+    end
+
+    context 'when classic protection has no allowances and no checks key' do
+      include_context 'with classic branch protection'
+
+      def current_protection
+        { required_status_checks: { contexts: %w[Build Lint] }, required_pull_request_reviews: {} }
+      end
+
+      before { configurator.configure }
+
+      it 'falls back to the classic contexts' do
+        expect(written_checks).to(eq([{ context: 'Build' }, { context: 'Lint' }]))
+      end
+
+      it 'lets nobody bypass the ruleset' do
+        expect(written_ruleset[:bypass_actors]).to(eq([]))
+      end
+    end
+
+    context 'when the github-build ruleset already exists' do
+      def existing_ruleset
+        {
+          name: 'github-build',
+          enforcement: 'active',
+          bypass_actors: [{ actor_id: 5, actor_type: 'Team', bypass_mode: 'pull_request' }],
+          rules: [
+            { type: 'pull_request', parameters: { dismissal_restriction: { enabled: true, allowed_actors: [{ id: 9, type: 'User' }] } } },
+            { type: 'required_status_checks', parameters: { required_status_checks: [{ context: 'Build', integration_id: 15_368 }, { context: 'Lint', integration_id: 15_368 }] } }
+          ]
+        }
+      end
+
+      before do
+        stub_existing_ruleset(existing_ruleset)
+      end
+
+      it 'updates the ruleset in place instead of creating a second one' do
+        configurator.configure
+        expect(github_client).not_to(have_received(:post).with(rulesets_url, anything))
+      end
+
+      it 'keeps the existing checks and their integration ids' do
+        configurator.configure
+        expect(written_checks).to(eq([{ context: 'Build', integration_id: 15_368 }, { context: 'Lint', integration_id: 15_368 }]))
+      end
+
+      it 'keeps the existing bypass actors' do
+        configurator.configure
+        expect(written_ruleset[:bypass_actors]).to(eq(JSON.parse(existing_ruleset[:bypass_actors].to_json)))
+      end
+
+      it 'keeps the existing review dismissal restriction' do
+        configurator.configure
+        expect(written_rule('pull_request')[:parameters][:dismissal_restriction]).to(eq(JSON.parse(existing_ruleset[:rules][0][:parameters][:dismissal_restriction].to_json)))
+      end
+
+      it 'deletes a leftover classic rule' do
+        allow(github_client).to(receive(:get).with(classic_protection_url, expected_codes: [200, 404]).and_return(http_response(200, { required_status_checks: { contexts: ['Stale'] } }.to_json)))
+        configurator.configure
+        expect(github_client).to(have_received(:delete).with(classic_protection_url, expected_codes: nil))
+      end
+
+      it 'compares checks against the ruleset rather than a leftover classic rule' do
+        allow(github_client).to(receive(:get).with(classic_protection_url, expected_codes: [200, 404]).and_return(http_response(200, { required_status_checks: { contexts: ['Stale'] } }.to_json)))
+        expect { configurator.configure }
+          .not_to(raise_error)
+      end
+
+      it 'raises when the ruleset checks do not match' do
+        stub_existing_ruleset(existing_ruleset.merge(rules: [{ type: 'required_status_checks', parameters: { required_status_checks: [{ context: 'Build' }] } }]))
+        expect { configurator.configure }
+          .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
+      end
+    end
+
+    context 'when an organization ruleset shares the github-build name' do
+      before do
+        summary = { id: 999, name: 'github-build', source_type: 'Organization' }
+        allow(github_client).to(receive(:get).with("#{rulesets_url}?includes_parents=false&targets=branch").and_return(http_response(200, [summary].to_json)))
+        configurator.configure
+      end
+
+      it 'creates a repository ruleset instead of updating the organization one' do
+        expect(github_client).to(have_received(:post).with(rulesets_url, body: anything, expected_codes: [201]))
       end
     end
 
     context 'when branch protection exists with mismatching checks' do
-      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
+      include_context 'with classic branch protection'
 
       def current_protection
         {
@@ -405,16 +509,22 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         expect { configurator.configure }
           .to(raise_error(GHB::RepositorySettingsError, 'branch protection checks mismatch!'))
       end
+
+      it 'leaves the classic rule in place when the checks do not match' do
+        configurator.configure
+      rescue GHB::RepositorySettingsError
+        expect(github_client).not_to(have_received(:delete))
+      end
     end
 
     context 'when branch protection exists with missing checks' do
-      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
+      include_context 'with classic branch protection'
 
       def current_protection
         {
           required_status_checks: {
             contexts: ['Build'],
-            checks: []
+            checks: [{ context: 'Build', app_id: nil }]
           },
           required_pull_request_reviews: {}
         }
@@ -433,21 +543,18 @@ RSpec.describe(GHB::RepositoryConfigurator) do
 
       it 'asks on stderr before syncing' do
         answer_sync_prompt('y')
-        stub_successful_writes
         configurator.configure
         expect($stderr).to(have_received(:print).with('        Sync required status checks on master? [y/N] '))
       end
 
       it 'syncs the expected checks when the prompt is accepted' do
         answer_sync_prompt('y')
-        stub_successful_writes
         configurator.configure
-        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: hash_including(required_status_checks: { strict: false, checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }] })))
+        expect(written_checks).to(eq([{ context: 'Build' }, { context: 'Lint' }]))
       end
 
       it 'accepts yes in any case' do
         answer_sync_prompt('YES')
-        stub_successful_writes
         expect { configurator.configure }
           .not_to(raise_error)
       end
@@ -466,10 +573,11 @@ RSpec.describe(GHB::RepositoryConfigurator) do
     end
 
     context 'when branch protection has mismatching checks and sync_required_status_checks is true' do
+      include_context 'with classic branch protection'
+
       let(:mock_options) do
         instance_double(GHB::Options, skip_repository_settings: false, organization: organization, sync_required_status_checks: true)
       end
-      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
 
       def current_protection
         {
@@ -481,119 +589,9 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         }
       end
 
-      def expected_checks_payload
-        hash_including(
-          required_status_checks: {
-            strict: false,
-            checks: [
-              { context: 'Build', app_id: 42 },
-              { context: 'Lint', app_id: nil }
-            ]
-          }
-        )
-      end
-
-      before do
+      it 'rewrites the checks with the expected ones while preserving integration ids' do
         configurator.configure
-      end
-
-      it 'rewrites branch protection with expected checks while preserving app_ids' do
-        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: expected_checks_payload))
-      end
-    end
-
-    context 'when protection exists with empty dismissal_restrictions and bypass_allowances' do
-      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
-
-      def current_protection
-        {
-          required_status_checks: {
-            contexts: %w[Build Lint],
-            checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }]
-          },
-          required_pull_request_reviews: {
-            dismissal_restrictions: {
-              users: [],
-              teams: []
-            },
-            bypass_pull_request_allowances: {
-              users: [],
-              teams: []
-            }
-          }
-        }
-      end
-
-      it 'uses empty arrays for dismissal and bypass settings' do # rubocop:disable RSpec/ExampleLength
-        configurator.configure
-
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_pull_request_reviews: hash_including(
-                dismissal_restrictions: { users: [], teams: [] },
-                bypass_pull_request_allowances: { users: [], teams: [] }
-              )
-            )
-          )
-        )
-      end
-    end
-
-    context 'when protection exists without dismissal_restrictions or bypass keys' do
-      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
-
-      def current_protection
-        {
-          required_status_checks: {
-            contexts: %w[Build Lint],
-            checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }]
-          },
-          required_pull_request_reviews: {}
-        }
-      end
-
-      it 'defaults to empty arrays when dismissal_restrictions and bypass keys are absent' do # rubocop:disable RSpec/ExampleLength
-        configurator.configure
-
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_pull_request_reviews: hash_including(
-                dismissal_restrictions: { users: [], teams: [] },
-                bypass_pull_request_allowances: { users: [], teams: [] }
-              )
-            )
-          )
-        )
-      end
-    end
-
-    context 'when protection exists without required_status_checks.checks key' do
-      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
-
-      def current_protection
-        {
-          required_status_checks: {
-            contexts: %w[Build Lint]
-          },
-          required_pull_request_reviews: {}
-        }
-      end
-
-      it 'defaults to empty array for checks when key is missing' do # rubocop:disable RSpec/ExampleLength
-        configurator.configure
-
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_status_checks: hash_including(checks: [])
-            )
-          )
-        )
+        expect(written_checks).to(eq([{ context: 'Build', integration_id: 42 }, { context: 'Lint' }]))
       end
     end
   end
@@ -778,19 +776,9 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         allow(File).to(receive(:read).with('package.json').and_return('{"dependencies": {"next": "^14.0.0"}}'))
       end
 
-      it 'adds Vercel to the expected checks' do # rubocop:disable RSpec/ExampleLength
+      it 'adds Vercel to the expected checks' do
         configurator.configure
-
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_status_checks: hash_including(
-                checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }, { context: 'Vercel', app_id: nil }]
-              )
-            )
-          )
-        )
+        expect(written_checks).to(eq([{ context: 'Build' }, { context: 'Lint' }, { context: 'Vercel' }]))
       end
     end
 
@@ -800,26 +788,15 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         allow(File).to(receive(:read).with('package.json').and_return('{"dependencies": {"react": "^18.0.0"}}'))
       end
 
-      it 'does not add Vercel to the expected checks' do # rubocop:disable RSpec/ExampleLength
+      it 'does not add Vercel to the expected checks' do
         configurator.configure
-
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_status_checks: hash_including(
-                checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }]
-              )
-            )
-          )
-        )
+        expect(written_checks).to(eq([{ context: 'Build' }, { context: 'Lint' }]))
       end
 
       it 'adds Vercel to the expected checks when vercel.json exists' do
         allow(File).to(receive(:exist?).with('vercel.json').and_return(true))
         configurator.configure
-
-        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/#{default_branch}/protection", body: hash_including(required_status_checks: hash_including(checks: include({ context: 'Vercel', app_id: nil })))))
+        expect(written_checks).to(include({ context: 'Vercel' }))
       end
     end
 
@@ -846,20 +823,15 @@ RSpec.describe(GHB::RepositoryConfigurator) do
       it 'adds each smoke job (by name, falling back to job id) to the expected checks' do # rubocop:disable RSpec/ExampleLength
         configurator.configure
 
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_status_checks: hash_including(
-                checks: [
-                  { context: 'Build', app_id: nil },
-                  { context: 'Lint', app_id: nil },
-                  { context: 'Action contracts (all 28)', app_id: nil },
-                  { context: 'Linter actions (disabled path)', app_id: nil },
-                  { context: 'variables-smoke', app_id: nil }
-                ]
-              )
-            )
+        expect(written_checks).to(
+          eq(
+            [
+              { context: 'Build' },
+              { context: 'Lint' },
+              { context: 'Action contracts (all 28)' },
+              { context: 'Linter actions (disabled path)' },
+              { context: 'variables-smoke' }
+            ]
           )
         )
       end
@@ -882,24 +854,14 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         )
       end
 
-      it 'discovers Xcode Cloud checks from commit statuses' do # rubocop:disable RSpec/ExampleLength
+      it 'discovers Xcode Cloud checks from commit statuses' do
         configurator.configure
-
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_status_checks: hash_including(
-                checks: [{ context: 'Build', app_id: nil }, { context: 'Lint', app_id: nil }, { context: 'MyApp | UnitTests', app_id: nil }]
-              )
-            )
-          )
-        )
+        expect(written_checks).to(eq([{ context: 'Build' }, { context: 'Lint' }, { context: 'MyApp | UnitTests' }]))
       end
     end
 
-    context 'when ci_scripts directory exists with existing protection' do
-      let(:api_responses) { super().merge(protection: http_response(200, current_protection.to_json)) }
+    context 'when ci_scripts directory exists with existing classic protection' do
+      include_context 'with classic branch protection'
 
       def current_protection
         {
@@ -919,19 +881,25 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(true))
       end
 
-      it 'extracts Xcode Cloud checks from existing branch protection' do # rubocop:disable RSpec/ExampleLength
+      it 'extracts Xcode Cloud checks from the classic protection' do
         configurator.configure
+        expect(written_checks).to(eq([{ context: 'Build', integration_id: 15_368 }, { context: 'Lint', integration_id: 15_368 }, { context: 'MyApp | Build + Unit Test' }]))
+      end
+    end
 
-        expect(github_client).to(
-          have_received(:put).with(
-            "#{repo_url}/branches/#{default_branch}/protection",
-            body: hash_including(
-              required_status_checks: hash_including(
-                checks: current_protection[:required_status_checks][:checks].map { |c| JSON.parse(c.to_json) }
-              )
-            )
-          )
+    context 'when ci_scripts directory exists with an existing ruleset' do
+      before do
+        allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(true))
+        stub_existing_ruleset(
+          name: 'github-build',
+          bypass_actors: [],
+          rules: [{ type: 'required_status_checks', parameters: { required_status_checks: [{ context: 'Build' }, { context: 'Lint' }, { context: 'MyApp | Build + Unit Test' }] } }]
         )
+      end
+
+      it 'extracts Xcode Cloud checks from the ruleset' do
+        expect { configurator.configure }
+          .to(output(/Xcode Cloud checks detected: MyApp \| Build \+ Unit Test/).to_stdout)
       end
     end
 
@@ -946,116 +914,9 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         stub_branch_protection(custom_branch)
       end
 
-      it 'uses the custom branch name in protection URLs' do # rubocop:disable RSpec/MultipleExpectations
+      it 'reads the classic protection of the custom branch' do
         configurator_custom_branch.configure
-
-        expect(github_client).to(have_received(:get).with("#{repo_url}/branches/#{custom_branch}/protection", expected_codes: [200, 404]))
-        expect(github_client).to(have_received(:put).with("#{repo_url}/branches/#{custom_branch}/protection", body: anything))
-        expect(github_client).to(have_received(:post).with("#{repo_url}/branches/#{custom_branch}/protection/required_signatures", expected_codes: [200, 204]))
-      end
-    end
-  end
-
-  describe '#configure force-push allowlist' do
-    context 'when the default branch has a force-push actor allowlist' do
-      before do
-        allow(github_client).to(receive(:graphql).with(/\Aquery/, variables: anything).and_return(branch_protection_rule_data(allowed_actors)))
-        allow(github_client).to(receive(:graphql).with(/updateBranchProtectionRule/, variables: anything).and_return(cleared_mutation_data))
-      end
-
-      def allowed_actors
-        [
-          { __typename: 'User', login: 'force-pusher' },
-          { __typename: 'Team', slug: 'release-team' }
-        ]
-      end
-
-      def cleared_mutation_data
-        JSON.parse({ updateBranchProtectionRule: { branchProtectionRule: branch_protection_rule([]) } }.to_json)
-      end
-
-      it 'clears the allowlist with an empty bypassForcePushActorIds mutation' do
-        configurator.configure
-
-        expect(github_client).to(have_received(:graphql).with(/bypassForcePushActorIds: \[\]/, variables: { ruleId: 'BPR_kwDOabcdef' }))
-      end
-
-      it 'names every actor still allowed to force push' do
-        expect { configurator.configure }
-          .to(output(/! User force-pusher.*! Team release-team/m).to_stderr)
-      end
-
-      it 'does not report success while the branch is still force-pushable' do
-        uncleared = JSON.parse({ updateBranchProtectionRule: { branchProtectionRule: branch_protection_rule(allowed_actors) } }.to_json)
-        allow(github_client).to(receive(:graphql).with(/updateBranchProtectionRule/, variables: anything).and_return(uncleared))
-
-        expect { configurator.configure }
-          .to(raise_error(GHB::RepositorySettingsError, /force-push allowlist on master not cleared, still allows: User force-pusher, Team release-team/))
-      end
-
-      it 'fails loudly when the clearing mutation itself errors' do
-        allow(github_client).to(receive(:graphql).with(/updateBranchProtectionRule/, variables: anything).and_raise(GHB::GitHubAPIError, 'GraphQL request failed: Resource not accessible by integration'))
-
-        expect { configurator.configure }
-          .to(raise_error(GHB::RepositorySettingsError, /could not clear the force-push allowlist on master: GraphQL request failed/))
-      end
-
-      it 'reports app actors and skips null or unnamed allowance nodes without crashing' do
-        allow(github_client).to(receive(:graphql).with(/\Aquery/, variables: anything).and_return(branch_protection_rule_data([nil, {}, { __typename: 'App', slug: 'renovate' }])))
-
-        expect { configurator.configure }
-          .to(output(/2 actor\(s\).*! Actor \(unnamed\).*! App renovate/m).to_stderr)
-      end
-    end
-
-    context 'when the default branch has an empty force-push allowlist' do
-      def expected_query_variables
-        { owner: organization, repository: repository, qualifiedName: "refs/heads/#{default_branch}" }
-      end
-
-      it 'reads the allowlist for the default branch ref' do
-        configurator.configure
-
-        expect(github_client).to(have_received(:graphql).with(/bypassForcePushAllowances/, variables: expected_query_variables))
-      end
-
-      it 'issues no clearing mutation' do
-        configurator.configure
-
-        expect(github_client).not_to(have_received(:graphql).with(/updateBranchProtectionRule/, variables: anything))
-      end
-
-      it 'emits no force-push warning' do
-        expect { configurator.configure }
-          .not_to(output(/force-push/).to_stderr)
-      end
-
-      it 'skips the allowlist check when the branch has no classic protection rule' do
-        allow(github_client).to(receive(:graphql).and_return(JSON.parse({ repository: { ref: { branchProtectionRule: nil } } }.to_json)))
-
-        expect { configurator.configure }
-          .not_to(raise_error)
-      end
-
-      it 'warns but keeps going when the allowlist cannot be read over GraphQL' do
-        allow(github_client).to(receive(:graphql).and_raise(GHB::GitHubAPIError, 'GraphQL request failed: Bad credentials'))
-
-        expect { configurator.configure }
-          .to(output(/could not read the force-push allowlist over GraphQL: GraphQL request failed: Bad credentials/).to_stderr)
-      end
-
-      it 'counts an unreadable allowlist in the final summary' do
-        allow(github_client).to(receive(:graphql).and_raise(GHB::GitHubAPIError, 'GraphQL request failed: Bad credentials'))
-
-        expect { configurator.configure }
-          .to(output(/Repository settings configured with 1 warning\(s\)/).to_stderr)
-      end
-
-      it 'does not report success when the allowlist cannot be read' do
-        allow(github_client).to(receive(:graphql).and_raise(GHB::GitHubAPIError, 'GraphQL request failed: Bad credentials'))
-
-        expect { configurator.configure }
-          .not_to(output(/configured successfully/).to_stdout)
+        expect(github_client).to(have_received(:get).with(classic_protection_url(custom_branch), expected_codes: [200, 404]))
       end
     end
   end

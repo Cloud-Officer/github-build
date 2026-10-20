@@ -9,7 +9,7 @@ module GHB
   # Custom error for failed GitHub REST API calls (carries the response body for diagnosis)
   class GitHubAPIError < StandardError; end
 
-  # Repository settings (branch protection, allowlists) could not be applied.
+  # Repository settings (branch protection ruleset, required checks) could not be applied.
   class RepositorySettingsError < StandardError; end
 
   CI_ACTIONS_VERSION = 'v3'
