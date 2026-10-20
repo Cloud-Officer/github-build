@@ -84,7 +84,7 @@ go:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.27.2
+      value: 1.27.3
     - name: go-version-file
       value:
     - name: go-check-latest
@@ -372,7 +372,7 @@ proto:
     - .go-version
   setup_options:
     - name: go-version
-      value: 1.27.2
+      value: 1.27.3
     - name: go-version-file
       value:
     - name: go-check-latest
