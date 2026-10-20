@@ -837,6 +837,48 @@ RSpec.describe(GHB::RepositoryConfigurator) do
       end
     end
 
+    context 'when .github/workflows/smoke.yml has matrix jobs' do
+      before do
+        allow(File).to(receive(:exist?).with('.github/workflows/smoke.yml').and_return(true))
+        allow(File).to(receive(:read).with('.github/workflows/smoke.yml').and_return(smoke_yaml))
+      end
+
+      def smoke_yaml
+        <<~YAML
+          ---
+          jobs:
+            setup-smoke:
+              name: Setup action (${{ matrix.os }})
+              strategy:
+                fail-fast: false
+                matrix:
+                  os: [ubuntu-latest, macos-latest]
+            tests-smoke:
+              name: Tests
+              strategy:
+                matrix:
+                  node: [22, 24]
+            deploy-smoke:
+              name: Deploy ${{ inputs.environment }}
+        YAML
+      end
+
+      it 'requires the check names GitHub reports for each matrix combination' do
+        configurator.configure
+        expect(written_checks.map { |check| check[:context] }).to(eq(['Build', 'Lint', 'Setup action (ubuntu-latest)', 'Setup action (macos-latest)', 'Tests (22)', 'Tests (24)']))
+      end
+
+      it 'warns about a smoke job whose name cannot be resolved' do
+        expect { configurator.configure }
+          .to(output(/WARNING: cannot resolve the check names of smoke job 'Deploy \$\{\{ inputs.environment \}\}'/).to_stderr)
+      end
+
+      it 'counts the unresolved smoke job in the final summary' do
+        expect { configurator.configure }
+          .to(output(/Repository settings configured with 1 warning\(s\)/).to_stderr)
+      end
+    end
+
     context 'when ci_scripts directory exists with no existing protection' do
       before do
         allow(Dir).to(receive(:exist?).with('ci_scripts').and_return(true))

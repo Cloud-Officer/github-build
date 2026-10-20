@@ -615,7 +615,7 @@ RSpec.describe(GHB::Application) do
 
         it 'warns and emits no check name for a matrix built from an expression' do # rubocop:disable RSpec/MultipleExpectations
           expect(checks_for_matrix('${{fromJson(needs.variables.outputs.matrix)}}')).to(eq([]))
-          expect(app).to(have_received(:warn).with(/cannot expand the matrix of job 'Ruby Unit Tests'/))
+          expect(app).to(have_received(:warn).with(/cannot resolve the check names of job 'Ruby Unit Tests'/))
         end
 
         it 'warns and emits no check name for an axis whose values come from an expression' do # rubocop:disable RSpec/MultipleExpectations

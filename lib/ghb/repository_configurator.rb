@@ -4,6 +4,7 @@ require 'json'
 require 'psych'
 require 'uri'
 
+require_relative 'check_names'
 require_relative 'github_api_client'
 
 module GHB
@@ -200,7 +201,14 @@ module GHB
       return unless File.exist?(smoke_workflow)
 
       smoke_jobs = (Psych.safe_load(File.read(smoke_workflow)) || {})['jobs'] || {}
-      smoke_jobs.each { |job_id, job| @required_status_checks << ((job && job['name']) || job_id.to_s) }
+      smoke_jobs.each do |job_id, job|
+        job ||= {}
+        name = job['name'] || job_id.to_s
+        names = CheckNames.for_job(name, job['strategy'])
+        next record_warning("    WARNING: cannot resolve the check names of smoke job '#{name}'; skipping it in the required status checks") if names.nil?
+
+        @required_status_checks.concat(names)
+      end
     end
 
     def log_codeql_languages(github_client, repo_url)
