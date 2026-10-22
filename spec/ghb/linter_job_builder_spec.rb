@@ -378,6 +378,43 @@ RSpec.describe(GHB::LinterJobBuilder) do
       end
     end
 
+    context 'when the eslint config is copied' do
+      def copy_eslint_config(package_json)
+        allow(File).to(receive(:exist?).and_call_original)
+        allow(File).to(receive(:exist?).with('.gitmodules').and_return(false))
+        builder = build_linter_job_builder
+        allow(builder).to(receive(:find_files_matching).and_return([]))
+        allow(builder).to(receive(:find_files_matching).with(anything, an_object_having_attributes(source: a_string_including('(js|mjs|cjs)')), anything).and_return(['app.js']))
+        allow(File).to(receive(:exist?).with('/linters/.eslintrc.json').and_return(false))
+        allow(File).to(receive(:exist?).with('.eslintrc.json').and_return(false))
+        allow(File).to(receive(:exist?).with('package.json').and_return(!package_json.nil?))
+        allow(File).to(receive(:symlink?).and_return(false))
+        allow(File).to(receive(:read).and_call_original)
+        allow(File).to(receive(:read).with('package.json').and_return(package_json)) if package_json
+        captured = nil
+        allow(File).to(receive(:write)) { |_path, content| captured = content }
+        allow(FileUtils).to(receive(:mv))
+        builder.build
+        captured[/"parserOptions": \{\s*"ecmaVersion": "latest",\s*"sourceType": "(\w+)"/, 1]
+      end
+
+      it 'parses .js as CommonJS when package.json has no type' do
+        expect(copy_eslint_config('{"name": "app"}')).to(eq('commonjs'))
+      end
+
+      it 'parses .js as CommonJS when there is no package.json' do
+        expect(copy_eslint_config(nil)).to(eq('commonjs'))
+      end
+
+      it 'parses .js as ES modules when package.json sets type module' do
+        expect(copy_eslint_config(%({\n\t"type": "module"\n}))).to(eq('module'))
+      end
+
+      it 'falls back to CommonJS when package.json is malformed' do
+        expect(copy_eslint_config('{"type": ')).to(eq('commonjs'))
+      end
+    end
+
     context 'when linter is not enabled (no matches) and has a config file' do
       it 'deletes the stale config file' do # rubocop:disable RSpec/ExampleLength
         allow(File).to(receive(:exist?).and_call_original)
