@@ -119,7 +119,7 @@ js:
     - .nvmrc
   setup_options:
     - name: node-version
-      value: 24.22.0
+      value: 24.22.1
     - name: node-always-auth
       value:
     - name: node-version-file
@@ -321,7 +321,7 @@ php:
     - .php-version
   setup_options:
     - name: php-version
-      value: 8.5.11
+      value: 8.5.12
     - name: php-version-file
       value:
     - name: php-extensions
