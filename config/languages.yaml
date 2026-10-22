@@ -409,7 +409,7 @@ python:
     - .python-version
   setup_options:
     - name: python-version
-      value: 3.15.0
+      value: 3.15.1
     - name: python-version-file
       value:
     - name: python-cache
