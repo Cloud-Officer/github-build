@@ -9,21 +9,25 @@
   "extends": ["eslint:recommended"],
   "parserOptions": {
     "ecmaVersion": "latest",
-    "sourceType": "module"
+    "sourceType": "commonjs"
   },
   "overrides": [
     {
-      "files": [
-        "**/*.mjs",
-        "**/*.cjs",
-        "**/*.js"
-      ]
+      "files": ["**/*.mjs"],
+      "parserOptions": { "sourceType": "module" }
+    },
+    {
+      "files": ["**/*.cjs"],
+      "parserOptions": { "sourceType": "commonjs" }
+    },
+    {
+      "files": ["**/*.test.js", "**/*.spec.js", "**/__tests__/**"],
+      "env": { "jest": true }
     }
   ],
   "rules": {
     "no-console": "off",         // Allow console logs in AWS Lambda
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }], // Ignore unused variables prefixed with "_"
-    "no-undef": "off",           // Disable "undefined variable" warnings (optional)
     "strict": ["error", "global"] // Ensure strict mode for better error handling
   }
 }

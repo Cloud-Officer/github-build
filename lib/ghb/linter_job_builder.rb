@@ -2,6 +2,7 @@
 
 require 'active_support/core_ext/hash/keys'
 require 'fileutils'
+require 'json'
 require 'psych'
 
 require_relative '../ghb'
@@ -149,6 +150,7 @@ module GHB
       else
         atomic_copy_config(config_source(config_name), config_name) do |content|
           content = render_excluded_dirs(config_name, content, excluded_dirs_from_config) if manages?(config_name)
+          content = content.sub('"sourceType": "commonjs"', '"sourceType": "module"') if config_name == '.eslintrc.json' && esm_package?
 
           # Uncomments only YAML list items and mapping keys so prose comments survive.
           content = content.gsub(/^(\s*)# (?=\s*(?:-\s|[^\s:#]+:(?:\s|$)))/, '\1') if config_name == '.rubocop.yml' && File.exist?('Gemfile') && File.read('Gemfile').include?('rails')
@@ -156,6 +158,16 @@ module GHB
           content
         end
       end
+    end
+
+    # Node treats .js as ES modules only when package.json sets "type": "module".
+    def esm_package?
+      return false unless File.exist?('package.json')
+
+      manifest = JSON.parse(File.read('package.json'))
+      manifest.is_a?(Hash) && manifest['type'] == 'module'
+    rescue JSON::ParserError
+      false
     end
 
     def relative_in_repo?(path)
