@@ -25,6 +25,7 @@ GUARDED_FILES = {
   licenses_job_builder: %i[ghb_root],
   linter_job_builder: %i[active_support fileutils ghb_root psych],
   options: %i[ghb_root],
+  php_packages_builder: %i[ghb_root],
   repository_configurator: %i[ghb_root psych],
   slack_job_builder: %i[ghb_root],
   variables_job_builder: %i[ghb_root],

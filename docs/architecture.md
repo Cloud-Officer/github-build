@@ -18,7 +18,7 @@ flowchart TD
     APP --> CTX["GHB::BuildContext<br>options, old/new workflow, file cache, submodules"]
     CTX --> BUILDERS
     CTX --> MANAGERS
-    APP --> BUILDERS["Job builders<br>VariablesJobBuilder, LinterJobBuilder, LicensesJobBuilder,<br>LanguageJobBuilder, DockerBuildJobBuilder, CodeDeployJobBuilder,<br>VercelJobBuilder, AwsJobBuilder, SlackJobBuilder"]
+    APP --> BUILDERS["Job builders<br>VariablesJobBuilder, LinterJobBuilder, LicensesJobBuilder,<br>LanguageJobBuilder, DockerBuildJobBuilder, CodeDeployJobBuilder,<br>VercelJobBuilder, AwsJobBuilder, SlackJobBuilder,<br>PhpPackagesBuilder"]
     APP --> MANAGERS["Post-generation managers<br>DependabotManager, DockerhubManager, AutoApproveManager,<br>GitignoreManager, RepositoryConfigurator"]
     BUILDERS --> MIXINS["Shared mixins<br>GHB::FileScanner, GHB::LinterIgnoreRenderer"]
     MANAGERS --> MIXINS
@@ -42,7 +42,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 1. The CLI entry point (`bin/github-build.rb`) instantiates `GHB::Application`
 2. `Application` parses command-line options via `GHB::Options` and validates configuration
 3. `Application` bundles the shared inputs (options, old/new workflow, file cache, submodules) into an immutable `GHB::BuildContext` that is passed to every builder
-4. `Application` delegates workflow generation to specialized builders: `VariablesJobBuilder`, `LinterJobBuilder`, `LicensesJobBuilder`, `LanguageJobBuilder`, `DockerBuildJobBuilder`, `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder`, and `SlackJobBuilder`
+4. `Application` delegates workflow generation to specialized builders: `VariablesJobBuilder`, `LinterJobBuilder`, `LicensesJobBuilder`, `LanguageJobBuilder`, `DockerBuildJobBuilder`, `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder`, `SlackJobBuilder`, and `PhpPackagesBuilder` (which rewrites the PHP jobs built before it)
 5. Post-generation managers handle output: `DependabotManager`, `AutoApproveManager`, `DockerhubManager`, `GitignoreManager`, and `RepositoryConfigurator`
 6. `GitignoreManager` delegates pure rule logic (template detection, content transforms) to `GHB::GitignoreRules`
 7. `FileScanner` mixin provides shared pure-Ruby file operations to builders that need file pattern matching
@@ -503,6 +503,18 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `initialize(context:)`: Accepts a `GHB::BuildContext`
 - `build`: Creates the Slack notification job if not skipped
+
+### GHB::PhpPackagesBuilder
+
+**Purpose:** Switches the PHP jobs from `shivammathur/setup-php` to Ubuntu apt packages when the repository has a `php-packages.txt`.
+
+**Location:** `lib/ghb/php_packages_builder.rb`
+
+**Key Components:**
+
+- `PhpPackagesBuilder.parse(content)`: One apt package per word, `#` comments and blank lines dropped
+- `build`: No-op without `php-packages.txt`, so other repositories are untouched; raises `ConfigError` when the file lists no package. Runs after every job builder and before `Workflow#adopt_aws_role`, so it also reaches the CodeDeploy job's copy of the setup step. It stores the list in the `PHP-PACKAGES` env and, on every `cloud-officer/ci-actions/setup` step with `php-*` inputs and every `linters/phpstan` / `linters/phpcs` step, sets `php-packages: ${{env.PHP-PACKAGES}}` and merges `GHB.secrets(:aws)` when the step has no `aws-*` input, which makes `adopt_aws_role` grant the job `id-token: write`
+- Runner: `ubuntu-latest` and `ubuntu-X.Y` labels become `ubuntu-26.04` (keeping an `-arm` suffix); any other label, such as an organization larger runner, is kept with a warning because its image is chosen in the organization settings
 
 ### GHB::AutoApproveManager
 

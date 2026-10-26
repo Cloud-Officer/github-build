@@ -22,6 +22,7 @@ require_relative 'language_job_builder'
 require_relative 'licenses_job_builder'
 require_relative 'linter_job_builder'
 require_relative 'options'
+require_relative 'php_packages_builder'
 require_relative 'repository_configurator'
 require_relative 'slack_job_builder'
 require_relative 'status'
@@ -100,6 +101,7 @@ module GHB
 
       AwsJobBuilder.new(context: context).build
       SlackJobBuilder.new(context: context).build
+      PhpPackagesBuilder.new(context: context).build
 
       @new_workflow.adopt_aws_role
       workflow_write
