@@ -34,14 +34,14 @@ RSpec.describe('php-packages.txt workflow generation') do # rubocop:disable RSpe
     expect(workflow.dig(:jobs, :phpstan, :permissions)).to(eq({ contents: 'read' }))
   end
 
-  it 'moves the PHP jobs to apt packages on ubuntu-26.04 with php-packages.txt' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+  it 'moves the PHP jobs to apt packages with php-packages.txt' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
     workflow = generate(dir, php_packages: "# extensions\nphp8.5-intl\nphp8.5-grpc\n")
 
     expect(workflow.dig(:env, :'PHP-PACKAGES')).to(eq('php8.5-intl php8.5-grpc'))
     php_jobs.each do |job|
       setup = workflow.dig(:jobs, job, :steps).find { |step| step[:uses].to_s.match?(%r{ci-actions/(setup|linters/php)}) }
 
-      expect(workflow.dig(:jobs, job, :'runs-on')).to(eq('ubuntu-26.04'))
+      expect(workflow.dig(:jobs, job, :'runs-on')).to(eq('ubuntu-latest'))
       expect(workflow.dig(:jobs, job, :permissions, :'id-token')).to(eq('write'))
       expect(setup[:with]).to(include('php-packages': '${{env.PHP-PACKAGES}}', 'aws-role-to-assume': '${{vars.AWS_ROLE_TO_ASSUME}}'))
     end

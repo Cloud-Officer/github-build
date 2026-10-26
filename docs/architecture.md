@@ -514,7 +514,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 
 - `PhpPackagesBuilder.parse(content)`: One apt package per word, `#` comments and blank lines dropped
 - `build`: No-op without `php-packages.txt`, so other repositories are untouched; raises `ConfigError` when the file lists no package. Runs after every job builder and before `Workflow#adopt_aws_role`, so it also reaches the CodeDeploy job's copy of the setup step. It stores the list in the `PHP-PACKAGES` env and, on every `cloud-officer/ci-actions/setup` step with `php-*` inputs and every `linters/phpstan` / `linters/phpcs` step, sets `php-packages: ${{env.PHP-PACKAGES}}` and merges `GHB.secrets(:aws)` when the step has no `aws-*` input, which makes `adopt_aws_role` grant the job `id-token: write`
-- Runner: `ubuntu-latest` and `ubuntu-X.Y` labels become `ubuntu-26.04` (keeping an `-arm` suffix); any other label, such as an organization larger runner, is kept with a warning because its image is chosen in the organization settings
+- Runner: left unchanged; `ubuntu-latest` and the organization larger runners run Ubuntu 26.04
 
 ### GHB::AutoApproveManager
 
