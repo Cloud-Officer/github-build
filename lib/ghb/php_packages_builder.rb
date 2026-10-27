@@ -9,11 +9,8 @@ module GHB
     ENV_KEY = :'PHP-PACKAGES'
     SETUP_ACTION = 'cloud-officer/ci-actions/setup'
     LINTER_ACTIONS = %w[cloud-officer/ci-actions/linters/phpcs cloud-officer/ci-actions/linters/phpstan].freeze
-    APT_RUNNER = 'ubuntu-26.04'
-    # Larger runners carry a custom label whose image is set in the organization settings, so they are left alone.
-    STANDARD_RUNNER = /\Aubuntu-(?:latest|\d+\.\d+)(-arm)?\z/
     public_constant :PHP_PACKAGES_FILE
-    private_constant :ENV_KEY, :SETUP_ACTION, :LINTER_ACTIONS, :APT_RUNNER, :STANDARD_RUNNER
+    private_constant :ENV_KEY, :SETUP_ACTION, :LINTER_ACTIONS
 
     def self.parse(content)
       content.each_line.flat_map { |line| line.sub(/#.*/, '').split }
@@ -47,8 +44,6 @@ module GHB
         step.with[:'php-packages'] = "${{env.#{ENV_KEY}}}"
         step.with.merge!(GHB.secrets(:aws)) if step.with.keys.none? { |key| key.to_s.start_with?('aws-') }
       end
-
-      job.runs_on = apt_runner(job)
     end
 
     def php_step?(step)
@@ -56,16 +51,6 @@ module GHB
       return true if LINTER_ACTIONS.include?(action)
 
       action == SETUP_ACTION && step.with.keys.any? { |key| key.to_s.start_with?('php-') }
-    end
-
-    def apt_runner(job)
-      return APT_RUNNER if job.runs_on.nil?
-
-      match = STANDARD_RUNNER.match(job.runs_on.to_s)
-      return "#{APT_RUNNER}#{match[1]}" if match
-
-      warn("WARNING: job '#{job.id}' keeps runner #{job.runs_on.inspect}: its image must be Ubuntu 26.04 for #{PHP_PACKAGES_FILE}")
-      job.runs_on
     end
   end
 end

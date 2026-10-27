@@ -39,7 +39,6 @@ RSpec.describe(GHB::PhpPackagesBuilder) do
 
   before do
     allow($stdout).to(receive(:puts))
-    allow(builder).to(receive(:warn))
   end
 
   describe '.parse' do
@@ -89,12 +88,10 @@ RSpec.describe(GHB::PhpPackagesBuilder) do
         expect(new_workflow.jobs[:phpcs].steps.first.with).to(eq({ 'aws-region': 'eu-west-1', 'php-packages': '${{env.PHP-PACKAGES}}' }))
       end
 
-      it 'moves standard runners to ubuntu-26.04 and keeps larger runners' do # rubocop:disable RSpec/MultipleExpectations
-        expect(new_workflow.jobs[:php_unit_tests].runs_on).to(eq('ubuntu-26.04'))
-        expect(new_workflow.jobs[:phpcs].runs_on).to(eq('ubuntu-26.04'))
+      it 'leaves every runner as it is' do # rubocop:disable RSpec/MultipleExpectations
+        expect(new_workflow.jobs[:php_unit_tests].runs_on).to(eq('ubuntu-latest'))
+        expect(new_workflow.jobs[:phpcs].runs_on).to(be_nil)
         expect(new_workflow.jobs[:phpstan].runs_on).to(eq('ubuntu-latest-16-cores'))
-        expect(new_workflow.jobs[:js_unit_tests].runs_on).to(eq('ubuntu-latest'))
-        expect(builder).to(have_received(:warn).with(/job 'phpstan' keeps runner "ubuntu-latest-16-cores"/))
       end
 
       it 'grants id-token: write once the AWS role is adopted' do # rubocop:disable RSpec/MultipleExpectations
@@ -103,15 +100,6 @@ RSpec.describe(GHB::PhpPackagesBuilder) do
         expect(new_workflow.jobs[:php_unit_tests].permissions).to(include('id-token': 'write'))
         expect(new_workflow.jobs[:js_unit_tests].permissions).to(be_empty)
       end
-    end
-
-    it 'keeps the arm flavour of a standard runner' do
-      new_workflow.jobs[:php_unit_tests].runs_on = 'ubuntu-24.04-arm'
-      File.write('php-packages.txt', "php8.5-intl\n")
-
-      builder.build
-
-      expect(new_workflow.jobs[:php_unit_tests].runs_on).to(eq('ubuntu-26.04-arm'))
     end
   end
 end
