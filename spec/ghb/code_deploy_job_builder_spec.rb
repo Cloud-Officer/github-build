@@ -171,6 +171,45 @@ RSpec.describe(GHB::CodeDeployJobBuilder) do
         expect(step_names).to(include('Setup'))
       end
 
+      it 'drops apt packages and services from the setup step but keeps the language setup' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        setup_with = {
+          'php-extensions': 'composer, amqp',
+          'php-packages': 'php8.5-amqp',
+          'apt-packages': 'blender ffmpeg',
+          'mysql-version': '8.4',
+          'redis-version': '8',
+          'redis-port': '6379',
+          'rabbitmq-version': '4',
+          'rabbitmq-ports': '5672:5672',
+          'mongodb-version': '8',
+          'opensearch-version': '3',
+          'ssh-key': '${{secrets.SSH_KEY}}'
+        }
+        setup_step = GHB::Step.new('Setup', { uses: 'cloud-officer/ci-actions/setup@v3', with: setup_with })
+        composer_step = GHB::Step.new('Composer', { run: 'composer install', with: { 'apt-packages': 'kept' } })
+
+        builder = described_class.new(
+          context: GHB::BuildContext.new(
+            options: options,
+            old_workflow: old_workflow,
+            new_workflow: new_workflow
+          ),
+          code_deploy_pre_steps: [setup_step, composer_step]
+        )
+
+        builder.build
+
+        steps = new_workflow.jobs[:codedeploy].steps
+        expect(
+          steps.find { |step| step.name == 'Setup' }
+          .with.keys
+        ).to(contain_exactly(:'php-extensions', :'php-packages', :'ssh-key'))
+        expect(
+          steps.find { |step| step.name == 'Composer' }
+          .with
+        ).to(eq({ 'apt-packages': 'kept' }))
+      end
+
       it 'preserves environment deploy with from old workflow when with is not empty' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         old_wf = GHB::Workflow.new('Old')
         old_wf.do_job(:beta_deploy) do
