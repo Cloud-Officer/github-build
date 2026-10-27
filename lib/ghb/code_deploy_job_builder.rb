@@ -5,6 +5,10 @@ require_relative '../ghb'
 module GHB
   # Builds the "Code Deploy" jobs in the workflow.
   class CodeDeployJobBuilder
+    # Setup inputs the unit tests need but packaging a deploy bundle does not.
+    TEST_ONLY_SETUP_INPUTS = /\A(apt-packages|mongodb-|mysql-|opensearch-|rabbitmq-|redis-)/
+    private_constant :TEST_ONLY_SETUP_INPUTS
+
     def initialize(context:, code_deploy_pre_steps:)
       @options = context.options
       @old_workflow = context.old_workflow
@@ -40,6 +44,7 @@ module GHB
         else
           @code_deploy_pre_steps.each do |step|
             step.if = nil
+            step.with.reject! { |key, _| key.to_s.match?(TEST_ONLY_SETUP_INPUTS) } if step.uses&.include?('ci-actions/setup@')
           end
 
           job.steps = @code_deploy_pre_steps.clone
