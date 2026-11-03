@@ -64,6 +64,7 @@ module GHB
       if is_private
         disable_security_features(github_client, repo_url)
         disable_codeql_default_setup(github_client, repo_url)
+        disable_code_quality_default_setup(github_client, repo_url)
       else
         enable_security_features(github_client, repo_url)
         enable_codeql_default_setup(github_client, repo_url)
@@ -417,6 +418,16 @@ module GHB
         expected_codes: nil
       )
       warn_unless_successful(response, 'disable CodeQL default setup')
+    end
+
+    def disable_code_quality_default_setup(github_client, repo_url)
+      puts('    Disabling Code Quality default setup (private repository - Code Quality incurs charges)...')
+      response = github_client.patch(
+        "#{repo_url}/code-quality/setup",
+        body: { state: 'not-configured' },
+        expected_codes: nil
+      )
+      warn_unless_successful(response, 'disable Code Quality default setup')
     end
 
     def warn_unless_successful(response, action)
