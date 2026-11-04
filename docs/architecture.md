@@ -641,7 +641,8 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `configure_repository_options(github_client, repo_url)`: Applies merge strategy, wiki/projects, and delete-branch-on-merge settings, then sets the repository's default workflow `GITHUB_TOKEN` permissions to `WORKFLOW_TOKEN_PERMISSIONS`
 - `enable_security_features` / `disable_security_features` / `set_security_features(github_client, repo_url, state, **)`: Toggle the `SECRET_SCANNING_SETTINGS` by repository visibility through a single shared PATCH
 - `enable_codeql_default_setup` / `disable_codeql_default_setup`: Toggles CodeQL default setup by repository visibility
-- `warn_unless_successful(response, action)`: Downgrades a non-2xx response on a best-effort call (reading CodeQL default setup, disabling Advanced Security or CodeQL on a private repository) to a counted warning carrying the status and a truncated body, instead of failing the run
+- `disable_code_quality_default_setup`: Sets Code Quality default setup to `not-configured` on a private repository (Code Quality is billed per active committer on private repos); public repos are left untouched
+- `warn_unless_successful(response, action)`: Downgrades a non-2xx response on a best-effort call (reading CodeQL default setup, disabling Advanced Security, CodeQL or Code Quality on a private repository) to a counted warning carrying the status and a truncated body, instead of failing the run
 
 **Constants:**
 
@@ -908,7 +909,8 @@ The list is validated on every architecture review for accuracy (Requirements ma
 9. Deletes the classic branch protection rule only after that verification, so the branch is never unprotected; a failed delete is a counted warning
 10. Configures repository options: enables vulnerability alerts and automated security fixes, disables wiki and projects, configures merge strategies, enables delete branch on merge, and restricts the default workflow `GITHUB_TOKEN` to read-only without the right to approve pull requests
 11. Enables secret scanning features (push protection, validity checks, non-provider patterns, AI detection) for public repos; disables them for private repos (GHAS cost avoidance)
-12. Enables CodeQL default setup for public repos; disables it for private repos (GHAS cost avoidance). The two private-repo disable calls are best-effort: a non-2xx response is reported as a warning and counted in the final summary rather than failing the run
+12. Enables CodeQL default setup for public repos; disables it for private repos (GHAS cost avoidance)
+13. Disables Code Quality default setup for private repos (per-committer billing); public repos are left as configured. The three private-repo disable calls are best-effort: a non-2xx response is reported as a warning and counted in the final summary rather than failing the run
 
 **Security Considerations:**
 

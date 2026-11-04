@@ -91,6 +91,10 @@ RSpec.describe(GHB::RepositoryConfigurator) do
     allow(github_client).to(receive(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(http_response(code, body)))
   end
 
+  def stub_code_quality_disable(code, body)
+    allow(github_client).to(receive(:patch).with("#{repo_url}/code-quality/setup", body: { state: 'not-configured' }, expected_codes: nil).and_return(http_response(code, body)))
+  end
+
   def stub_codeql_read(code, body)
     allow(github_client).to(receive(:get).with("#{repo_url}/code-scanning/default-setup", expected_codes: nil).and_return(http_response(code, body)))
   end
@@ -121,6 +125,7 @@ RSpec.describe(GHB::RepositoryConfigurator) do
     before do
       stub_security_patch(200, '{}')
       stub_codeql_disable(200, '{}')
+      stub_code_quality_disable(200, '{}')
     end
   end
 
@@ -673,6 +678,32 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         expect(github_client).to(have_received(:patch).with("#{repo_url}/code-scanning/default-setup", body: { state: 'not-configured' }, expected_codes: nil))
       end
 
+      it 'disables Code Quality for private repository' do
+        configurator.configure
+
+        expect(github_client).to(have_received(:patch).with("#{repo_url}/code-quality/setup", body: { state: 'not-configured' }, expected_codes: nil))
+      end
+
+      it 'warns with the status code and body when disabling Code Quality default setup is rejected' do
+        stub_code_quality_disable(422, '{"message":"Validation Failed"}')
+        expect { configurator.configure }
+          .to(output(/WARNING: could not disable Code Quality default setup: HTTP 422 \{"message":"Validation Failed"\}/).to_stderr)
+      end
+
+      it 'omits an empty body from the Code Quality warning' do
+        stub_code_quality_disable(403, '')
+        expect { configurator.configure }
+          .to(output(/WARNING: could not disable Code Quality default setup: HTTP 403$/).to_stderr)
+      end
+
+      it 'counts a rejected Code Quality disable in the final summary' do
+        stub_security_patch(403, '')
+        stub_codeql_disable(403, '')
+        stub_code_quality_disable(403, '')
+        expect { configurator.configure }
+          .to(output(/Repository settings configured with 3 warning\(s\)/).to_stderr)
+      end
+
       it 'restricts the default workflow token to read-only for private repository' do
         configurator.configure
 
@@ -745,6 +776,18 @@ RSpec.describe(GHB::RepositoryConfigurator) do
         configurator.configure
 
         expect(github_client).to(have_received(:patch).with(repo_url, body: hash_including(security_and_analysis: anything), expected_codes: nil))
+      end
+    end
+  end
+
+  describe '#configure Code Quality' do
+    context 'when configuring a public repository' do
+      before { allow(github_client).to(receive(:patch).with("#{repo_url}/code-quality/setup", any_args)) }
+
+      it 'does not touch Code Quality' do
+        configurator.configure
+
+        expect(github_client).not_to(have_received(:patch).with("#{repo_url}/code-quality/setup", any_args))
       end
     end
   end
