@@ -3,14 +3,14 @@
 | **Language** | **Package** | **Version** | **License** | **Description** | **Website** | **Last Verified** | **Risk Level** | **Requirements** | **Verification Reasoning** |
 | :---: | :--- | :---: | :---: | :--- | :--- | :---: | :---: | :--- | :--- |
 | Ruby | activesupport | 8.1.4 | MIT | A toolkit of support libraries and Ruby core extensions extracted from the Rails framework | <https://rubyonrails.org> | 2026-09-28 | Low | Deep symbolize and stringify of hash keys for parsed YAML, and deep_dup for cloning workflow steps | Official Rails ecosystem library maintained by the Rails core team |
-| Ruby | addressable | 2.9.0 | Apache-2.0 | Addressable is an alternative implementation to the URI implementation that is | <https://github.com/sporkmonger/addressable> | 2026-05-22 | Low | Dependency | Dependency |
+| Ruby | addressable | 2.9.2 | Apache-2.0 | Addressable is an alternative implementation to the URI implementation that is | <https://github.com/sporkmonger/addressable> | 2026-11-03 | Low | Dependency | Dependency |
 | Ruby | ast | 2.4.3 | MIT | A library for working with Abstract Syntax Trees. | <https://whitequark.github.io/ast/> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | base64 | 0.3.0 | Ruby | Support for encoding and decoding binary data using a Base64 representation. | <https://github.com/ruby/base64> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | bigdecimal | 4.1.3 | Ruby | This library provides arbitrary-precision decimal floating-point number class. | <https://github.com/ruby/bigdecimal> | 2026-09-14 | Low | Dependency | Dependency |
 | Ruby | concurrent-ruby | 1.3.8 | MIT | Modern concurrency tools including agents, futures, promises, thread pools, actors, supervisors, and more. | <http://www.concurrent-ruby.com> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | connection_pool | 3.0.2 | MIT | Generic connection pool for Ruby | <https://github.com/mperham/connection_pool> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | crack | 1.0.1 | MIT | Really simple JSON and XML parsing, ripped from Merb and Rails. | <https://github.com/jnunemaker/crack> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | csv | 3.3.6 | Ruby | The CSV library provides a complete interface to CSV files and data | <https://github.com/ruby/csv> | 2026-05-22 | Low | Dependency | Dependency |
+| Ruby | csv | 3.3.7 | Ruby | The CSV library provides a complete interface to CSV files and data | <https://github.com/ruby/csv> | 2026-11-03 | Low | Dependency | Dependency |
 | Ruby | date | 3.6.0 | Ruby | The official date library for Ruby. | <https://github.com/ruby/date> | 2026-10-12 | Low | Dependency | Dependency |
 | Ruby | diff-lcs | 1.6.2 | MIT | Diff::LCS computes the difference between two Enumerable sequences using the | <https://github.com/halostatue/diff-lcs> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | drb | 2.2.3 | Ruby | Distributed object system for Ruby | <https://github.com/ruby/drb> | 2026-05-22 | Low | Dependency | Dependency |
@@ -39,7 +39,7 @@
 | Ruby | rspec-expectations | 3.13.5 | MIT | rspec-expectations provides a simple, readable API to express expected outcomes of a code example. | <https://rspec.info> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | rspec-mocks | 3.13.8 | MIT | RSpec's 'test double' framework, with support for stubbing and mocking | <https://rspec.info> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | rspec-support | 3.13.7 | MIT | Support utilities for RSpec gems | <https://rspec.info> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | rubocop | 1.92.1 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2026-10-22 | Low | Ruby linter enforcing the shared .rubocop.yml style and lint rules | Reference Ruby static analyzer; the bundled config/linters/.rubocop.yml this tool distributes targets its cop set |
+| Ruby | rubocop | 1.92.2 | MIT | RuboCop is a Ruby code style checking and code formatting tool. | <https://rubocop.org/> | 2026-11-03 | Low | Ruby linter enforcing the shared .rubocop.yml style and lint rules | Reference Ruby static analyzer; the bundled config/linters/.rubocop.yml this tool distributes targets its cop set |
 | Ruby | rubocop-ast | 1.50.0 | MIT | RuboCop's Node and NodePattern classes. | <https://www.rubocop.org/> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | rubocop-capybara | 3.1.0 | MIT | Code style checking for Capybara test files (RSpec, Cucumber, Minitest). | <https://github.com/rubocop/rubocop-capybara> | 2026-10-18 | Low | RuboCop plugin adding Capybara cops, enabled in .rubocop.yml plugins | Official RuboCop-maintained plugin, the only source of the Capybara cop set extracted out of rubocop-rspec |
 | Ruby | rubocop-graphql | 1.8.0 | MIT | A collection of RuboCop cops to improve GraphQL-related code | <https://github.com/DmitryTsepelev/rubocop-graphql> | 2026-05-22 | Low | RuboCop plugin adding GraphQL cops, enabled in .rubocop.yml plugins | Only maintained RuboCop plugin covering graphql-ruby schema and type definitions |
