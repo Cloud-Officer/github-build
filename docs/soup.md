@@ -2,7 +2,7 @@
 
 | **Language** | **Package** | **Version** | **License** | **Description** | **Website** | **Last Verified** | **Risk Level** | **Requirements** | **Verification Reasoning** |
 | :---: | :--- | :---: | :---: | :--- | :--- | :---: | :---: | :--- | :--- |
-| Ruby | activesupport | 8.1.4 | MIT | A toolkit of support libraries and Ruby core extensions extracted from the Rails framework | <https://rubyonrails.org> | 2026-09-28 | Low | Deep symbolize and stringify of hash keys for parsed YAML, and deep_dup for cloning workflow steps | Official Rails ecosystem library maintained by the Rails core team |
+| Ruby | activesupport | 8.1.4.1 | MIT | A toolkit of support libraries and Ruby core extensions extracted from the Rails framework | <https://rubyonrails.org> | 2026-11-04 | Low | Deep symbolize and stringify of hash keys for parsed YAML, and deep_dup for cloning workflow steps | Official Rails ecosystem library maintained by the Rails core team |
 | Ruby | addressable | 2.9.2 | Apache-2.0 | Addressable is an alternative implementation to the URI implementation that is | <https://github.com/sporkmonger/addressable> | 2026-11-03 | Low | Dependency | Dependency |
 | Ruby | ast | 2.4.3 | MIT | A library for working with Abstract Syntax Trees. | <https://whitequark.github.io/ast/> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | base64 | 0.3.0 | Ruby | Support for encoding and decoding binary data using a Base64 representation. | <https://github.com/ruby/base64> | 2026-05-22 | Low | Dependency | Dependency |
