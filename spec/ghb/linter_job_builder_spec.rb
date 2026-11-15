@@ -740,6 +740,97 @@ RSpec.describe(GHB::LinterJobBuilder) do
     end
   end
 
+  describe 'Brakeman detection' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:ignored_linters) { {} }
+
+    let(:options) do
+      instance_double(
+        GHB::Options,
+        skip_semgrep: false,
+        ignored_linters: ignored_linters,
+        excluded_folders: [],
+        linters_config_file: 'config/linters.yaml',
+        languages_config_file: 'config/languages.yaml'
+      )
+    end
+    let(:rails_application) { "module App\n  class Application < Rails::Application\n  end\nend\n" }
+
+    before { allow(File).to(receive(:delete).and_call_original) }
+
+    def in_repo(application_rb, files = {})
+      Dir.mktmpdir do |dir|
+        { 'config/application.rb': application_rb }.merge(files).each do |path, content|
+          FileUtils.mkdir_p(File.dirname(File.join(dir, path.to_s)))
+          File.write(File.join(dir, path.to_s), content)
+        end
+        yield(dir)
+      end
+    end
+
+    def build_in(dir)
+      Dir.chdir(dir) { build_linter_job_builder.build } # rubocop:disable ThreadSafety/DirChdir
+    end
+
+    it 'adds the Brakeman job and its config to a Rails application' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      in_repo(rails_application) do |dir|
+        build_in(dir)
+
+        job = new_workflow.jobs[:brakeman]
+        expect(job.name).to(eq('Brakeman Security Scanner'))
+        expect(job.if).to(eq("${{needs.variables.outputs.SKIP_LINTERS != '1'}}"))
+        expect(job.permissions).to(eq({ contents: 'read' }))
+        expect(job.steps.first.uses).to(start_with('cloud-officer/ci-actions/linters/brakeman@'))
+        expect(job.steps.first.with.keys).to(contain_exactly(:linters, :'ssh-key', :'github-token'))
+        expect(File.read(File.join(dir, 'config/brakeman.yml'))).to(include(':exit_on_warn: true'))
+      end
+    end
+
+    it 'skips a plain Ruby repository and removes a stale config/brakeman.yml' do # rubocop:disable RSpec/MultipleExpectations
+      in_repo("module App\n  class Application\n  end\nend\n", 'config/brakeman.yml': "stale\n") do |dir|
+        build_in(dir)
+
+        expect(new_workflow.jobs).not_to(have_key(:brakeman))
+        expect(File.exist?(File.join(dir, 'config/brakeman.yml'))).to(be(false))
+      end
+    end
+
+    context 'when brakeman is in ignored_linters' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:ignored_linters) { { brakeman: true } }
+
+      it 'skips the job and removes its config' do # rubocop:disable RSpec/MultipleExpectations
+        in_repo(rails_application, 'config/brakeman.yml': "stale\n") do |dir|
+          build_in(dir)
+
+          expect(new_workflow.jobs).not_to(have_key(:brakeman))
+          expect(File.exist?(File.join(dir, 'config/brakeman.yml'))).to(be(false))
+        end
+      end
+    end
+
+    it 'symlinks config/brakeman.yml relative to config/ when a scripts submodule ships it' do
+      in_repo(rails_application, 'scripts/linters/config/brakeman.yml': "shared\n", '.gitmodules': "[submodule \"scripts\"]\n  path = scripts\n") do |dir|
+        build_in(dir)
+
+        expect(FileUtils).to(have_received(:ln_s).with('../scripts/linters/config/brakeman.yml', 'config/brakeman.yml', force: true))
+      end
+    end
+
+    it 'symlinks config/brakeman.yml relative to config/ when a local linters/ directory ships it' do
+      in_repo(rails_application, 'linters/config/brakeman.yml': "local\n") do |dir|
+        build_in(dir)
+
+        expect(FileUtils).to(have_received(:ln_s).with('../linters/config/brakeman.yml', 'config/brakeman.yml', force: true))
+      end
+    end
+
+    it 'only matches the root config/application.rb' do
+      pattern = Regexp.new(Psych.safe_load(File.read('config/linters.yaml'))['brakeman']['pattern'])
+      cases = [['./config/application.rb', true], ['./foo_config/application.rb', false], ['./engines/x/config/application.rb', false], ['./config/application.rb.bak', false]]
+
+      cases.each { |path, expected| expect(pattern.match?(path)).to(be(expected)) }
+    end
+  end
+
   describe 'linter job permissions' do
     def sample_job_permissions(linter, old_job_permissions: nil)
       old_workflow.do_job(:sample) { do_permissions(old_job_permissions) } if old_job_permissions
