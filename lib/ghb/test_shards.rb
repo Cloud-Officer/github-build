@@ -16,7 +16,7 @@ module GHB
     SHARD_FILES = '"${SHARD_FILES[@]}"'
     RAILS_TASK_TOKEN = /(?<=\s)(?:\$\{\{\s*matrix\.task\s*\}\}|test:system|test(?: "\$\{SHARD_FILES\[@\]\}")?)(?=\s|\z)/
     RAILS_PREFIX_LINES = [/\ASHARD_ALL=\$\(/, /\A\[ -n "\$\{SHARD_ALL\}" \]/, /\Amapfile -t SHARD_FILES /, /\ASHARD_FILES=\(\); while /, /\Aif \[ "\$\{#SHARD_FILES\[@\]\}" /].freeze
-    RAILS_SPLIT_TEST = %r{ && .*?\bbin/rails test "\$\{SHARD_FILES\[@\]\}"}
+    RAILS_SPLIT_TEST = %r{(?: test:prepare)? && .*?\bbin/rails test "\$\{SHARD_FILES\[@\]\}"}
     RAILS_COMMAND = %r{\A.*?\bbin/rails\b}
     RAILS_DEFAULT_COMMAND = 'bin/rails db:test:prepare ${{matrix.task}}'
     RAILS_FILES = {
@@ -134,8 +134,8 @@ module GHB
       head = line[0...last_token.begin(0)].rstrip
       tail = line[last_token.end(0)..]
       rails = head[RAILS_COMMAND]
-      # Rails reads arguments after another task (db:test:prepare) as more commands, so test files need their own call.
-      lines[index] = head == rails ? "#{rails} test #{SHARD_FILES}#{tail}" : "#{head} && #{rails.lstrip} test #{SHARD_FILES}#{tail}"
+      # `bin/rails test <files>` skips the test:prepare hook (asset builds such as tailwindcss:build) and reads arguments after another task as commands.
+      lines[index] = "#{head} test:prepare && #{rails.lstrip} test #{SHARD_FILES}#{tail}"
 
       prefix = [
         "SHARD_ALL=$(#{RAILS_FILES[task]} | sort)",
