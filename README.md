@@ -163,8 +163,9 @@ aggregator that passes only when its shards succeed, so required status checks s
 deploy-job conditions do not change.
 
 The existing test step is the template: its env and other lines are kept, and only the test command is rewritten. On
-the `bin/rails` line the task (`test`, `test:system` or `${{matrix.task}}`) becomes the shard's files; on the `jest`
-line `--shard=i/N` is appended. Generation stops with an error if that line cannot be found. Removing the flag
+the `bin/rails` line the task (`test`, `test:system` or `${{matrix.task}}`) becomes the shard's files, in a separate
+`bin/rails test` call when another task such as `db:test:prepare` comes first; on the `jest` line `--shard=i/N` is
+appended. A shard fails when no test file is found at all. Generation stops with an error if that line cannot be found. Removing the flag
 regenerates the single job.
 
 ### Configuration Files
