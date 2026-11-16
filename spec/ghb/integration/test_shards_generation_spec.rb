@@ -37,7 +37,7 @@ RSpec.describe('--test_shards workflow generation') do # rubocop:disable RSpec/D
 
     expect(jobs.keys).to(include('ruby_unit_tests_test_shards', 'ruby_unit_tests_test_system_shards', 'ruby_unit_tests'))
     expect(jobs['ruby_unit_tests']['strategy']).to(eq('fail-fast' => false, 'matrix' => { 'task' => %w[test test:system] })) # rubocop:disable Style/StringHashKeys
-    expect(jobs['ruby_unit_tests_test_shards']['steps'].find { |step| step['name'] == 'RSpec' }['run']).to(end_with('bin/rails db:test:prepare && bin/rails test "${SHARD_FILES[@]}"'))
+    expect(jobs['ruby_unit_tests_test_shards']['steps'].find { |step| step['name'] == 'RSpec' }['run']).to(end_with('bin/rails db:test:prepare test:prepare && bin/rails test "${SHARD_FILES[@]}"'))
   end
 
   it 'regenerates the same workflow from the persisted header' do
@@ -78,7 +78,8 @@ RSpec.describe('--test_shards workflow generation') do # rubocop:disable RSpec/D
 
     expect(results.map(&:last)).to(all(be_success))
     calls = File.readlines('rails.log', chomp: true)
-    expect(calls.grep(/\Adb:test:prepare/)).to(eq(['db:test:prepare'] * 2))
+    expect(calls.grep(/\Adb:test:prepare/)).to(eq(['db:test:prepare test:prepare'] * 2))
+    expect(calls.each_slice(2).map(&:first)).to(all(include('test:prepare')))
     tested = calls.grep(/\Atest /).flat_map { |call| call.split.drop(1) }
     expect(tested).to(match_array(Dir.glob('test/models/*_test.rb')))
   end

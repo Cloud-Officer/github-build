@@ -130,7 +130,7 @@ RSpec.describe(GHB::TestShards) do # rubocop:disable RSpec/MultipleMemoizedHelpe
         [ -n "${SHARD_ALL}" ] || { echo 'No test files found'; exit 1; }
         SHARD_FILES=(); while IFS= read -r file; do SHARD_FILES+=("${file}"); done < <(printf '%s\\n' "${SHARD_ALL}" | awk -v shard='${{matrix.shard}}' 'NR % 4 == shard % 4')
         if [ "${#SHARD_FILES[@]}" -eq 0 ]; then echo 'No test files in this shard'; exit 0; fi
-        bin/rails db:test:prepare && bin/rails test "${SHARD_FILES[@]}"
+        bin/rails db:test:prepare test:prepare && bin/rails test "${SHARD_FILES[@]}"
       RUN
     end
 
@@ -185,7 +185,7 @@ RSpec.describe(GHB::TestShards) do # rubocop:disable RSpec/MultipleMemoizedHelpe
       ruby_job(run: "bin/setup-ci\nbin/rails test -v\n")
       apply_ruby
 
-      expect(step_run(:ruby_unit_tests_test_shards).lines(chomp: true).last(2)).to(eq(['bin/setup-ci', 'bin/rails test "${SHARD_FILES[@]}" -v']))
+      expect(step_run(:ruby_unit_tests_test_shards).lines(chomp: true).last(2)).to(eq(['bin/setup-ci', 'bin/rails test:prepare && bin/rails test "${SHARD_FILES[@]}" -v']))
     end
 
     it 'keeps a trailing newline on the run' do
@@ -199,7 +199,7 @@ RSpec.describe(GHB::TestShards) do # rubocop:disable RSpec/MultipleMemoizedHelpe
       ruby_job(run: 'bundle exec rspec --format documentation')
       apply_ruby
 
-      expect(step_run(:ruby_unit_tests_test_shards).lines.last).to(eq('bin/rails db:test:prepare && bin/rails test "${SHARD_FILES[@]}"'))
+      expect(step_run(:ruby_unit_tests_test_shards).lines.last).to(eq('bin/rails db:test:prepare test:prepare && bin/rails test "${SHARD_FILES[@]}"'))
     end
 
     it 'repeats an env prefix on the separate test call and puts it back when unsharded' do # rubocop:disable RSpec/MultipleExpectations
@@ -207,7 +207,7 @@ RSpec.describe(GHB::TestShards) do # rubocop:disable RSpec/MultipleMemoizedHelpe
       apply_ruby
       sharded = step_run(:ruby_unit_tests_test_shards).lines.last
 
-      expect(sharded).to(eq('RAILS_ENV=test bin/rails db:test:prepare && RAILS_ENV=test bin/rails test "${SHARD_FILES[@]}" -v'))
+      expect(sharded).to(eq('RAILS_ENV=test bin/rails db:test:prepare test:prepare && RAILS_ENV=test bin/rails test "${SHARD_FILES[@]}" -v'))
       expect(sharded.sub(described_class.const_get(:RAILS_SPLIT_TEST), ' ${{matrix.task}}')).to(eq('RAILS_ENV=test bin/rails db:test:prepare ${{matrix.task}} -v'))
     end
 
