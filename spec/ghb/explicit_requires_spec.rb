@@ -12,7 +12,7 @@ LIBRARY_PROBES = {
 }.freeze
 
 GUARDED_FILES = {
-  application: %i[ghb_root psych],
+  application: %i[active_support ghb_root psych],
   auto_approve_manager: %i[fileutils ghb_root],
   aws_job_builder: %i[ghb_root],
   code_deploy_job_builder: %i[ghb_root],

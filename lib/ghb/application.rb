@@ -105,6 +105,7 @@ module GHB
       PhpPackagesBuilder.new(context: context).build
 
       @new_workflow.adopt_aws_role
+      @new_workflow.prune_env(generated_env_keys)
       workflow_write
 
       DependabotManager.new.save
@@ -318,6 +319,24 @@ module GHB
 
         @required_status_checks.concat(names)
       end
+    end
+
+    # Env keys the generator writes itself; user-added keys are never pruned.
+    def generated_env_keys
+      languages = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.languages_config_file}"))&.deep_symbolize_keys || {}
+      names =
+        languages.values.grep(Hash).flat_map do |language|
+          (language[:setup_options] || []).map { |option| option[:name] } + [language[:cache_option]]
+        end
+
+      SERVICES.each do |service|
+        options = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.options_config_files[service]}"))&.deep_symbolize_keys&.[](:options)
+        names.concat((options || []).map { |option| option[:name] })
+      end
+
+      keys = names.filter_map { |name| name.to_s.upcase.to_sym if name }
+      keys << PhpPackagesBuilder::ENV_KEY
+      keys.uniq
     end
 
     def workflow_write

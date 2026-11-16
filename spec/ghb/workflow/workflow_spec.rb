@@ -664,4 +664,25 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
         .not_to(change(workflow, :to_h))
     end
   end
+
+  describe '#prune_env' do
+    let(:workflow) { described_class.new('Test') }
+
+    before do
+      workflow.env = { 'NODE-VERSION': '26', 'NODE-VERSION-FILE': '.nvmrc', 'PYTHON-VERSION': '3.15', 'CUSTOM-FLAG': '1' }
+      workflow.do_job(:tests) do
+        do_step('Setup') { do_with({ 'node-version': '${{env.NODE-VERSION}}' }) }
+      end
+    end
+
+    it 'drops generated keys no job references' do
+      workflow.prune_env(%i[NODE-VERSION NODE-VERSION-FILE PYTHON-VERSION])
+      expect(workflow.env).to(eq({ 'NODE-VERSION': '26', 'CUSTOM-FLAG': '1' }))
+    end
+
+    it 'keeps keys outside the given list even when unreferenced' do
+      workflow.prune_env([])
+      expect(workflow.env.keys).to(include(:'CUSTOM-FLAG', :'PYTHON-VERSION'))
+    end
+  end
 end

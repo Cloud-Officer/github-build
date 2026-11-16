@@ -180,6 +180,18 @@ module GHB
       end
     end
 
+    # Removes the given workflow-level env keys that no job references as ${{env.KEY}}.
+    def prune_env(keys)
+      referenced = @jobs.values.filter_map { |job| job&.to_h&.to_s }
+      referenced = referenced.join("\n")
+
+      keys.each do |key|
+        next unless @env.key?(key)
+
+        @env.delete(key) unless referenced.match?(/\benv\.#{Regexp.escape(key.to_s)}(?![\w-])/)
+      end
+    end
+
     def to_h
       hash = {}
       hash[:name] = @name unless @name.nil?
