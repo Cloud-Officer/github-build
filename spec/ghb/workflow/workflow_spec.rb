@@ -664,4 +664,40 @@ RSpec.describe(GHB::Workflow) do # rubocop:disable RSpec/SpecFilePathFormat
         .not_to(change(workflow, :to_h))
     end
   end
+
+  describe '#prune_env' do
+    let(:workflow) { described_class.new('Test') }
+
+    before do
+      workflow.env = { 'NODE-VERSION': '26', 'NODE-VERSION-FILE': '.nvmrc', 'PYTHON-VERSION': '3.15', 'CUSTOM-FLAG': '1' }
+      workflow.do_job(:tests) do
+        do_step('Setup') { do_with({ 'node-version': '${{env.NODE-VERSION}}' }) }
+      end
+    end
+
+    it 'drops generated keys no job references' do
+      workflow.prune_env(%i[NODE-VERSION NODE-VERSION-FILE PYTHON-VERSION])
+      expect(workflow.env).to(eq({ 'NODE-VERSION': '26', 'CUSTOM-FLAG': '1' }))
+    end
+
+    it 'keeps keys referenced case-insensitively, by bracket syntax or outside jobs' do # rubocop:disable RSpec/ExampleLength
+      workflow.do_job(:lint) do
+        do_step('Lint') { do_with({ 'python-version': "${{ ENV['PYTHON-VERSION'] }}" }) }
+      end
+      workflow.run_name = '${{env.NODE-VERSION-FILE}}'
+      workflow.prune_env(%i[NODE-VERSION NODE-VERSION-FILE PYTHON-VERSION])
+      expect(workflow.env.keys).to(contain_exactly(:'NODE-VERSION', :'NODE-VERSION-FILE', :'PYTHON-VERSION', :'CUSTOM-FLAG'))
+    end
+
+    it 'prunes nothing when a dynamic env lookup is present' do
+      workflow.do_job(:dyn) { do_step('Dyn') { do_with({ value: '${{ env[matrix.key] }}' }) } }
+      workflow.prune_env(%i[PYTHON-VERSION])
+      expect(workflow.env.keys).to(include(:'PYTHON-VERSION'))
+    end
+
+    it 'keeps keys outside the given list even when unreferenced' do
+      workflow.prune_env([])
+      expect(workflow.env.keys).to(include(:'CUSTOM-FLAG', :'PYTHON-VERSION'))
+    end
+  end
 end

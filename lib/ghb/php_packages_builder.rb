@@ -9,8 +9,8 @@ module GHB
     ENV_KEY = :'PHP-PACKAGES'
     SETUP_ACTION = 'cloud-officer/ci-actions/setup'
     LINTER_ACTIONS = %w[cloud-officer/ci-actions/linters/phpcs cloud-officer/ci-actions/linters/phpstan].freeze
-    public_constant :PHP_PACKAGES_FILE
-    private_constant :ENV_KEY, :SETUP_ACTION, :LINTER_ACTIONS
+    public_constant :PHP_PACKAGES_FILE, :ENV_KEY
+    private_constant :SETUP_ACTION, :LINTER_ACTIONS
 
     def self.parse(content)
       content.each_line.flat_map { |line| line.sub(/#.*/, '').split }

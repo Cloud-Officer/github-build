@@ -180,6 +180,19 @@ module GHB
       end
     end
 
+    # Removes the given env keys that nothing outside the env block references, as env.KEY or env['KEY'].
+    def prune_env(keys)
+      referenced = to_h.except(:env).to_s
+      return if referenced.match?(/\benv\s*\[\s*(?!['"])/i)
+
+      keys.each do |key|
+        next unless @env.key?(key)
+
+        name = Regexp.escape(key.to_s)
+        @env.delete(key) unless referenced.match?(/\benv\s*(?:\.\s*#{name}(?![\w-])|\[\s*\\?['"]#{name}\\?['"]\s*\])/i)
+      end
+    end
+
     def to_h
       hash = {}
       hash[:name] = @name unless @name.nil?
