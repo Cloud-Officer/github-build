@@ -128,7 +128,7 @@ RSpec.describe(GHB::TestShards) do # rubocop:disable RSpec/MultipleMemoizedHelpe
       expect(step_run(:ruby_unit_tests_test_shards)).to(eq(<<~RUN.chomp))
         SHARD_ALL=$(find test -name '*_test.rb' -not -path 'test/system/*' | sort)
         [ -n "${SHARD_ALL}" ] || { echo 'No test files found'; exit 1; }
-        mapfile -t SHARD_FILES < <(printf '%s\\n' "${SHARD_ALL}" | awk -v shard='${{matrix.shard}}' 'NR % 4 == shard % 4')
+        SHARD_FILES=(); while IFS= read -r file; do SHARD_FILES+=("${file}"); done < <(printf '%s\\n' "${SHARD_ALL}" | awk -v shard='${{matrix.shard}}' 'NR % 4 == shard % 4')
         if [ "${#SHARD_FILES[@]}" -eq 0 ]; then echo 'No test files in this shard'; exit 0; fi
         bin/rails db:test:prepare && bin/rails test "${SHARD_FILES[@]}"
       RUN

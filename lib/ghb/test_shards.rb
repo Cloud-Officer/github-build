@@ -15,7 +15,7 @@ module GHB
     SHARD_JOB_ID = /_unit_tests(?:_[a-z_]+)?_shards\z/
     SHARD_FILES = '"${SHARD_FILES[@]}"'
     RAILS_TASK_TOKEN = /(?<=\s)(?:\$\{\{\s*matrix\.task\s*\}\}|test:system|test(?: "\$\{SHARD_FILES\[@\]\}")?)(?=\s|\z)/
-    RAILS_PREFIX_LINES = [/\ASHARD_ALL=\$\(/, /\A\[ -n "\$\{SHARD_ALL\}" \]/, /\Amapfile -t SHARD_FILES /, /\Aif \[ "\$\{#SHARD_FILES\[@\]\}" /].freeze
+    RAILS_PREFIX_LINES = [/\ASHARD_ALL=\$\(/, /\A\[ -n "\$\{SHARD_ALL\}" \]/, /\Amapfile -t SHARD_FILES /, /\ASHARD_FILES=\(\); while /, /\Aif \[ "\$\{#SHARD_FILES\[@\]\}" /].freeze
     RAILS_SPLIT_TEST = %r{ && .*?\bbin/rails test "\$\{SHARD_FILES\[@\]\}"}
     RAILS_COMMAND = %r{\A.*?\bbin/rails\b}
     RAILS_DEFAULT_COMMAND = 'bin/rails db:test:prepare ${{matrix.task}}'
@@ -140,7 +140,7 @@ module GHB
       prefix = [
         "SHARD_ALL=$(#{RAILS_FILES[task]} | sort)",
         "[ -n \"${SHARD_ALL}\" ] || { echo 'No test files found'; exit 1; }",
-        "mapfile -t SHARD_FILES < <(printf '%s\\n' \"${SHARD_ALL}\" | awk -v shard='${{matrix.shard}}' 'NR % #{count} == shard % #{count}')",
+        "SHARD_FILES=(); while IFS= read -r file; do SHARD_FILES+=(\"${file}\"); done < <(printf '%s\\n' \"${SHARD_ALL}\" | awk -v shard='${{matrix.shard}}' 'NR % #{count} == shard % #{count}')",
         "if [ \"${#SHARD_FILES[@]}\" -eq 0 ]; then echo 'No test files in this shard'; exit 0; fi"
       ]
 
