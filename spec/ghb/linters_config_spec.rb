@@ -9,7 +9,7 @@ RSpec.describe('config/linters.yaml conditions') do # rubocop:disable RSpec/Desc
   let(:pr_only) { %i[actionlint eslint flake8 golangci hadolint ktlint markdownlint pmd protolint rubocop shellcheck yamllint] }
 
   # Exit-code linters -> meaningful on every event, no PR guard.
-  let(:run_always) { %i[bandit cfnlint phpcs phpstan semgrep swiftlint trivy] }
+  let(:run_always) { %i[bandit brakeman cfnlint phpcs phpstan semgrep swiftlint trivy] }
 
   it 'lists exactly the known linters (a new linter must be classified explicitly)' do
     expect(linters.keys.sort).to(eq((pr_only + run_always).sort))

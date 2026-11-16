@@ -69,6 +69,18 @@ bandit:
   config: ".bandit"
   path: "."
   pattern: ".*\\.(py)$"
+brakeman:
+  short_name: Brakeman
+  long_name: Brakeman Security Scanner
+  # No condition: Brakeman runs with `:exit_on_warn: true` and fails the job by exit
+  # code (no reviewdog/github-pr-review), so this security scan is meaningful on
+  # pushes too, not just pull requests.
+  uses: cloud-officer/ci-actions/linters/brakeman
+  config: "config/brakeman.yml"
+  path: "."
+  # Rails applications only: the root config/application.rb defining the app class.
+  pattern: "^(\\./)?config/application\\.rb$"
+  content_match: "Rails::Application"
 cfnlint:
   short_name: Cfn-lint
   long_name: CloudFormation Linter

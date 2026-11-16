@@ -153,7 +153,8 @@ your own copy. Required top-level keys are validated at startup — a missing ke
 
 A map of linter id → definition. Each entry **must** define `short_name`, `long_name`, `uses`, `path`, and
 `pattern`. Optional keys: `condition` (a GitHub Actions `if:` expression), `config` (a single config file name or
-a list of names when a linter ships several, e.g. Trivy's `["trivy.yaml", ".trivyignore"]`), `preserve_config`
+a list of names when a linter ships several, e.g. Trivy's `["trivy.yaml", ".trivyignore"]`; a name may
+include a directory, e.g. Brakeman's `config/brakeman.yml`, bundled under `config/linters/config/`), `preserve_config`
 (keep the project's existing config instead of overwriting it), `content_match` / `content_match_pattern` (filter
 matched files by their contents), `shebang_match` (regex matched against the first line of extensionless files, so
 a widened `pattern` can be narrowed back down — used by ShellCheck for shell tools installed onto `PATH`),

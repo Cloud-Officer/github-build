@@ -144,10 +144,11 @@ module GHB
       if linter[:preserve_config] && File.exist?(config_name) && !File.symlink?(config_name)
         puts("            Preserving existing #{config_name} (project-specific config)")
       elsif script_path && File.exist?("#{script_path}/linters/#{config_name}") && inside_repo?("#{script_path}/linters/#{config_name}") && config_name != '.editorconfig' && !project_owned_config?(config_name)
-        FileUtils.ln_s("#{script_path}/linters/#{config_name}", config_name, force: true)
+        link_config("#{script_path}/linters/#{config_name}", config_name)
       elsif File.exist?("linters/#{config_name}") && config_name != '.editorconfig' && !project_owned_config?(config_name)
-        FileUtils.ln_s("linters/#{config_name}", config_name, force: true)
+        link_config("linters/#{config_name}", config_name)
       else
+        FileUtils.mkdir_p(File.dirname(config_name))
         atomic_copy_config(config_source(config_name), config_name) do |content|
           content = render_excluded_dirs(config_name, content, excluded_dirs_from_config) if manages?(config_name)
           content = content.sub('"sourceType": "commonjs"', '"sourceType": "module"') if config_name == '.eslintrc.json' && esm_package?
@@ -158,6 +159,14 @@ module GHB
           content
         end
       end
+    end
+
+    # A symlink target resolves from the link's own directory, so nested configs (config/brakeman.yml) need it rebased.
+    def link_config(source, config_name)
+      directory = File.dirname(config_name)
+      FileUtils.mkdir_p(directory)
+      target = directory == '.' ? source : Pathname.new(source).relative_path_from(Pathname.new(directory)).to_s
+      FileUtils.ln_s(target, config_name, force: true)
     end
 
     # Node treats .js as ES modules only when package.json sets "type": "module".
