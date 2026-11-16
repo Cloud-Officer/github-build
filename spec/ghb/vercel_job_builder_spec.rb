@@ -131,7 +131,7 @@ RSpec.describe(GHB::VercelJobBuilder) do
         expect(new_workflow.jobs[:rc_deploy].steps[2].run).to(eq('vercel pull --yes --environment=preview'))
       end
 
-      it 'drops a carried-over node-version from Setup when a version file pins it' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      it 'replaces a carried-over node-version with the version file that pins it' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
         allow(File).to(receive(:exist?).with('.nvmrc').and_return(true))
         old_workflow.do_job(:prod_deploy) do
           do_step('Setup') do
@@ -144,7 +144,7 @@ RSpec.describe(GHB::VercelJobBuilder) do
 
         setup = new_workflow.jobs[:prod_deploy].steps.first
         expect(setup.with).not_to(have_key(:'node-version'))
-        expect(setup.with[:'github-token']).to(eq('${{github.token}}'))
+        expect(setup.with).to(include('node-version-file': '.nvmrc', 'ssh-key': '${{secrets.SSH_KEY}}', 'github-token': '${{github.token}}'))
       end
     end
 

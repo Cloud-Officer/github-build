@@ -163,6 +163,7 @@ jobs:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
         python-cache: "${{env.PYTHON-CACHE}}"
+        python-version-file: ".python-version"
     - name: Pip
       shell: bash
       run: pip install -r requirements.txt
@@ -195,6 +196,7 @@ jobs:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
         python-cache: "${{env.PYTHON-CACHE}}"
+        python-version-file: ".python-version"
     - name: Pip
       shell: bash
       run: pip install -r requirements.txt
@@ -514,6 +516,7 @@ jobs:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
         python-cache: "${{env.PYTHON-CACHE}}"
+        python-version-file: ".python-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -555,6 +558,7 @@ jobs:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
         python-cache: "${{env.PYTHON-CACHE}}"
+        python-version-file: ".python-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -900,6 +904,7 @@ jobs:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
         python-cache: "${{env.PYTHON-CACHE}}"
+        python-version-file: ".python-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -941,6 +946,7 @@ jobs:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
         python-cache: "${{env.PYTHON-CACHE}}"
+        python-version-file: ".python-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept

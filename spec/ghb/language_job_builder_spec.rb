@@ -238,6 +238,38 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
 
       expect(new_workflow.jobs).to(have_key(:go_unit_tests))
       expect(new_workflow.env).not_to(have_key(:'GO-VERSION'))
+      expect(new_workflow.jobs[:go_unit_tests].steps.first.with).to(include('go-version-file': '.go-version', 'ssh-key': '${{secrets.SSH_KEY}}'))
+    end
+
+    it 'replaces a carried version input with the version-file input and keeps the other inputs' do # rubocop:disable RSpec/ExampleLength
+      stub_config_file_reads(go_language_yaml)
+      old_workflow.do_job(:go_unit_tests) do |job|
+        job.do_step('Setup') { |step| step.do_with({ 'ssh-key': '${{secrets.SSH_KEY}}', 'go-version': '${{env.GO-VERSION}}', 'apt-packages': 'curl' }) }
+      end
+
+      allow(builder).to(receive_messages(find_files_matching: ['./main.go'], file_contains?: false))
+      allow(File).to(receive(:file?).with('go.mod').and_return(true))
+      allow(File).to(receive(:exist?).with('.go-version').and_return(true))
+      allow(File).to(receive(:exist?).with('Podfile.lock').and_return(false))
+      allow(File).to(receive(:read).with('.go-version').and_return("1.26.0\n"))
+
+      builder.build
+
+      expect(new_workflow.jobs[:go_unit_tests].steps.first.with).to(eq('ssh-key': '${{secrets.SSH_KEY}}', 'apt-packages': 'curl', 'github-token': '${{github.token}}', 'go-version-file': '.go-version'))
+    end
+
+    [
+      ['.ruby-version', { 'ruby-version': 'default' }],
+      ['.nvmrc', { 'node-version-file': '.nvmrc' }],
+      ['.node-version', { 'node-version-file': '.node-version' }],
+      ['.python-version', { 'python-version-file': '.python-version' }],
+      ['.php-version', { 'php-version-file': '.php-version' }],
+      ['.java-version', { 'java-version-file': '.java-version' }],
+      ['.go-version', { 'go-version-file': '.go-version' }]
+    ].each do |version_file, input|
+      it "asks the setup action to install the language from #{version_file}" do
+        expect(builder.__send__(:version_file_input, version_file)).to(eq(input))
+      end
     end
 
     it 'does not create any jobs when no language files are found' do

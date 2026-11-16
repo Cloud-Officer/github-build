@@ -179,6 +179,7 @@ jobs:
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
+        go-version-file: ".go-version"
     - name: Go Modules
       shell: bash
       run: go mod vendor
@@ -235,6 +236,7 @@ jobs:
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
+        go-version-file: ".go-version"
     - name: Go Modules
       shell: bash
       run: go mod vendor
@@ -588,6 +590,7 @@ jobs:
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
+        go-version-file: ".go-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -661,6 +664,7 @@ jobs:
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
+        go-version-file: ".go-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -1044,6 +1048,7 @@ jobs:
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
+        go-version-file: ".go-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -1117,6 +1122,7 @@ jobs:
       with:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
+        go-version-file: ".go-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept

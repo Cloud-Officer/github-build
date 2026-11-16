@@ -242,10 +242,10 @@ module GHB
       job.carry_step('Setup') do |step|
         step.do_uses("cloud-officer/ci-actions/setup@#{CI_ACTIONS_VERSION}")
 
-        # Remove version parameter from with if version file exists (version file takes precedence)
         step.with.delete(version_option_key) if version_option_key
 
         step.default_with(GHB.secrets(:ssh, :github_token).merge(setup_options))
+        step.with.merge!(version_file_input(version_file)) if version_option_key
 
         step.with[:'github-token'] = '${{github.token}}'
 
@@ -341,6 +341,14 @@ module GHB
     # .ruby-version -> ruby-version; .nvmrc is the one file not named after its option.
     def version_option_name(version_file)
       version_file == '.nvmrc' ? 'node-version' : version_file.delete_prefix('.')
+    end
+
+    # The setup action installs only languages named in its inputs; ruby/setup-ruby has no version-file input and reads .ruby-version on `default`.
+    def version_file_input(version_file)
+      option = version_option_name(version_file)
+      return { 'ruby-version': 'default' } if option == 'ruby-version'
+
+      { "#{option}-file": version_file }
     end
 
     def add_setup_options(setup_options, options, version_file = nil)
