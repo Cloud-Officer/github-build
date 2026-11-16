@@ -148,6 +148,7 @@ jobs:
         github-token: "${{github.token}}"
         node-cache: "${{env.NODE-CACHE}}"
         node-cache-dependency-path: package-lock.json
+        node-version-file: ".node-version"
     - name: NPM
       shell: bash
       run: npm install
@@ -186,6 +187,7 @@ jobs:
         aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
         aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
         aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        node-version-file: ".node-version"
     - name: Install Vercel CLI
       run: npm install --global vercel@latest
     - name: Pull Vercel Environment Information
@@ -223,6 +225,7 @@ jobs:
         aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
         aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
         aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        node-version-file: ".node-version"
     - name: Install Vercel CLI
       run: npm install --global vercel@latest
     - name: Pull Vercel Environment Information
@@ -260,6 +263,7 @@ jobs:
         aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
         aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
         aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        node-version-file: ".node-version"
     - name: Install Vercel CLI
       run: npm install --global vercel@latest
     - name: Pull Vercel Environment Information
@@ -474,6 +478,7 @@ jobs:
         github-token: "${{github.token}}"
         node-cache: "${{env.NODE-CACHE}}"
         node-cache-dependency-path: package-lock.json
+        node-version-file: ".node-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -520,6 +525,7 @@ jobs:
         aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
         aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
         aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        node-version-file: ".node-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -570,6 +576,7 @@ jobs:
         aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
         aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
         aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        node-version-file: ".node-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -620,6 +627,7 @@ jobs:
         aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
         aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
         aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        node-version-file: ".node-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -845,6 +853,7 @@ jobs:
         github-token: "${{github.token}}"
         node-cache: "${{env.NODE-CACHE}}"
         node-cache-dependency-path: package-lock.json
+        node-version-file: ".node-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -891,6 +900,7 @@ jobs:
         aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
         aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
         aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        node-version-file: ".node-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -941,6 +951,7 @@ jobs:
         aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
         aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
         aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        node-version-file: ".node-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept
@@ -991,6 +1002,7 @@ jobs:
         aws-secret-access-key: "${{vars.AWS_ROLE_TO_ASSUME == '' && secrets.AWS_SECRET_ACCESS_KEY || ''}}"
         aws-region: "${{secrets.AWS_DEFAULT_REGION}}"
         aws-role-to-assume: "${{vars.AWS_ROLE_TO_ASSUME}}"
+        node-version-file: ".node-version"
         custom-input: kept
       env:
         CUSTOM_STEP_ENV: kept

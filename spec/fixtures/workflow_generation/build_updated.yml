@@ -155,6 +155,7 @@ jobs:
         ssh-key: "${{secrets.SSH_KEY}}"
         github-token: "${{github.token}}"
         ruby-bundler-cache: "${{env.RUBY-BUNDLER-CACHE}}"
+        ruby-version: default
     - name: Bundler
       shell: bash
       run: bundle install

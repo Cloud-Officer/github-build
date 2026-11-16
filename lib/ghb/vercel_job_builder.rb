@@ -90,17 +90,18 @@ module GHB
     end
 
     def build_setup_step(job)
-      # A version file pins the Node version, so drop a carried-over node-version.
-      drop_node_version = NODE_VERSION_FILES.any? { |file| File.exist?(file) }
+      # A version file pins the Node version, so a carried-over node-version gives way to it.
+      node_version_file = NODE_VERSION_FILES.find { |file| File.exist?(file) }
 
       job.carry_step('Setup') do
         do_uses("cloud-officer/ci-actions/setup@#{CI_ACTIONS_VERSION}")
 
-        with.delete(:'node-version') if drop_node_version
+        with.delete(:'node-version') if node_version_file
 
         default_with(GHB.secrets(:ssh, :github_token, :aws))
 
         with[:'github-token'] = '${{github.token}}'
+        with[:'node-version-file'] = node_version_file if node_version_file
       end
     end
 
