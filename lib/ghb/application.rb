@@ -321,7 +321,7 @@ module GHB
       end
     end
 
-    # Env keys the generator writes itself; user-added keys are never pruned.
+    # Env keys named after generator options; prune_env never touches any other key.
     def generated_env_keys
       languages = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.languages_config_file}"))&.deep_symbolize_keys || {}
       names =
