@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 RSpec.describe(GHB::LanguageJobBuilder, '#add_setup_options') do
-  let(:options)       { instance_double(GHB::Options, strict_version_check: true)  }
-  let(:workflow)      { GHB::Workflow.new('CI')                                    }
-  let(:setup_options) { {}                                                         }
+  let(:options)       { instance_double(GHB::Options, strict_version_check: true, test_shards: {}) }
+  let(:workflow)      { GHB::Workflow.new('CI')                                                    }
+  let(:setup_options) { {}                                                                         }
 
   let(:builder) do
     described_class.new(

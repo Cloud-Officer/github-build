@@ -26,6 +26,7 @@ require_relative 'php_packages_builder'
 require_relative 'repository_configurator'
 require_relative 'slack_job_builder'
 require_relative 'status'
+require_relative 'test_shards'
 require_relative 'variables_job_builder'
 require_relative 'vercel_job_builder'
 require_relative 'workflow/workflow'
@@ -306,7 +307,7 @@ module GHB
 
     def collect_required_status_checks
       @new_workflow.jobs.each_value do |job|
-        next if job.nil?
+        next if job.nil? || TestShards.shard_job?(job.id)
 
         names = CheckNames.for_job(job.name, job.strategy)
 

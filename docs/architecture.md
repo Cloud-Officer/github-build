@@ -205,6 +205,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `skip_slack`: Skip Slack notification job
 - `strict_version_check`: Auto-update version files and env vars to recommended values on mismatch (default: true)
 - `sync_required_status_checks`: When branch protection requires checks that are no longer generated, overwrite the remote check list with the expected one without asking (useful when renaming jobs or matrix values). Checks that are only missing are added without it
+- `test_shards`: Hash of shard key (`:test`, `:'test:system'`, `:jest`) to shard count, parsed from `--test_shards test=4,test:system=2,jest=3` by `TestShards.parse`; empty means no sharding
 
 **Constants:**
 
@@ -433,6 +434,27 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `active_support/core_ext/hash/keys`
 - `active_support/core_ext/object/deep_dup` (deep-clones dependency steps staged as CodeDeploy pre-steps)
 - `psych`
+
+### GHB::TestShards
+
+**Purpose:** Splits a unit-test job into parallel shard jobs behind an aggregator job that keeps the original job id, name and matrix, so required status checks and every downstream `needs.<job>.result` stay unchanged.
+
+**Location:** `lib/ghb/test_shards.rb`
+
+**Key Components:**
+
+- `self.parse(value)`: Parses the `--test_shards` value into `{ key => count }`; keys must be `test`, `test:system` or `jest`, counts a whole number from 1 to 32, otherwise raises `ConfigError`
+- `self.shard_job?(job_id)`: True for generated shard job ids (`<lang>_unit_tests_shards`, `<lang>_unit_tests_<task>_shards`); `Application#collect_required_status_checks` skips them
+- `carry_source(base_id)`: The old job a unit-test job carries from — the first old shard job when the job was sharded, since the test steps live there, otherwise the job itself
+- `normalize(job, base_id, language)`: On a job carried from an old shard job, removes the generated shard lines, puts `${{matrix.task}}` back in the Rails command, drops the Jest `--shard` flag, restores the default failure-artifacts name and the old aggregator's strategy. Regeneration therefore always starts from the plain job, which keeps output idempotent and makes removing the flag restore the original job
+- `apply(job, base_id, language)`: For a Ruby job with `test` / `test:system` keys (Rails app only: `bin/rails` and `test/`), one shard job per task with a `shard: [1..N]` matrix. The test step keeps its other lines, env and flags; only the task token on the `bin/rails` line becomes `test "${SHARD_FILES[@]}"`, preceded by lines that pick the shard's files round-robin from the sorted `find` list (`test/system` excluded from `test`) and exit 0 when a shard has none. The generated `bundle exec rspec` default is replaced with `bin/rails db:test:prepare ${{matrix.task}}` first; any other command without a `bin/rails ... test` line raises `ConfigError`. For a Jest job with the `jest` key, one shard job whose `jest` lines get `--shard=${{matrix.shard}}/N` (replacing any existing `--shard`); no `jest` line raises `ConfigError`. Shard jobs copy the job's runner, services, env, condition and steps, and name failure artifacts `failure-artifacts-${{github.job}}-${{strategy.job-index}}` so uploads from different shard jobs cannot collide
+- `unused_keys`: Keys no job consumed; `LanguageJobBuilder#build` raises `ConfigError` for them
+
+**Aggregator job:** Same id and name as the original job, `runs-on: ubuntu-latest`, `needs` the original needs plus the shard jobs, `if: ${{always() && (<original condition>)}}`. A Rails aggregator keeps the `task` matrix, and each leg checks only its own task's shard job result; a Jest aggregator has no matrix. A leg passes only on `success`, so skipped shards (for example after a failed `variables` job) fail the check instead of passing it silently.
+
+**External Dependencies:**
+
+- `active_support/core_ext/object/deep_dup` (each shard job gets its own copy of the job properties)
 
 ### GHB::DockerBuildJobBuilder
 
@@ -876,7 +898,7 @@ The list is validated on every architecture review for accuracy (Requirements ma
 
 **Implementation:**
 
-1. Walks the generated jobs and the jobs of a hand-maintained `smoke.yml`; a job without a `strategy.matrix` contributes its name verbatim, unless the name holds a `${{ }}` expression
+1. Walks the generated jobs and the jobs of a hand-maintained `smoke.yml`, skipping test shard jobs (`TestShards.shard_job?`) because their aggregator job carries the check names; a job without a `strategy.matrix` contributes its name verbatim, unless the name holds a `${{ }}` expression
 2. Normalizes the matrix: keys are symbolized, `include:` / `exclude:` rows are separated from the axes, and the whole matrix is rejected (returning `nil`) when any axis or control-row value is dynamic or non-scalar — a Hash, an Array, `nil`, an empty axis, or an expression GitHub resolves at run time
 3. Expands the axes as a Cartesian product with the first axis varying slowest, matching the order GitHub creates jobs in; an include-only matrix starts from no base combination
 4. Drops every combination matched by an `exclude:` row, then merges each `include:` row into the combinations it does not contradict on an axis key — rows that match nothing become their own combination. This exclude-then-include order is GitHub's documented expansion order and reversing it produces check names that never appear

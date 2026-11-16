@@ -6,6 +6,7 @@ require 'psych'
 
 require_relative '../ghb'
 require_relative 'file_scanner'
+require_relative 'test_shards'
 
 module GHB
   # Detects programming languages based on file extensions and adds unit test jobs to the workflow.
@@ -41,6 +42,7 @@ module GHB
       @file_cache = context.file_cache
       @code_deploy_pre_steps = []
       @installed_once = []
+      @test_shards = TestShards.new(old_workflow: @old_workflow, new_workflow: @new_workflow, shards: @options.test_shards)
     end
 
     def build
@@ -53,6 +55,9 @@ module GHB
 
         detect_language(language, service_options)
       end
+
+      unused = @test_shards.unused_keys
+      raise(ConfigError, "--test_shards #{unused.join(', ')}: no matching unit-test job (test and test:system need a Rails app, jest needs a JavaScript job running Jest)") if unused.any?
     end
 
     private
@@ -199,8 +204,10 @@ module GHB
       needs_codedeploy_setup = needs_codedeploy_setup?(language)
       # Swift with Xcode Cloud (ci_scripts): build the job to collect dependency info, then delete it below.
       skip_unit_test_job = xcode_cloud_unit_tests?(language)
+      job_id = :"#{language[:short_name]}_unit_tests"
+      source_id = @test_shards.carry_source(job_id)
 
-      @new_workflow.carry_job(:"#{language[:short_name]}_unit_tests", from: @old_workflow) do |job|
+      @new_workflow.carry_job(job_id, from: @old_workflow, source_id: source_id) do |job|
         job.do_name("#{language[:long_name]} Unit Tests")
         job.do_runs_on(job.carried_from&.runs_on || GHB.runner_image(language[:'runs-on']))
         job.do_needs(%w[variables])
@@ -216,10 +223,16 @@ module GHB
         build_licenses_step(job) if File.exist?('Podfile.lock') && @options.skip_license_check == false
       end
 
-      # Remove the unit test job from the workflow when Xcode Cloud handles tests.
-      return unless skip_unit_test_job
+      @test_shards.normalize(@new_workflow.jobs[job_id], job_id, language) unless source_id == job_id
 
-      @new_workflow.jobs.delete(:"#{language[:short_name]}_unit_tests")
+      unless skip_unit_test_job
+        @test_shards.apply(@new_workflow.jobs[job_id], job_id, language)
+
+        return
+      end
+
+      # Remove the unit test job from the workflow when Xcode Cloud handles tests.
+      @new_workflow.jobs.delete(job_id)
       puts("        Skipping #{language[:long_name]} Unit Tests job (Xcode Cloud handles tests via ci_scripts)")
     end
 
