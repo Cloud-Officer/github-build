@@ -15,7 +15,9 @@ module GHB
     SHARD_JOB_ID = /_unit_tests(?:_[a-z_]+)?_shards\z/
     SHARD_FILES = '"${SHARD_FILES[@]}"'
     RAILS_TASK_TOKEN = /(?<=\s)(?:\$\{\{\s*matrix\.task\s*\}\}|test:system|test(?: "\$\{SHARD_FILES\[@\]\}")?)(?=\s|\z)/
-    RAILS_PREFIX_LINES = [/\Amapfile -t SHARD_FILES /, /\Aif \[ "\$\{#SHARD_FILES\[@\]\}" /].freeze
+    RAILS_PREFIX_LINES = [/\ASHARD_ALL=\$\(/, /\A\[ -n "\$\{SHARD_ALL\}" \]/, /\Amapfile -t SHARD_FILES /, /\Aif \[ "\$\{#SHARD_FILES\[@\]\}" /].freeze
+    RAILS_SPLIT_TEST = %r{ && .*?\bbin/rails test "\$\{SHARD_FILES\[@\]\}"}
+    RAILS_COMMAND = %r{\A.*?\bbin/rails\b}
     RAILS_DEFAULT_COMMAND = 'bin/rails db:test:prepare ${{matrix.task}}'
     RAILS_FILES = {
       test: "find test -name '*_test.rb' -not -path 'test/system/*'",
@@ -26,7 +28,7 @@ module GHB
     DEFAULT_ARTIFACT_NAME = 'failure-artifacts-${{strategy.job-index}}'
     SHARD_ARTIFACT_NAME = 'failure-artifacts-${{github.job}}-${{strategy.job-index}}'
     AGGREGATOR_TIMEOUT_MINUTES = 5
-    private_constant :RAILS_TASKS, :JEST_KEY, :MAX_SHARDS, :SHARD_JOB_ID, :SHARD_FILES, :RAILS_TASK_TOKEN, :RAILS_PREFIX_LINES, :RAILS_DEFAULT_COMMAND, :RAILS_FILES, :JEST_LINE, :JEST_SHARD_FLAG, :DEFAULT_ARTIFACT_NAME, :SHARD_ARTIFACT_NAME, :AGGREGATOR_TIMEOUT_MINUTES
+    private_constant :RAILS_TASKS, :JEST_KEY, :MAX_SHARDS, :SHARD_JOB_ID, :SHARD_FILES, :RAILS_TASK_TOKEN, :RAILS_PREFIX_LINES, :RAILS_SPLIT_TEST, :RAILS_COMMAND, :RAILS_DEFAULT_COMMAND, :RAILS_FILES, :JEST_LINE, :JEST_SHARD_FLAG, :DEFAULT_ARTIFACT_NAME, :SHARD_ARTIFACT_NAME, :AGGREGATOR_TIMEOUT_MINUTES
     public_constant :KEYS
 
     def self.shard_job?(job_id)
@@ -62,7 +64,7 @@ module GHB
 
       test_steps(job, language).each do |step|
         lines = step.run.lines(chomp: true).reject { |line| RAILS_PREFIX_LINES.any? { |prefix| line.match?(prefix) } }
-        lines.map! { |line| line.include?(SHARD_FILES) ? line.sub(RAILS_TASK_TOKEN, '${{matrix.task}}') : line }
+        lines.map! { |line| line.include?(SHARD_FILES) ? line.sub(RAILS_SPLIT_TEST, ' ${{matrix.task}}').sub(RAILS_TASK_TOKEN, '${{matrix.task}}') : line }
         lines.map! { |line| line.match?(JEST_LINE) ? line.gsub(JEST_SHARD_FLAG, '') : line }
         step.run = join_lines(lines, step.run)
       end
@@ -129,10 +131,16 @@ module GHB
       line = lines[index]
       last_token = line.to_enum(:scan, RAILS_TASK_TOKEN).map { Regexp.last_match }
                        .last
-      lines[index] = "#{line[0...last_token.begin(0)]}test #{SHARD_FILES}#{line[last_token.end(0)..]}"
+      head = line[0...last_token.begin(0)].rstrip
+      tail = line[last_token.end(0)..]
+      rails = head[RAILS_COMMAND]
+      # Rails reads arguments after another task (db:test:prepare) as more commands, so test files need their own call.
+      lines[index] = head == rails ? "#{rails} test #{SHARD_FILES}#{tail}" : "#{head} && #{rails.lstrip} test #{SHARD_FILES}#{tail}"
 
       prefix = [
-        "mapfile -t SHARD_FILES < <(#{RAILS_FILES[task]} | sort | awk -v shard='${{matrix.shard}}' 'NR % #{count} == shard % #{count}')",
+        "SHARD_ALL=$(#{RAILS_FILES[task]} | sort)",
+        "[ -n \"${SHARD_ALL}\" ] || { echo 'No test files found'; exit 1; }",
+        "mapfile -t SHARD_FILES < <(printf '%s\\n' \"${SHARD_ALL}\" | awk -v shard='${{matrix.shard}}' 'NR % #{count} == shard % #{count}')",
         "if [ \"${#SHARD_FILES[@]}\" -eq 0 ]; then echo 'No test files in this shard'; exit 0; fi"
       ]
 
