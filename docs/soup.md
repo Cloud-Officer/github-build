@@ -8,7 +8,7 @@
 | Ruby | base64 | 0.3.0 | Ruby | Support for encoding and decoding binary data using a Base64 representation. | <https://github.com/ruby/base64> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | bigdecimal | 4.1.3 | Ruby | This library provides arbitrary-precision decimal floating-point number class. | <https://github.com/ruby/bigdecimal> | 2026-09-14 | Low | Dependency | Dependency |
 | Ruby | concurrent-ruby | 1.3.8 | MIT | Modern concurrency tools including agents, futures, promises, thread pools, actors, supervisors, and more. | <http://www.concurrent-ruby.com> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | connection_pool | 3.0.2 | MIT | Generic connection pool for Ruby | <https://github.com/mperham/connection_pool> | 2026-05-22 | Low | Dependency | Dependency |
+| Ruby | connection_pool | 3.0.3 | MIT | Generic connection pool for Ruby | <https://github.com/mperham/connection_pool> | 2026-11-16 | Low | Dependency | Dependency |
 | Ruby | crack | 1.0.1 | MIT | Really simple JSON and XML parsing, ripped from Merb and Rails. | <https://github.com/jnunemaker/crack> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | csv | 3.3.7 | Ruby | The CSV library provides a complete interface to CSV files and data | <https://github.com/ruby/csv> | 2026-11-03 | Low | Dependency | Dependency |
 | Ruby | date | 3.6.0 | Ruby | The official date library for Ruby. | <https://github.com/ruby/date> | 2026-10-12 | Low | Dependency | Dependency |
@@ -32,7 +32,7 @@
 | Ruby | public_suffix | 7.0.5 | MIT | PublicSuffix can parse and decompose a domain name into top level domain, domain and subdomains. | <https://simonecarletti.com/code/publicsuffix-ruby> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | racc | 1.8.1 | Ruby | Racc is an LALR(1) parser generator. | <https://github.com/ruby/racc> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | rainbow | 3.1.1 | MIT | Colorize printed text on ANSI terminals | <https://github.com/sickill/rainbow> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | regexp_parser | 2.13.1 | MIT | A library for tokenizing, lexing, and parsing Ruby regular expressions. | <https://github.com/ammar/regexp_parser> | 2026-09-30 | Low | Dependency | Dependency |
+| Ruby | regexp_parser | 2.13.2 | MIT | A library for tokenizing, lexing, and parsing Ruby regular expressions. | <https://github.com/ammar/regexp_parser> | 2026-11-16 | Low | Dependency | Dependency |
 | Ruby | rexml | 3.4.4 | BSD-2-Clause | An XML toolkit for Ruby | <https://github.com/ruby/rexml> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | rspec | 3.13.2 | MIT | BDD for Ruby | <https://rspec.info> | 2026-05-22 | Low | Unit and integration test framework for the CLI and its workflow builders | De facto standard Ruby test framework; the spec/ suite and .rspec configuration are written against its DSL |
 | Ruby | rspec-core | 3.13.7 | MIT | BDD for Ruby | <https://rspec.info> | 2026-11-09 | Low | Dependency | Dependency |

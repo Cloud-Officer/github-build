@@ -74,11 +74,11 @@
   "Ruby:connection_pool": {
     "language": "Ruby",
     "package": "connection_pool",
-    "version": "3.0.2",
+    "version": "3.0.3",
     "license": "MIT",
     "description": "Generic connection pool for Ruby",
     "website": "https://github.com/mperham/connection_pool",
-    "last_verified_at": "2026-05-22",
+    "last_verified_at": "2026-11-16",
     "risk_level": "Low",
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"
@@ -362,11 +362,11 @@
   "Ruby:regexp_parser": {
     "language": "Ruby",
     "package": "regexp_parser",
-    "version": "2.13.1",
+    "version": "2.13.2",
     "license": "MIT",
     "description": "A library for tokenizing, lexing, and parsing Ruby regular expressions.",
     "website": "https://github.com/ammar/regexp_parser",
-    "last_verified_at": "2026-09-30",
+    "last_verified_at": "2026-11-16",
     "risk_level": "Low",
     "requirements": "Dependency",
     "verification_reasoning": "Dependency"

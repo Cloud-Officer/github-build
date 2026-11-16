@@ -233,6 +233,7 @@ jobs:
         ssh-key: "${{secrets.SSH_KEY}}"
         ruby-bundler-cache: "${{env.RUBY-BUNDLER-CACHE}}"
         github-token: "${{github.token}}"
+        ruby-version: default
     - name: Bundler
       shell: bash
       run: echo "Already done by setup."
