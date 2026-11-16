@@ -10,6 +10,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
   let(:mock_options) do
     instance_double(
       GHB::Options,
+      test_shards: {},
       excluded_folders: [],
       skip_license_check: true,
       force_codedeploy_setup: false,
@@ -342,6 +343,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'prints warning but does not exit when version file mismatches and strict_version_check is false' do # rubocop:disable RSpec/ExampleLength
       non_strict_options = instance_double(
         GHB::Options,
+        test_shards: {},
         excluded_folders: [],
         skip_license_check: true,
         force_codedeploy_setup: false,
@@ -378,6 +380,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'populates code_deploy_pre_steps when force_codedeploy_setup is true' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       codedeploy_options = instance_double(
         GHB::Options,
+        test_shards: {},
         excluded_folders: [],
         skip_license_check: true,
         force_codedeploy_setup: true,
@@ -422,6 +425,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'prints warning when existing env value differs from option value' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       non_strict_options = instance_double(
         GHB::Options,
+        test_shards: {},
         excluded_folders: [],
         skip_license_check: true,
         force_codedeploy_setup: false,
@@ -507,6 +511,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'adds Licenses step when Podfile.lock exists and skip_license_check is false' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
       license_options = instance_double(
         GHB::Options,
+        test_shards: {},
         excluded_folders: [],
         skip_license_check: false,
         force_codedeploy_setup: false,

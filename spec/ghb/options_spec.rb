@@ -75,6 +75,27 @@ RSpec.describe(GHB::Options) do
       expect(options.organization).to(eq('MyOrg'))
     end
 
+    it 'defaults --test_shards to no sharding' do
+      expect(described_class.new([]).parse.test_shards).to(eq({}))
+    end
+
+    it 'parses --test_shards into shard counts per key' do
+      options = described_class.new(['--test_shards', 'test=4,test:system=2,jest=3']).parse
+
+      expect(options.test_shards).to(eq(test: 4, 'test:system': 2, jest: 3))
+    end
+
+    it 'persists --test_shards in the workflow header' do
+      options = described_class.new(['--test_shards', 'test=4']).parse
+
+      expect(Shellwords.split(options.args_comment.delete_prefix('# github-build'))).to(eq(%w[--test_shards test=4]))
+    end
+
+    it 'rejects an invalid --test_shards value' do
+      expect { described_class.new(['--test_shards', 'rspec=2']).parse }
+        .to(raise_error(GHB::ConfigError, /rspec=2/))
+    end
+
     it 'parses --application_name' do
       options = described_class.new(['--application_name', 'myapp'])
       options.parse

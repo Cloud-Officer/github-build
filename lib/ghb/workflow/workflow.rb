@@ -64,9 +64,9 @@ module GHB
       @jobs[id] = job
     end
 
-    def carry_job(id, from:, &block)
+    def carry_job(id, from:, source_id: id, &block)
       do_job(id) do |job|
-        job.carry_over(from.jobs[id])
+        job.carry_over(from.jobs[source_id])
         Job.evaluate(job, block)
       end
     end

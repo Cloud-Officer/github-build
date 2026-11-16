@@ -72,6 +72,7 @@ options
         --ignored_linters ignored_linters
                                      Ignore linter keys in linter config file
         --no_strict_version_check    Do not auto-update when VERSION options do not match recommended defaults
+        --test_shards test_shards    Split unit tests into parallel jobs, e.g. test=4,test:system=2,jest=3 (keys: test, test:system, jest)
         --sync_required_status_checks
                                      When branch protection requires checks that are no longer generated, overwrite the remote check list with the expected one without asking (useful when renaming jobs/matrix values)
         --skip_semgrep               Skip Semgrep
@@ -143,6 +144,28 @@ To change the persisted arguments, either:
 One-shot flags are never persisted: `--sync_required_status_checks` is stripped from the saved comment so it only
 applies to the run where it is passed. Flags on the tool's removed-options list — options that were dropped from the
 CLI — are stripped from a saved header with a warning on the next run, so old headers self-heal instead of failing.
+
+### Test Shards
+
+`--test_shards` splits slow unit tests into parallel jobs. Each key takes a shard count from 1 to 32:
+
+* `test` and `test:system`: Rails unit and system tests (needs `bin/rails` and a `test/` directory). List every task
+  to run: `test=4,test:system=2`, or `test:system=1` to run system tests unsplit.
+* `jest`: Jest, using its built-in `--shard`.
+
+```bash
+github-build --test_shards test=4,test:system=2
+```
+
+The unit-test job becomes one shard job per task, with a `shard` matrix. Rails shards take the sorted test files
+round-robin; system files only go to `test:system`. The original job keeps its id and name and turns into a small
+aggregator that passes only when its shards succeed, so required status checks such as `Ruby Unit Tests (test)` and
+deploy-job conditions do not change.
+
+The existing test step is the template: its env and other lines are kept, and only the test command is rewritten. On
+the `bin/rails` line the task (`test`, `test:system` or `${{matrix.task}}`) becomes the shard's files; on the `jest`
+line `--shard=i/N` is appended. Generation stops with an error if that line cannot be found. Removing the flag
+regenerates the single job.
 
 ### Configuration Files
 

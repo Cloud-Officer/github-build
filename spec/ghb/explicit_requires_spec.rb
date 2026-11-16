@@ -28,6 +28,7 @@ GUARDED_FILES = {
   php_packages_builder: %i[ghb_root],
   repository_configurator: %i[ghb_root psych],
   slack_job_builder: %i[ghb_root],
+  test_shards: %i[deep_dup ghb_root],
   variables_job_builder: %i[ghb_root],
   vercel_job_builder: %i[ghb_root],
   'workflow/step': %i[deep_dup],

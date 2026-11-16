@@ -5,6 +5,7 @@ require 'shellwords'
 
 require_relative '../ghb'
 require_relative 'status'
+require_relative 'test_shards'
 
 module GHB
   class Options
@@ -41,11 +42,12 @@ module GHB
       @skip_slack = false
       @strict_version_check = true
       @sync_required_status_checks = false
+      @test_shards = {}
 
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :options_config_files, :organization, :original_argv, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check, :sync_required_status_checks
+    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :options_config_files, :organization, :original_argv, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check, :sync_required_status_checks, :test_shards
 
     def parse
       @parser.parse!(@argv)
@@ -172,6 +174,10 @@ module GHB
 
       @parser.on('', '--no_strict_version_check', 'Do not auto-update when VERSION options do not match recommended defaults') do
         @strict_version_check = false
+      end
+
+      @parser.on('', '--test_shards test_shards', "Split unit tests into parallel jobs, e.g. test=4,test:system=2,jest=3 (keys: #{TestShards::KEYS.join(', ')})") do |test_shards|
+        @test_shards = TestShards.parse(test_shards)
       end
 
       @parser.on('', '--sync_required_status_checks', 'When branch protection requires checks that are no longer generated, overwrite the remote check list with the expected one without asking (useful when renaming jobs/matrix values)') do

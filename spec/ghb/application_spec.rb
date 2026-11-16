@@ -405,6 +405,23 @@ RSpec.describe(GHB::Application) do
           .to(eq(['Ruby Linter']))
       end
 
+      it 'leaves test shard jobs out and keeps the aggregator check names' do # rubocop:disable RSpec/ExampleLength
+        result =
+          checks_for do |w|
+            w.do_job(:ruby_unit_tests_test_shards) do
+              do_name('Ruby Unit Tests (test ${{matrix.shard}}/2)')
+              do_strategy({ matrix: { shard: [1, 2] } })
+            end
+            w.do_job(:js_unit_tests_shards) { do_name('JavaScript Unit Tests (${{matrix.shard}}/2)') }
+            w.do_job(:ruby_unit_tests) do
+              do_name('Ruby Unit Tests')
+              do_strategy({ matrix: { task: %w[test] } })
+            end
+          end
+
+        expect(result).to(eq(['Ruby Unit Tests (test)']))
+      end
+
       it 'expands a matrix job into one check per matrix value' do # rubocop:disable RSpec/ExampleLength
         result =
           checks_for do |w|
