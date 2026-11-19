@@ -321,7 +321,7 @@ php:
     - .php-version
   setup_options:
     - name: php-version
-      value: 8.5.12
+      value: 8.6.0
     - name: php-version-file
       value:
     - name: php-extensions
@@ -507,7 +507,7 @@ ruby:
     - .ruby-version
   setup_options:
     - name: ruby-version
-      value: 4.0.9
+      value: 4.0.10
     - name: ruby-rubygems
       value:
     - name: ruby-bundler
