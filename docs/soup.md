@@ -3,7 +3,7 @@
 | **Language** | **Package** | **Version** | **License** | **Description** | **Website** | **Last Verified** | **Risk Level** | **Requirements** | **Verification Reasoning** |
 | :---: | :--- | :---: | :---: | :--- | :--- | :---: | :---: | :--- | :--- |
 | Ruby | activesupport | 8.1.4.1 | MIT | A toolkit of support libraries and Ruby core extensions extracted from the Rails framework | <https://rubyonrails.org> | 2026-11-04 | Low | Deep symbolize and stringify of hash keys for parsed YAML, and deep_dup for cloning workflow steps | Official Rails ecosystem library maintained by the Rails core team |
-| Ruby | addressable | 2.9.2 | Apache-2.0 | Addressable is an alternative implementation to the URI implementation that is | <https://github.com/sporkmonger/addressable> | 2026-11-03 | Low | Dependency | Dependency |
+| Ruby | addressable | 2.10.0 | Apache-2.0 | Addressable is an alternative implementation to the URI implementation that is | <https://github.com/sporkmonger/addressable> | 2026-11-23 | Low | Dependency | Dependency |
 | Ruby | ast | 2.4.3 | MIT | A library for working with Abstract Syntax Trees. | <https://whitequark.github.io/ast/> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | base64 | 0.3.0 | Ruby | Support for encoding and decoding binary data using a Base64 representation. | <https://github.com/ruby/base64> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | bigdecimal | 4.1.3 | Ruby | This library provides arbitrary-precision decimal floating-point number class. | <https://github.com/ruby/bigdecimal> | 2026-09-14 | Low | Dependency | Dependency |
@@ -14,8 +14,8 @@
 | Ruby | date | 3.6.0 | Ruby | The official date library for Ruby. | <https://github.com/ruby/date> | 2026-10-12 | Low | Dependency | Dependency |
 | Ruby | diff-lcs | 1.6.2 | MIT | Diff::LCS computes the difference between two Enumerable sequences using the | <https://github.com/halostatue/diff-lcs> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | drb | 2.2.3 | Ruby | Distributed object system for Ruby | <https://github.com/ruby/drb> | 2026-05-22 | Low | Dependency | Dependency |
-| Ruby | hashdiff | 1.2.2 | MIT | Hashdiff is a diff lib to compute the smallest difference between two hashes | <https://github.com/liufengyun/hashdiff> | 2026-11-09 | Low | Dependency | Dependency |
-| Ruby | httparty | 0.24.3 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2026-09-30 | High | HTTP client for the GitHub REST and GraphQL API calls and the gitignore.io template fetch | Industry-standard Ruby HTTP client with active maintenance and security updates |
+| Ruby | hashdiff | 1.3.0 | MIT | Hashdiff is a diff lib to compute the smallest difference between two hashes | <https://github.com/liufengyun/hashdiff> | 2026-11-23 | Low | Dependency | Dependency |
+| Ruby | httparty | 0.25.1 | MIT | Makes http fun! Also, makes consuming restful web services dead easy. | <https://github.com/jnunemaker/httparty> | 2026-11-23 | High | HTTP client for the GitHub REST and GraphQL API calls and the gitignore.io template fetch | Industry-standard Ruby HTTP client with active maintenance and security updates |
 | Ruby | i18n | 1.15.2 | MIT | New wave Internationalization support for Ruby. | <https://github.com/ruby-i18n/i18n> | 2026-05-22 | Low | Dependency | Dependency |
 | Ruby | json | 3.1.0 | Ruby | A JSON implementation as a JRuby extension. | <https://github.com/ruby/json> | 2026-10-18 | Low | Dependency | Dependency |
 | Ruby | language_server-protocol | 3.17.0.6 | MIT | A Language Server Protocol SDK | <https://github.com/mtsmfm/language_server-protocol-ruby> | 2026-05-22 | Low | Dependency | Dependency |
@@ -55,4 +55,4 @@
 | Ruby | unicode-display_width | 3.3.0 | MIT | [Unicode 18.0.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, Emoji specification, and other data. | <https://github.com/janlelis/unicode-display_width> | 2026-09-21 | Low | Dependency | Dependency |
 | Ruby | unicode-emoji | 4.3.0 | MIT | [Emoji 18.0] Provides Unicode Emoji data and regexes, incorporating the latest Unicode and Emoji standards | <https://github.com/janlelis/unicode-emoji> | 2026-09-21 | Low | Dependency | Dependency |
 | Ruby | uri | 1.1.2 | Ruby | URI is a module providing classes to handle Uniform Resource Identifiers | <https://github.com/ruby/uri> | 2026-10-12 | Low | Dependency | Dependency |
-| Ruby | webmock | 3.35.0 | MIT | WebMock allows stubbing HTTP requests and setting expectations on HTTP requests. | <https://github.com/bblimke/webmock> | 2026-11-18 | Low | HTTP request stubbing for tests | Stubs at the Net::HTTP layer, so GitHub REST and GraphQL calls made through httparty are intercepted without changing production code |
+| Ruby | webmock | 3.39.0 | MIT | WebMock allows stubbing HTTP requests and setting expectations on HTTP requests. | <https://github.com/bblimke/webmock> | 2026-11-23 | Low | HTTP request stubbing for tests | Stubs at the Net::HTTP layer, so GitHub REST and GraphQL calls made through httparty are intercepted without changing production code |
