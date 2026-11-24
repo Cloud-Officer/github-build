@@ -95,7 +95,10 @@ module GHB
         detected_dependencies.concat(mono_dependency_locations)
         dependency_detected = true if mono_dependency_locations.any?
 
-        return unless dependency_detected
+        unless dependency_detected
+          reconcile_unused_version_file(language)
+          return
+        end
 
         language_detected = true
 
@@ -383,6 +386,14 @@ module GHB
       end
 
       sync_ruby_version_files(file_version) if strict && version_file == '.ruby-version'
+    end
+
+    def reconcile_unused_version_file(language)
+      version_file = language[:version_files]&.find { |f| File.exist?(f) }
+      return unless version_file
+
+      option = language[:setup_options]&.find { |setup_option| setup_option[:name] == version_option_name(version_file) }
+      reconcile_version_file(option, version_file) if option
     end
 
     def sync_ruby_version_files(version)
