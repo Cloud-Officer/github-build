@@ -372,6 +372,35 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       expect(new_workflow.jobs).not_to(have_key(:swift_unit_tests))
     end
 
+    it 'updates a stale version file when the language has no dependency file' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      stub_config_file_reads(go_language_yaml)
+
+      allow(builder).to(receive_messages(find_files_matching: ['./main.go'], file_contains?: false))
+      allow(File).to(receive(:file?).with('go.mod').and_return(false))
+      allow(File).to(receive(:exist?).with('.go-version').and_return(true))
+      allow(File).to(receive(:read).with('.go-version').and_return("1.25.0\n"))
+      allow(File).to(receive(:write))
+      allow($stdout).to(receive(:puts))
+
+      builder.build
+
+      expect(File).to(have_received(:write).with('.go-version', "1.26.0\n"))
+      expect(new_workflow.jobs).not_to(have_key(:go_unit_tests))
+    end
+
+    it 'leaves the version file alone when the language has no dependency file and no source files' do # rubocop:disable RSpec/ExampleLength
+      stub_config_file_reads(go_language_yaml)
+
+      allow(builder).to(receive_messages(find_files_matching: [], file_contains?: false))
+      allow(File).to(receive(:exist?).with('.go-version').and_return(true))
+      allow(File).to(receive(:write))
+      allow($stdout).to(receive(:puts))
+
+      builder.build
+
+      expect(File).not_to(have_received(:write))
+    end
+
     it 'prints warning but does not exit when version file mismatches and strict_version_check is false' do # rubocop:disable RSpec/ExampleLength
       non_strict_options = instance_double(
         GHB::Options,
