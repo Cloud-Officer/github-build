@@ -127,7 +127,8 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `workflow_read`: Reads existing workflow YAML file
 - `workflow_set_defaults`: Sets workflow defaults from existing or new values. The workflow-level `permissions:` default is `{ contents: read }`; a block that exactly matches a superseded generator default (`contents: read` with `pull-requests: read` or `write`) is upgraded to it on regeneration, while any other user-tailored block is kept
 - `collect_required_status_checks`: Collects status checks from generated jobs for branch protection through `GHB::CheckNames.for_job`, so matrix jobs become the per-combination check names GitHub actually creates (`Job (ubuntu-latest, 3.3)`); a job whose names cannot be resolved statically is warned about and skipped. Called from `execute` immediately after `LanguageJobBuilder` and `DockerBuildJobBuilder` and *before* `CodeDeployJobBuilder`, `VercelJobBuilder`, `AwsJobBuilder` and `SlackJobBuilder` run, so only the variables, linter, licenses, unit-test and Docker build jobs become required checks — deploy and notification jobs are gated by `deploy_if_statement` and must not block a merge
-- `workflow_write`: Writes the generated workflow to YAML file, right after `Workflow#adopt_aws_role` has run over every generated job
+- `generated_env_keys`: The workflow-level env keys this tool owns — every `setup_options` name and `cache_option` of `config/languages.yaml`, every option name of the service options files (`GHB::SERVICES`), and `PhpPackagesBuilder::ENV_KEY`, upcased. Passed to `Workflow#prune_env` so a key the user added by hand is never pruned
+- `workflow_write`: Writes the generated workflow to YAML file, right after `Workflow#adopt_aws_role` and `Workflow#prune_env(generated_env_keys)` have run over every generated job
 
 **Constants:**
 
@@ -152,6 +153,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `GHB::VercelJobBuilder`
 - `GHB::AwsJobBuilder`
 - `GHB::SlackJobBuilder`
+- `GHB::PhpPackagesBuilder`
 - `GHB::DependabotManager`
 - `GHB::DockerhubManager`
 - `GHB::GitignoreManager`
@@ -413,6 +415,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `build_mono_dependency_steps(job, language, mono_dependency_locations)`: Emits the per-subdirectory install and test steps. A dependency marked `package_manager_once` in `languages.yaml` installs a system-wide tool rather than a sub-project's dependencies, so its install step is emitted once per job instead of once per detected directory
 - `version_file_input(version_file)`: The Setup input that makes the ci-actions setup install a language from its version file, replacing the `<language>-version` input in a carried Setup step: `ruby-version: default` for `.ruby-version` (`ruby/setup-ruby` has no version-file input and reads the file on `default`), otherwise `<language>-version-file: <file>`. It is set after the defaults are applied, since the setup action installs only the languages named in its inputs unless its `detect-version-files` fallback is on
 - `add_setup_options(setup_options, options, version_file)`: Routes each setup option to `reconcile_version_file` when a version file supplies it, otherwise to `merge_env_option`
+- `reconcile_unused_version_file(language)`: When a language's files are found but none of its dependency files is, still reconciles its first existing version file against the matching setup option, so a version file stays in step with the recommended version even though no unit-test job is generated
 - `reconcile_version_file(option, version_file)`: Compares the version file against the recommended value; in strict mode rewrites the file, otherwise warns and keeps it. `version_file_mismatch?` treats a version file pinning fewer segments (`8.5` against `8.5.11`) as matching
 - `sync_ruby_version_files(version)` / `sync_file_version(file, pattern, version)`: In strict mode, propagate the `.ruby-version` value into the `ruby` line of `Gemfile`, the `RUBY VERSION` block of `Gemfile.lock` and an `ARG RUBY_VERSION=` line of `Dockerfile`, so a pinned Ruby cannot drift from the version file
 - `merge_env_option(setup_options, option)`: Stores a setup option as a workflow-level `env` value referenced from the Setup step; on a mismatch with the recommended value, strict mode updates only `*VERSION*` variables and otherwise the existing value is kept with a warning
@@ -536,6 +539,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 **Key Components:**
 
 - `PhpPackagesBuilder.parse(content)`: One apt package per word, `#` comments and blank lines dropped
+- `ENV_KEY`: The `PHP-PACKAGES` workflow env key; public so `Application#generated_env_keys` can mark it as generator-owned for `Workflow#prune_env`
 - `build`: No-op without `php-packages.txt`, so other repositories are untouched; raises `ConfigError` when the file lists no package. Runs after every job builder and before `Workflow#adopt_aws_role`, so it also reaches the CodeDeploy job's copy of the setup step. It stores the list in the `PHP-PACKAGES` env and, on every `cloud-officer/ci-actions/setup` step with `php-*` inputs and every `linters/phpstan` / `linters/phpcs` step, sets `php-packages: ${{env.PHP-PACKAGES}}` and merges `GHB.secrets(:aws)` when the step has no `aws-*` input, which makes `adopt_aws_role` grant the job `id-token: write`
 - Runner: left unchanged; `ubuntu-latest` and the organization larger runners run Ubuntu 26.04
 
@@ -698,6 +702,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `read(file)`: Parses existing workflow YAML file with `Psych.safe_load`, normalizing `github_token:` keys to `github-token:`. Raises `ConfigError` on invalid YAML, a document root that is not a mapping, or a job or step that is not a mapping
 - `adopt_aws_role`: Moves every step whose `with:` still carries exactly `GHB::LEGACY_AWS_CREDENTIALS` onto the current `:aws` bundle (other inputs, the region included, are kept; customised keys are left alone), because `Step#default_with` would otherwise copy the key-only references forward on every regeneration. Then grants `id-token: write` to each job with an `aws-role-to-assume` step, without which the runner issues no OIDC token: a job with no permissions of its own first inherits the workflow's (or `contents: read`), since a job-level block replaces them entirely. Idempotent
 - `write(file, header:)`: Writes workflow to YAML file, rewriting `${GITHUB_*}` references to `${{github.*}}` in YAML values via `rewrite_github_refs` while preserving them in shell `run:` bodies (where they are runner-exported env vars). `${{secrets.GITHUB_TOKEN}}` is deliberately **not** rewritten to `${{secrets.GH_PAT}}`: the former blanket rewrite put a long-lived org-scoped PAT into every step's environment and silently overrode a `GITHUB_TOKEN` a user had set on purpose in a preserved job. The rewrite that does run goes the other way — `rewrite_retired_secrets` replaces every `GHB::RETIRED_SECRETS` reference (`${{secrets.GH_PAT}}`) with `${{github.token}}`, `run:` bodies included, since a retired secret is dead in every position it can appear. A step needing more than the run token names an explicit, still-live secret
+- `prune_env(keys)`: Deletes each of the given workflow-level env keys that nothing outside the `env:` block references as `env.KEY` or `env['KEY']`, so env values left by a generator option that no longer applies do not accumulate across regenerations. Keys outside the given list are never touched, and nothing is pruned when the workflow indexes `env[...]` with a dynamic expression, since any key could then be in use
 - `do_job(id, &block)`: DSL method to define jobs. A block taking one parameter is yielded the `GHB::Job`, so builders call its DSL on an explicit receiver; a zero-arity block is `instance_eval`ed against the job for the older implicit-receiver form
 - `do_name`, `do_run_name`, `do_on`, `do_permissions`, `do_env`, `do_defaults`, `do_concurrency`: DSL setters for the top-level workflow keys
 - `deploy_needs`: Returns the job ids a deploy job must wait on — every job defined at the moment it is called, so the first deploy builder to run gets the variables, linter, licenses, unit-test and Docker build jobs
@@ -881,7 +886,7 @@ The list is validated on every architecture review for accuracy (Requirements ma
 
 1. Loads language and options configurations from YAML files
 2. For each language entry (skipping non-Hash values like `excluded_dirs`), uses pure Ruby `find_files_matching` to search for files matching the language's file extension
-3. Verifies dependency files exist (e.g., `go.mod`, `package.json`)
+3. Verifies dependency files exist (e.g., `go.mod`, `package.json`); when none is found, the language's version file is still reconciled against the recommended version (`reconcile_unused_version_file`) and no job is generated
 4. Scans up to two directory levels below the repo root for sub-project dependency files (excluding vendored/ignored directories) and generates per-subdirectory package manager and test steps
 5. Checks dependency files (including sub-project files) for database dependencies (MongoDB, MySQL, Redis, OpenSearch) using `file_contains?`
 6. Detects version files (`.ruby-version`, `.nvmrc`, etc.) and validates against recommended versions
