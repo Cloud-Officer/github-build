@@ -7,6 +7,7 @@
 * [Usage](#usage)
   * [Examples](#examples)
   * [Argument Persistence](#argument-persistence)
+  * [Test Shards](#test-shards)
   * [Configuration Files](#configuration-files)
   * [Feature Triggers](#feature-triggers)
   * [Required Secrets](#required-secrets)
