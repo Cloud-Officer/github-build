@@ -206,6 +206,7 @@ github-build is a Ruby CLI tool that automatically generates and updates GitHub 
 - `skip_semgrep`: Skip semgrep linter
 - `skip_slack`: Skip Slack notification job
 - `strict_version_check`: Auto-update version files and env vars to recommended values on mismatch (default: true)
+- `relaxed_version_keys`: Language short names or services (`--no_strict_version_check php,mysql`) excluded from that auto-update while the others keep it
 - `sync_required_status_checks`: When branch protection requires checks that are no longer generated, overwrite the remote check list with the expected one without asking (useful when renaming jobs or matrix values). Checks that are only missing are added without it
 - `test_shards`: Hash of shard key (`:test`, `:'test:system'`, `:jest`) to shard count, parsed from `--test_shards test=4,test:system=2,jest=3` by `TestShards.parse`; empty means no sharding
 

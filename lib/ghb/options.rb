@@ -41,18 +41,23 @@ module GHB
       @get_ignored_folders = false
       @skip_slack = false
       @strict_version_check = true
+      @relaxed_version_keys = []
       @sync_required_status_checks = false
       @test_shards = {}
 
       setup_parser
     end
 
-    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :options_config_files, :organization, :original_argv, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check, :sync_required_status_checks, :test_shards
+    attr_reader :application_name, :build_file, :excluded_folders, :force_codedeploy_setup, :get_ignored_folders, :gitignore_config_file, :ignored_linters, :languages_config_file, :linters_config_file, :options_config_files, :organization, :original_argv, :relaxed_version_keys, :skip_gitignore, :skip_license_check, :skip_repository_settings, :skip_semgrep, :skip_slack, :strict_version_check, :sync_required_status_checks, :test_shards
 
     def parse
       @parser.parse!(@argv)
 
       self
+    end
+
+    def strict_version_check_for?(key)
+      @strict_version_check && !@relaxed_version_keys.include?(key.to_s)
     end
 
     def args_comment
@@ -172,8 +177,15 @@ module GHB
         end
       end
 
-      @parser.on('', '--no_strict_version_check', 'Do not auto-update when VERSION options do not match recommended defaults') do
-        @strict_version_check = false
+      @parser.on('', '--no_strict_version_check [keys]', 'Do not auto-update when VERSION options do not match recommended defaults; optionally only for a comma separated list of languages or services, e.g. php,mysql') do |keys|
+        if keys.nil?
+          @strict_version_check = false
+        else
+          keys.split(',').each do |key|
+            normalized = key.strip.downcase
+            @relaxed_version_keys |= [normalized] unless normalized.empty?
+          end
+        end
       end
 
       @parser.on('', '--test_shards test_shards', "Split unit tests into parallel jobs, e.g. test=4,test:system=2,jest=3 (keys: #{TestShards::KEYS.join(', ')})") do |test_shards|

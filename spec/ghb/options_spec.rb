@@ -180,6 +180,27 @@ RSpec.describe(GHB::Options) do
       expect(options.strict_version_check).to(be(false))
     end
 
+    it 'parses --no_strict_version_check with a key list', :aggregate_failures do
+      options = described_class.new(['--no_strict_version_check', 'php, MySQL']).parse
+
+      expect(options.relaxed_version_keys).to(eq(%w[php mysql]))
+      expect(%w[php mysql ruby].map { |key| options.strict_version_check_for?(key) }).to(eq([false, false, true]))
+    end
+
+    it 'accumulates repeated --no_strict_version_check key lists' do
+      options = described_class.new(['--no_strict_version_check=php', '--no_strict_version_check=ruby'])
+      options.parse
+
+      expect(options.relaxed_version_keys).to(eq(%w[php ruby]))
+    end
+
+    it 'relaxes every key with a bare --no_strict_version_check' do
+      options = described_class.new(['--no_strict_version_check', '--skip_slack'])
+      options.parse
+
+      expect(options.strict_version_check_for?('ruby')).to(be(false))
+    end
+
     it 'parses --linters_config_file' do
       options = described_class.new(['--linters_config_file', 'custom/linters.yaml'])
       options.parse

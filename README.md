@@ -72,7 +72,8 @@ options
         --get_ignored_folders        Output ignored folders as JSON and exit
         --ignored_linters ignored_linters
                                      Ignore linter keys in linter config file
-        --no_strict_version_check    Do not auto-update when VERSION options do not match recommended defaults
+        --no_strict_version_check [keys]
+                                     Do not auto-update when VERSION options do not match recommended defaults; optionally only for a comma separated list of languages or services, e.g. php,mysql
         --test_shards test_shards    Split unit tests into parallel jobs, e.g. test=4,test:system=2,jest=3 (keys: test, test:system, jest)
         --sync_required_status_checks
                                      When branch protection requires checks that are no longer generated, overwrite the remote check list with the expected one without asking (useful when renaming jobs/matrix values)

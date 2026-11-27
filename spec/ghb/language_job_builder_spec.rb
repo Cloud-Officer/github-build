@@ -14,7 +14,8 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       excluded_folders: [],
       skip_license_check: true,
       force_codedeploy_setup: false,
-      strict_version_check: true,
+      strict_version_check_for?: true,
+      relaxed_version_keys: [],
       languages_config_file: 'config/languages.yaml',
       options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' }
     )
@@ -103,6 +104,14 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
   let(:swift_language_yaml) { Psych.dump(swift_only_config.deep_stringify_keys) }
 
   describe '#build' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    it 'rejects an unknown --no_strict_version_check key' do
+      allow(mock_options).to(receive(:relaxed_version_keys).and_return(%w[go mysql phpp]))
+      stub_config_file_reads(go_language_yaml)
+
+      expect { builder.build }
+        .to(raise_error(GHB::ConfigError, /--no_strict_version_check phpp: unknown key/))
+    end
+
     it 'skips languages with nil file_extension' do
       stub_config_file_reads(swift_language_yaml)
 
@@ -408,7 +417,8 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         excluded_folders: [],
         skip_license_check: true,
         force_codedeploy_setup: false,
-        strict_version_check: false,
+        strict_version_check_for?: false,
+        relaxed_version_keys: [],
         languages_config_file: 'config/languages.yaml',
         options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' }
       )
@@ -445,7 +455,8 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         excluded_folders: [],
         skip_license_check: true,
         force_codedeploy_setup: true,
-        strict_version_check: true,
+        strict_version_check_for?: true,
+        relaxed_version_keys: [],
         languages_config_file: 'config/languages.yaml',
         options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' }
       )
@@ -490,7 +501,8 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         excluded_folders: [],
         skip_license_check: true,
         force_codedeploy_setup: false,
-        strict_version_check: false,
+        strict_version_check_for?: false,
+        relaxed_version_keys: [],
         languages_config_file: 'config/languages.yaml',
         options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' }
       )
@@ -576,7 +588,8 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
         excluded_folders: [],
         skip_license_check: false,
         force_codedeploy_setup: false,
-        strict_version_check: true,
+        strict_version_check_for?: true,
+        relaxed_version_keys: [],
         languages_config_file: 'config/languages.yaml',
         options_config_files: { apt: 'config/options/apt.yaml', mongodb: 'config/options/mongodb.yaml', mysql: 'config/options/mysql.yaml', redis: 'config/options/redis.yaml', opensearch: 'config/options/opensearch.yaml' }
       )
@@ -1053,7 +1066,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'updates the pinned Ruby in Gemfile and Gemfile.lock along with .ruby-version' do # rubocop:disable RSpec/MultipleExpectations
       allow(File).to(receive(:read).with('.ruby-version').and_return("4.0.6\n"))
 
-      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version')
+      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version', 'ruby')
 
       expect(File).to(have_received(:write).with('.ruby-version', "4.0.7\n"))
       expect(File).to(have_received(:write).with('Gemfile', gemfile.sub("ruby '4.0.6'", "ruby '4.0.7'")))
@@ -1063,7 +1076,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'updates the Ruby pinned in the Dockerfile ARG' do
       allow(File).to(receive(:read).with('.ruby-version').and_return("4.0.6\n"))
 
-      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version')
+      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version', 'ruby')
 
       expect(File).to(have_received(:write).with('Dockerfile', dockerfile.sub('4.0.6', '4.0.7')))
     end
@@ -1071,7 +1084,7 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
     it 'syncs a stale Gemfile even when .ruby-version already matches' do
       allow(File).to(receive(:read).with('.ruby-version').and_return("4.0.7\n"))
 
-      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version')
+      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version', 'ruby')
 
       expect(File).to(have_received(:write).with('Gemfile', gemfile.sub("ruby '4.0.6'", "ruby '4.0.7'")))
     end
@@ -1080,16 +1093,16 @@ RSpec.describe(GHB::LanguageJobBuilder) do # rubocop:disable RSpec/MultipleMemoi
       allow(File).to(receive(:read).with('.ruby-version').and_return("4.0.7\n"))
       allow(File).to(receive(:read).with('Gemfile').and_return("ruby file: '.ruby-version'\n"))
 
-      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version')
+      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version', 'ruby')
 
       expect(File).not_to(have_received(:write).with('Gemfile', anything))
     end
 
     it 'does not touch the Gemfile when strict_version_check is false' do
-      allow(mock_options).to(receive(:strict_version_check).and_return(false))
+      allow(mock_options).to(receive(:strict_version_check_for?).and_return(false))
       allow(File).to(receive(:read).with('.ruby-version').and_return("4.0.6\n"))
 
-      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version')
+      builder.__send__(:reconcile_version_file, ruby_option, '.ruby-version', 'ruby')
 
       expect(File).not_to(have_received(:write))
     end
