@@ -518,11 +518,11 @@
   "Ruby:rubocop-rspec": {
     "language": "Ruby",
     "package": "rubocop-rspec",
-    "version": "3.10.2",
+    "version": "3.11.0",
     "license": "MIT",
     "description": "Code style checking for RSpec files.",
     "website": "https://github.com/rubocop/rubocop-rspec",
-    "last_verified_at": "2026-05-22",
+    "last_verified_at": "2026-11-27",
     "risk_level": "Low",
     "requirements": "RuboCop plugin adding RSpec cops for the spec/ suite, enabled in .rubocop.yml plugins",
     "verification_reasoning": "Official RuboCop-maintained plugin, the only source of the RSpec cop set"
@@ -638,11 +638,11 @@
   "Ruby:webmock": {
     "language": "Ruby",
     "package": "webmock",
-    "version": "3.41.0",
+    "version": "3.42.0",
     "license": "MIT",
     "description": "WebMock allows stubbing HTTP requests and setting expectations on HTTP requests.",
     "website": "https://github.com/bblimke/webmock",
-    "last_verified_at": "2026-11-26",
+    "last_verified_at": "2026-11-27",
     "risk_level": "Low",
     "requirements": "HTTP request stubbing for tests",
     "verification_reasoning": "Stubs at the Net::HTTP layer, so GitHub REST and GraphQL calls made through httparty are intercepted without changing production code"
