@@ -50,6 +50,8 @@ module GHB
       languages = Psych.safe_load(cached_file_read("#{__dir__}/../../#{@options.languages_config_file}"))&.deep_symbolize_keys
       service_options = SERVICES.to_h { |service| [service, load_service_options(service)] }
 
+      validate_relaxed_version_keys(languages)
+
       languages&.each_value do |language|
         next unless language.is_a?(Hash)
 
@@ -61,6 +63,12 @@ module GHB
     end
 
     private
+
+    def validate_relaxed_version_keys(languages)
+      known = (languages || {}).values.filter_map { |language| language[:short_name] if language.is_a?(Hash) } + SERVICES.map(&:to_s)
+      unknown = @options.relaxed_version_keys - known
+      raise(ConfigError, "--no_strict_version_check #{unknown.join(', ')}: unknown key (expected one of #{known.join(', ')})") if unknown.any?
+    end
 
     # Setup options declared by a service's config/options file, or nil when it declares none.
     def load_service_options(service)
@@ -116,8 +124,8 @@ module GHB
 
       puts("        Enabling #{language[:long_name]}...")
       version_file = language[:version_files]&.find { |f| File.exist?(f) }
-      add_setup_options(setup_options, language[:setup_options], version_file)
-      SERVICES.each { |service| add_setup_options(setup_options, service_options[service]) if detected_services.include?(service) }
+      add_setup_options(setup_options, language[:setup_options], language[:short_name], version_file)
+      SERVICES.each { |service| add_setup_options(setup_options, service_options[service], service) if detected_services.include?(service) }
       cache_options = cache_setup_options(language, detected_dependencies)
       setup_options.merge!(cache_options)
 
@@ -354,26 +362,26 @@ module GHB
       { "#{option}-file": version_file }
     end
 
-    def add_setup_options(setup_options, options, version_file = nil)
+    def add_setup_options(setup_options, options, version_key, version_file = nil)
       skipped_option = version_file && version_option_name(version_file)
 
       options&.each do |option|
         if skipped_option && option[:name] == skipped_option
-          reconcile_version_file(option, version_file)
+          reconcile_version_file(option, version_file, version_key)
         else
-          merge_env_option(setup_options, option)
+          merge_env_option(setup_options, option, version_key)
         end
       end
     end
 
     # The ci-actions setup reads the version file itself, so the option must not also land in env.
-    def reconcile_version_file(option, version_file)
+    def reconcile_version_file(option, version_file, version_key)
       @new_workflow.env.delete(option[:name].upcase.to_sym)
       recommended = option[:value]
       return unless recommended
 
       file_version = File.read(version_file).strip
-      strict = @options.strict_version_check
+      strict = @options.strict_version_check_for?(version_key)
 
       if version_file_mismatch?(file_version, recommended.to_s)
         resolution = strict ? "Updating #{version_file} to #{recommended}." : 'Using version file.'
@@ -393,7 +401,7 @@ module GHB
       return unless version_file
 
       option = language[:setup_options]&.find { |setup_option| setup_option[:name] == version_option_name(version_file) }
-      reconcile_version_file(option, version_file) if option
+      reconcile_version_file(option, version_file, language[:short_name]) if option
     end
 
     def sync_ruby_version_files(version)
@@ -413,7 +421,7 @@ module GHB
       File.write(file, updated)
     end
 
-    def merge_env_option(setup_options, option)
+    def merge_env_option(setup_options, option, version_key)
       env_key = option[:name].upcase.to_sym
       existing_value = @new_workflow.env[env_key]
       recommended = option[:value]
@@ -421,7 +429,7 @@ module GHB
       return unless value
 
       if existing_value && recommended && existing_value.to_s != recommended.to_s
-        update = @options.strict_version_check && env_key.to_s.include?('VERSION')
+        update = @options.strict_version_check_for?(version_key) && env_key.to_s.include?('VERSION')
         resolution = update ? "Updating #{env_key} to #{recommended}." : 'Using existing value.'
         warn_value_mismatch(option[:name], "Existing value: #{existing_value}", recommended, resolution)
         value = recommended if update

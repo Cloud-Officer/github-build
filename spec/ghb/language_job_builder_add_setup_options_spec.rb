@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 RSpec.describe(GHB::LanguageJobBuilder, '#add_setup_options') do
-  let(:options)       { instance_double(GHB::Options, strict_version_check: true, test_shards: {}) }
-  let(:workflow)      { GHB::Workflow.new('CI')                                                    }
-  let(:setup_options) { {}                                                                         }
+  let(:options)       { instance_double(GHB::Options, strict_version_check_for?: true, relaxed_version_keys: [], test_shards: {}) }
+  let(:workflow)      { GHB::Workflow.new('CI')                                                                                   }
+  let(:setup_options) { {}                                                                                                        }
 
   let(:builder) do
     described_class.new(
@@ -27,10 +27,15 @@ RSpec.describe(GHB::LanguageJobBuilder, '#add_setup_options') do
     end
 
     it 'keeps a mismatched version file without strict_version_check', :aggregate_failures do
-      allow(options).to(receive(:strict_version_check).and_return(false))
+      allow(options).to(receive(:strict_version_check_for?).and_return(false))
       expect(add_options(go_option, '.go-version')).to(eq(banner('WARNING: Value mismatch for GO-VERSION', 'Version file (.go-version): 1.25.0', 'Recommended value: 1.26.0', 'Using version file.')))
       expect(File).not_to(have_received(:write))
       expect(workflow.env).not_to(have_key(:'GO-VERSION'))
+    end
+
+    it 'checks strictness for the language key' do
+      add_options(go_option, '.go-version')
+      expect(options).to(have_received(:strict_version_check_for?).with('go'))
     end
 
     it 'stays silent when the version file matches', :aggregate_failures do
@@ -68,7 +73,7 @@ RSpec.describe(GHB::LanguageJobBuilder, '#add_setup_options') do
     end
 
     it 'keeps a mismatched VERSION value without strict_version_check', :aggregate_failures do
-      allow(options).to(receive(:strict_version_check).and_return(false))
+      allow(options).to(receive(:strict_version_check_for?).and_return(false))
       workflow.env[:'MONGODB-VERSION'] = '7.0'
       expect(add_options(mongodb_option)).to(eq(banner('WARNING: Value mismatch for MONGODB-VERSION', 'Existing value: 7.0', 'Recommended value: 8.0.0', 'Using existing value.')))
       expect(workflow.env[:'MONGODB-VERSION']).to(eq('7.0'))
@@ -116,7 +121,7 @@ RSpec.describe(GHB::LanguageJobBuilder, '#add_setup_options') do
   end
 
   def add_options(setup, version_file = nil)
-    capture_stdout { builder.__send__(:add_setup_options, setup_options, setup, version_file) }
+    capture_stdout { builder.__send__(:add_setup_options, setup_options, setup, 'go', version_file) }
   end
 
   def capture_stdout
